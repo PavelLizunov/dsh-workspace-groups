@@ -1,7 +1,8 @@
 /**
  * Tree-derivation tests: the renderer's data-shaping contract — manual
  * overrides win over rules, manual groups render while empty, rule buckets
- * hide while empty, and the uncategorized bucket collects the rest.
+ * hide while empty, and top-level (ungrouped) workspaces render as separate
+ * rows after the group folders (no "未分类" bucket).
  * Pure derivation (no DOM), fixtures cast to the runtime contract types.
  *
  * The browser runtime bundle self-registers via window.__ModuleLoader__ and
@@ -15,8 +16,8 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
 }))
 
 import type { SessionListState, SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
-import { deriveGroups, withDraggingUncategorized } from '../src/client/tree.ts'
-import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../src/core/types.ts'
+import { deriveGroups, deriveTopLevel } from '../src/client/tree.ts'
+import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
 
 const CONFIG: GroupsConfig = {
   categories: [
@@ -65,13 +66,15 @@ describe('deriveGroups with the manual overlay', () => {
     workspace('ws-c', '/tmp/random', 'Random'),
   ]
 
-  it('groups by rules without an overlay', () => {
+  it('groups by rules without an overlay; unmatched workspaces are top-level', () => {
     const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, { categories: [], assignments: {} })
     const labels = groups.map(g => g.label)
-    expect(labels).toEqual(['DSH 插件', '文档', UNCATEGORIZED_LABEL])
+    expect(labels).toEqual(['DSH 插件', '文档'])
     expect(groups[0]?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a'])
     expect(groups[1]?.workspaces.map(w => w.workspaceId)).toEqual(['ws-b'])
-    expect(groups[2]?.workspaces.map(w => w.workspaceId)).toEqual(['ws-c'])
+    // ws-c matches no rule → top-level, not in any bucket.
+    const top = deriveTopLevel(listState(workspaces), workspaces, [], CONFIG, VIEW, { categories: [], assignments: {} })
+    expect(top.map(w => w.workspaceId)).toEqual(['ws-c'])
   })
 
   it('a manual override moves a workspace into a manual group', () => {
@@ -98,7 +101,7 @@ describe('deriveGroups with the manual overlay', () => {
     expect(groups).toEqual([])
   })
 
-  it('drops into the uncategorized bucket are represented by absent overrides', () => {
+  it('removing an override reverts to rule classification', () => {
     // ws-a overridden to 临时; override removed → rule classification applies again.
     const withOverride: ManualGroups = { categories: ['临时'], assignments: { 'ws-a': '临时' } }
     const moved = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, withOverride)
@@ -110,13 +113,13 @@ describe('deriveGroups with the manual overlay', () => {
     expect(back.find(g => g.label === 'DSH 插件')?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a'])
   })
 
-  it('a null override forces the uncategorized bucket (rule match ignored)', () => {
+  it('a null override forces top-level (rule match ignored)', () => {
     const manual: ManualGroups = { categories: [], assignments: { 'ws-a': null } }
     const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
-    const byLabel = new Map(groups.map(g => [g.label, g]))
-    // ws-a forced to uncategorized; ws-c matches no rule and sits there too.
-    expect(byLabel.get(UNCATEGORIZED_LABEL)?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
-    expect(byLabel.has('DSH 插件')).toBe(false)
+    expect(groups.find(g => g.label === 'DSH 插件')).toBeUndefined()
+    const top = deriveTopLevel(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
+    // ws-a forced top-level; ws-c matches no rule and is top-level too.
+    expect(top.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
   })
 
   it('stored workspace order wins inside a bucket', () => {
@@ -133,18 +136,6 @@ describe('deriveGroups with the manual overlay', () => {
     expect(groups.find(g => g.label === 'DSH 插件')?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a2', 'ws-a1'])
   })
 
-  it('the uncategorized bucket is always the last section', () => {
-    const manual: ManualGroups = {
-      categories: ['临时'],
-      assignments: { 'ws-b': '临时', 'ws-c': null },
-      categoryOrder: ['临时'],
-    }
-    const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
-    expect(groups[groups.length - 1]?.label).toBe(UNCATEGORIZED_LABEL)
-    // ws-c (forced uncategorized) and any rule-less workspaces sit at the bottom.
-    expect(groups[groups.length - 1]?.workspaces.map(w => w.workspaceId)).toEqual(['ws-c'])
-  })
-
   it('a renamed rule category renders under the new name', () => {
     const manual: ManualGroups = { categories: [], assignments: {}, renamed: { 'DSH 插件': '插件集' } }
     const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
@@ -154,43 +145,39 @@ describe('deriveGroups with the manual overlay', () => {
     expect(byLabel.has('DSH 插件')).toBe(false)
   })
 
-  it('a hidden rule category is inert — its members fall to uncategorized', () => {
+  it('a hidden rule category is inert — its members become top-level', () => {
     const manual: ManualGroups = { categories: [], assignments: {}, hidden: ['DSH 插件'] }
     const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
-    const byLabel = new Map(groups.map(g => [g.label, g]))
-    expect(byLabel.get(UNCATEGORIZED_LABEL)?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
+    expect(groups.find(g => g.label === 'DSH 插件')).toBeUndefined()
+    const top = deriveTopLevel(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
+    expect(top.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
   })
 })
 
-describe('withDraggingUncategorized', () => {
+describe('deriveTopLevel', () => {
   const ws = [
     workspace('ws-a', '/Users/zcol/Project/SomePlugin', 'DSH插件Demo'),
     workspace('ws-b', '/Users/zcol/Project/MyDocs', 'MyDocs'),
+    workspace('ws-c', '/tmp/random', 'Random'),
   ]
-  const groups = deriveGroups(listState(ws), ws, [], CONFIG, VIEW, { categories: [], assignments: {} })
 
-  it('leaves the tree untouched when no drag is active', () => {
-    expect(withDraggingUncategorized(groups, false)).toBe(groups)
+  it('keeps host order for ungrouped workspaces', () => {
+    const manual: ManualGroups = { categories: [], assignments: { 'ws-a': null, 'ws-b': '文档' } }
+    const top = deriveTopLevel(listState(ws), ws, [], CONFIG, VIEW, manual)
+    // ws-a (forced) and ws-c (rule-less), in host order; ws-b grouped.
+    expect(top.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
   })
 
-  it('appends a collapsed empty uncategorized bucket while dragging when absent', () => {
-    // All workspaces are grouped — the idle tree has no uncategorized section.
-    expect(groups.some(g => g.key === UNCATEGORIZED_LABEL)).toBe(false)
-    const during = withDraggingUncategorized(groups, true)
-    expect(during.length).toBe(groups.length + 1)
-    const bucket = during[during.length - 1]
-    expect(bucket?.key).toBe(UNCATEGORIZED_LABEL)
-    expect(bucket?.expanded).toBe(false)
-    expect(bucket?.workspaces).toEqual([])
-  })
-
-  it('never duplicates an existing uncategorized bucket', () => {
-    const withBucket = deriveGroups(listState(ws), ws, [], CONFIG, VIEW, {
-      categories: [], assignments: { 'ws-b': null },
-    })
-    expect(withBucket.some(g => g.key === UNCATEGORIZED_LABEL)).toBe(true)
-    const during = withDraggingUncategorized(withBucket, true)
-    expect(during).toBe(withBucket)
-    expect(during.filter(g => g.key === UNCATEGORIZED_LABEL)).toHaveLength(1)
+  it('top-level rows are expanded according to the view', () => {
+    const wsC = workspace('ws-c', '/tmp/random', 'Random', ['s1'])
+    const view = { expandedCategories: [], expandedWorkspaces: ['ws-c'] }
+    const top = deriveTopLevel(listState([wsC]), [wsC], [], CONFIG, view, { categories: [], assignments: {} })
+    expect(top[0]?.expanded).toBe(true)
+    expect(top[0]?.sessions).toHaveLength(1)
+    expect(top[0]?.sessions[0]?.id).toBe('s1')
+    // Collapsed view → no sessions.
+    const collapsed = deriveTopLevel(listState([wsC]), [wsC], [], CONFIG, VIEW, { categories: [], assignments: {} })
+    expect(collapsed[0]?.expanded).toBe(false)
+    expect(collapsed[0]?.sessions).toEqual([])
   })
 })

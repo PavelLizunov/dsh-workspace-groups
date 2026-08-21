@@ -208,6 +208,33 @@
   position: relative;
 }
 
+/* Top-level (ungrouped) workspace row: no folder indentation. */
+.wgProjectFlat {
+  padding-left: 4px;
+}
+
+/* Drop target shown while dragging a project and the top-level area is
+   empty — the only way to drag a project out of a group. */
+.wgTopLevelDrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  margin-top: 4px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  border: 1px dashed var(--dsw-border, rgba(127, 127, 127, 0.3));
+  user-select: none;
+}
+
+/* Top-level area container (rows present). While dragging a project it gains
+   .wgDropTarget so the whole area — rows and the gaps between them — reads as
+   the move-out landing spot. */
+.wgTopLevelArea {
+  margin-top: 2px;
+}
+
 .wgProjectRow:hover {
   background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
 }

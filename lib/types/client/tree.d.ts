@@ -78,13 +78,12 @@ export declare function workspaceLabel(cwd: string | undefined): string;
  */
 export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
 /**
- * While a drag is in progress, the empty uncategorized bucket must still
- * render as a drop target — otherwise a project can never be dragged OUT of a
- * group when every project is grouped (the bucket hides when empty). Appends
- * a collapsed empty uncategorized node when the bucket is absent; never
- * duplicates an existing one. Pure; the caller decides when a drag is active.
+ * Top-level (ungrouped) workspace rows: workspaces resolving to no category
+ * (no manual override and no matching rule, or a forced `null` override).
+ * Rendered after the group folders as plain project rows (not inside any
+ * folder), in host registration order.
  */
-export declare function withDraggingUncategorized(groups: readonly CategoryNode[], dragging: boolean): readonly CategoryNode[];
+export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): WorkspaceGroupNode[];
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
 export interface SearchMatchSet {
     /** Session ids that matched (local metadata hits + Host content hits). */
@@ -102,12 +101,20 @@ export declare function deriveSearchMatches(list: SessionListState, workspaces: 
     items: readonly SessionSearchResultItem[];
     hasMore: boolean;
 }, limit: number): SearchMatchSet;
+/** Search tree: group folders plus top-level (ungrouped) matched workspaces. */
+export interface SearchTree {
+    /** Group folders containing matched sessions, in display order. */
+    categories: CategoryNode[];
+    /** Top-level (ungrouped) workspaces holding matched sessions. */
+    topLevel: WorkspaceGroupNode[];
+}
 /**
  * Build a three-level search tree containing ONLY the branches that hold a
  * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
  * Classification uses the same precedence as the idle tree (manual override →
- * rules), so search shows the same grouping the user sees.
+ * rules), so search shows the same grouping the user sees. Matched top-level
+ * workspaces are returned separately (rendered as plain rows).
  *
  * @param list - sessions list snapshot.
  * @param workspaces - real workspaces in stable Host order.
@@ -116,6 +123,7 @@ export declare function deriveSearchMatches(list: SessionListState, workspaces: 
  * @param archivedSessionIds - registry-global archive set.
  * @param manual - runtime overlay (manual groups + overrides).
  * @param snippetsBySession - optional content-match snippets keyed by session id.
- * @returns categories in render order, pruned to matched branches only.
+ * @returns group folders in render order plus top-level matched workspaces,
+ * pruned to matched branches only.
  */
-export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>): CategoryNode[];
+export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>): SearchTree;

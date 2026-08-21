@@ -157,16 +157,15 @@ export function deriveGroups(
   const descendants = indexSubagentDescendants(list.byId)
 
   // Bucket workspaces by display key. Seed with every effective category so
-  // manual groups render while empty; the uncategorized bucket is appended
-  // LAST (groups always sit above ungrouped projects).
+  // manual groups render while empty. Top-level (ungrouped) workspaces are
+  // handled by deriveTopLevel and never land here.
   const byCategory = new Map<string, WorkspaceView[]>()
   for (const { key } of effectiveCategories(config, manual)) {
     byCategory.set(key, [])
   }
-  byCategory.set(UNCATEGORIZED_KEY, [])
   for (const workspace of workspaces) {
     const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
-      ?? UNCATEGORIZED_KEY
+    if (key === undefined) continue // top-level — rendered by deriveTopLevel
     if (!byCategory.has(key)) byCategory.set(key, [])
     byCategory.get(key)!.push(workspace)
   }
@@ -177,13 +176,8 @@ export function deriveGroups(
     : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
 
   const nodes: CategoryNode[] = []
-  // Effective categories in display order (categoryOrder applied), then the
-  // uncategorized bucket pinned to the very bottom.
-  const orderedKeys = [
-    ...effectiveCategories(config, manual).map(e => e.key),
-    UNCATEGORIZED_KEY,
-  ]
-  for (const key of orderedKeys) {
+  // Effective categories in display order (categoryOrder applied).
+  for (const key of effectiveCategories(config, manual).map(e => e.key)) {
     const bucket = byCategory.get(key) ?? []
     // Manual groups stay visible while empty; everything else hides when empty.
     if (bucket.length === 0 && !manualCategories.has(key)) continue
@@ -211,10 +205,51 @@ export function deriveGroups(
     }
     nodes.push({
       key,
-      label: key === UNCATEGORIZED_KEY ? UNCATEGORIZED_LABEL : key,
+      label: key,
       expanded,
       containsCurrent,
       workspaces: workspaceNodes,
+    })
+  }
+  return nodes
+}
+
+/**
+ * Top-level (ungrouped) workspace rows: workspaces resolving to no category
+ * (no manual override and no matching rule, or a forced `null` override).
+ * Rendered after the group folders as plain project rows (not inside any
+ * folder), in host registration order.
+ */
+export function deriveTopLevel(
+  list: SessionListState,
+  workspaces: readonly WorkspaceView[],
+  archivedSessionIds: readonly SessionId[],
+  config: GroupsConfig,
+  view: GroupsTreeView,
+  manual: ManualGroups,
+): WorkspaceGroupNode[] {
+  const archived = new Set(archivedSessionIds)
+  const expandedWorkspaces = new Set(view.expandedWorkspaces)
+  const descendants = indexSubagentDescendants(list.byId)
+  const currentWorkspaceId = list.current === undefined
+    ? undefined
+    : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
+
+  const nodes: WorkspaceGroupNode[] = []
+  for (const workspace of workspaces) {
+    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+    if (key !== undefined) continue // grouped — rendered inside deriveGroups
+    const sessions = workspaceSessions(list, workspace, archived, descendants)
+    const wsExpanded = expandedWorkspaces.has(workspace.workspaceId as string)
+    nodes.push({
+      workspaceId: workspace.workspaceId,
+      path: workspace.path,
+      label: workspace.title,
+      createdAt: Date.parse(workspace.createdAt),
+      sessionCount: sessions.length,
+      expanded: wsExpanded,
+      containsCurrent: workspace.workspaceId === currentWorkspaceId,
+      sessions: wsExpanded ? sessions : [],
     })
   }
   return nodes
@@ -224,25 +259,6 @@ export function deriveGroups(
 function byRecency(a: SessionSummary, b: SessionSummary): number {
   if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt
   return a.id < b.id ? -1 : 1
-}
-
-/**
- * While a drag is in progress, the empty uncategorized bucket must still
- * render as a drop target — otherwise a project can never be dragged OUT of a
- * group when every project is grouped (the bucket hides when empty). Appends
- * a collapsed empty uncategorized node when the bucket is absent; never
- * duplicates an existing one. Pure; the caller decides when a drag is active.
- */
-export function withDraggingUncategorized(
-  groups: readonly CategoryNode[],
-  dragging: boolean,
-): readonly CategoryNode[] {
-  if (!dragging) return groups
-  if (groups.some(g => g.key === UNCATEGORIZED_KEY)) return groups
-  return [
-    ...groups,
-    { key: UNCATEGORIZED_KEY, label: UNCATEGORIZED_LABEL, expanded: false, containsCurrent: false, workspaces: [] },
-  ]
 }
 
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
@@ -320,12 +336,21 @@ export function deriveSearchMatches(
   }
 }
 
+/** Search tree: group folders plus top-level (ungrouped) matched workspaces. */
+export interface SearchTree {
+  /** Group folders containing matched sessions, in display order. */
+  categories: CategoryNode[]
+  /** Top-level (ungrouped) workspaces holding matched sessions. */
+  topLevel: WorkspaceGroupNode[]
+}
+
 /**
  * Build a three-level search tree containing ONLY the branches that hold a
  * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
  * Classification uses the same precedence as the idle tree (manual override →
- * rules), so search shows the same grouping the user sees.
+ * rules), so search shows the same grouping the user sees. Matched top-level
+ * workspaces are returned separately (rendered as plain rows).
  *
  * @param list - sessions list snapshot.
  * @param workspaces - real workspaces in stable Host order.
@@ -334,7 +359,8 @@ export function deriveSearchMatches(
  * @param archivedSessionIds - registry-global archive set.
  * @param manual - runtime overlay (manual groups + overrides).
  * @param snippetsBySession - optional content-match snippets keyed by session id.
- * @returns categories in render order, pruned to matched branches only.
+ * @returns group folders in render order plus top-level matched workspaces,
+ * pruned to matched branches only.
  */
 export function deriveSearchGroups(
   list: SessionListState,
@@ -344,14 +370,14 @@ export function deriveSearchGroups(
   archivedSessionIds: readonly SessionId[],
   manual: ManualGroups,
   snippetsBySession?: ReadonlyMap<SessionId, string>,
-): CategoryNode[] {
+): SearchTree {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
 
   const byCategory = new Map<string, WorkspaceGroupNode[]>()
   for (const key of effectiveCategories(config, manual).map(e => e.key)) byCategory.set(key, [])
-  byCategory.set(UNCATEGORIZED_KEY, [])
 
+  const topLevel: WorkspaceGroupNode[] = []
   for (const workspace of workspaces) {
     // Only sessions that matched the query and are visible in this folder.
     const nodes: SessionNode[] = []
@@ -369,10 +395,7 @@ export function deriveSearchGroups(
     }
     if (nodes.length === 0) continue
 
-    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
-      ?? UNCATEGORIZED_KEY
-    if (!byCategory.has(key)) byCategory.set(key, [])
-    byCategory.get(key)!.push({
+    const node: WorkspaceGroupNode = {
       workspaceId: workspace.workspaceId,
       path: workspace.path,
       label: workspace.title,
@@ -381,25 +404,28 @@ export function deriveSearchGroups(
       expanded: true,
       containsCurrent: false,
       sessions: nodes,
-    })
+    }
+    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+    if (key === undefined) {
+      topLevel.push(node)
+      continue
+    }
+    if (!byCategory.has(key)) byCategory.set(key, [])
+    byCategory.get(key)!.push(node)
   }
 
   const categories: CategoryNode[] = []
-  // Same display order as the idle tree; the uncategorized bucket stays last.
-  const orderedKeys = [
-    ...effectiveCategories(config, manual).map(e => e.key),
-    UNCATEGORIZED_KEY,
-  ]
-  for (const key of orderedKeys) {
+  // Same display order as the idle tree.
+  for (const key of effectiveCategories(config, manual).map(e => e.key)) {
     const workspaceNodes = byCategory.get(key)
     if (workspaceNodes === undefined || workspaceNodes.length === 0) continue
     categories.push({
       key,
-      label: key === UNCATEGORIZED_KEY ? UNCATEGORIZED_LABEL : key,
+      label: key,
       expanded: true,
       containsCurrent: false,
       workspaces: workspaceNodes,
     })
   }
-  return categories
+  return { categories, topLevel }
 }

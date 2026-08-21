@@ -23,38 +23,42 @@
 
 ## Features
 
-### Three-level tree browsing
-- **Category folder → project folder → session row**, both levels collapsible; expansion state
+### Grouped tree browsing
+- **Group folder → project folder → session row**, both levels collapsible; expansion state
   persists independently (`dsh.workspace.groups.view.v1`, survives refresh/restart)
-- **"未分类" fallback bucket**: projects matching no group or moved out of a group land here,
-  **always at the very bottom of the list**
+- **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
+  or returned by a group delete) render as plain rows right after the group folders, at the
+  same level — **there is no "未分类" bucket**
 
 ### Group management (full lifecycle)
 - **Create groups manually**: the "新建分组" button in the section header shows the group
   immediately (empty groups render too)
 - **Rename / delete any group**: every group row (**rule categories included**) has a hover
-  `⋯` menu; deleting a group sends all of its projects back to "未分类"; rule-category
-  rename/delete rides the overlay (`renamed` / `hidden`), **the rule YAML stays untouched**
+  `⋯` menu; deleting a group sends all of its projects back to the **top level**;
+  rule-category rename/delete rides the overlay (`renamed` / `hidden`),
+  **the rule YAML stays untouched**
 - **Rule-based auto-classification**: the sidecar YAML declares category rules (`pathPrefix` /
   `pathExact` / `nameContains` / `basenameContains`); edit the config to adjust grouping
   without touching code
 
 ### Drag-and-drop grouping + ordering
 - **Drag projects into groups**: drop on any group row or on a project row inside a group
-  (cross-group move = overrides the rule classification); drop on "未分类" or use the menu
-  "移到未分类" = **forced uncategorized** (rule matches are ignored)
-- **Drag projects OUT of a group**: even when every project is grouped (the uncategorized
-  bucket is empty and hidden at rest), the bucket **appears while dragging** so you can
-  always drag a project out; rule-classified projects also have the "移到未分类" menu item
+  (cross-group move = overrides the rule classification)
+- **Drag projects OUT of a group**: the **entire top-level area** is the move-out drop
+  target while dragging — an empty top level shows a dashed drop zone, a non-empty one
+  lights up as a whole (the rows AND the gaps between them accept the drop); grouped
+  projects also have a "移出分组" menu item (rule-classified ones included)
 - **Reorder projects inside a group**: top half of a project row = insert before it,
   bottom half = insert after it
 - **Reorder groups**: group rows are draggable — top half of another group row = move before it,
   bottom half = move after it
 - **Insertion position indicator**: a 2px line (above/below the row) shows the exact drop
   point while dragging — what you see is where it lands
-- **Smart collapsing**: dragging a project folds the other groups' projects (the source group
-  stays open for ordering); dragging a group folds every group (group rows stay visible as
-  reorder targets)
+- **Level-aware folding, auto-restored**: dragging a project folds every project row
+  (grouped AND top-level; group rows stay expanded); dragging a group folds every group
+  (project rows keep their expansion) — dragend restores the pre-drag expansion snapshot
+- **Distinct row icons**: group rows use a folder glyph, project rows a project glyph
+  (same as the official workspace browser) — groups and projects are easy to tell apart
 
 ### Search & operations
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched
@@ -85,8 +89,9 @@
   grouping overrides, group/project ordering, rule-category renames and hides), validates it
   and writes it atomically to `$DSH_HOME/workspace-groups.manual.json`.
 - **Classification priority**: manual override (written by drag/menu; `null` = forced
-  uncategorized) → YAML rule classification (hidden rule categories are inert) → "未分类"
-  bucket (always at the bottom). The YAML is never rewritten.
+  top-level, rules ignored) → YAML rule classification (hidden rule categories are inert)
+  → **top level** (ungrouped projects render as top-level rows). The YAML is never
+  rewritten.
 
 ## Install (GitHub distribution)
 
@@ -161,7 +166,8 @@ first match wins):
 | `nameContains` | Project display title contains (case-insensitive) |
 | `basenameContains` | Project directory name contains (case-insensitive) |
 
-Projects matching no category go into the "未分类" bucket — never hidden.
+Projects matching no category — or moved out of a group — render as **top-level project
+rows** (same level as the group folders), never hidden.
 
 ## Manual groups & drag-and-drop grouping (runtime overlay)
 
@@ -182,15 +188,15 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 }
 ```
 
-- `categories` — manually created group names (no rules; empty groups render too); names
-  must not collide with rule categories or "未分类".
+- `categories` — manually created group names (no rules; empty groups render too).
 - `assignments` — workspace → group classification overrides keyed by the stable workspace id
   (renames don't affect it). **Takes precedence over YAML rules**; a value of `null` means
-  **forced uncategorized** (even when a rule would match).
-- `categoryOrder` — group display order ("未分类" is always at the bottom, not listed here).
+  **forced top-level** (even when a rule would match).
+- `categoryOrder` — group display order (top-level rows are not listed here; they always
+  render after the group folders).
 - `workspaceOrder` — per-group manual ordering of projects (written by drag ordering).
 - `renamed` / `hidden` — UI rename/delete of rule categories (a hidden category's rules become
-  inert and its matches fall to "未分类"); the rule YAML stays untouched.
+  inert and its matches go top-level); the rule YAML stays untouched.
 - The file is written in full by the browser UI (`PUT /workspace-groups/manual`, atomic
   replace); manual edits also take effect on next load. A malformed write returns 400 and
   keeps the previous file — the rule YAML is never at risk.
@@ -198,11 +204,11 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 | Action | How |
 |---|---|
 | Create group | "新建分组" button in the section header (folder icon), enter a name in the dialog |
-| Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to "未分类" |
+| Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to the top level |
 | Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
-| Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); other groups' projects auto-fold while dragging |
-| Move out of a group | drop on "未分类", or the project row's "移到未分类" menu (forced uncategorized) |
-| Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging); "未分类" stays at the bottom |
+| Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); all project rows fold while dragging and restore on dragend |
+| Move out of a group | drop anywhere on the **top-level area** (empty → dashed drop zone / non-empty → whole-area highlight; the gaps between rows count too), or the project row's "移出分组" menu (forced top-level) |
+| Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging, restored on dragend) |
 
 ## Topics
 
@@ -279,15 +285,24 @@ scripts/
   correct classification, expansion persistence, search keeps workspace membership;
   `workspace.json` / session on-disk / official store: zero intrusion.
 - v0.3 real-browser verification 24/24 (`scripts/verify-groups.mjs`: create group / drag /
-  order / collapse / rule-category menu / rename / delete-back-to-uncategorized / bottom-pinned /
+  order / collapse / rule-category menu / rename / delete-back-to-top-level /
   scene restore; zero-intrusion assertions).
 - v0.4 real-browser verification 30/30 (added: insertion indicator, project/group
   **downward drag** (bottom half → insert after the target), group upward drag (top half →
   move before the target); scene restored).
 - v0.4.1 real-browser verification 34/34 (added: dragging projects OUT of a group —
-  the empty uncategorized bucket appears while dragging; drop on it = forced
-  uncategorized; rule-classified projects get the "移到未分类" menu item).
-- 68 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
+  top-level drop zone / top-level rows = forced top-level; grouped projects get the
+  "移出分组" menu item).
+- v0.5 real-browser verification 35/35 (model change: **no "未分类" bucket** — top-level
+  project rows, group delete returns members to the top level, drag/menu move-out to the
+  top level, no uncategorized bucket anywhere in the tree; scene restored).
+- v0.6 real-browser verification 40/40 (added: **level-aware folding** — dragging a project
+  folds project rows only (group rows stay open), dragging a group folds group rows only;
+  dragend restores the pre-drag expansion snapshot).
+- v0.6.1 real-browser verification 42/42 (added: the whole top-level area as the move-out
+  drop target with a visible landing highlight; distinct folder-vs-project row icons;
+  scene restored).
+- 66 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
 - Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
 
 ## License

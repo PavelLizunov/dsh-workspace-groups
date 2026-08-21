@@ -9,11 +9,15 @@
  *   - v0.2：新建分组弹窗 → 空分组渲染 → 拖拽项目进分组 → PUT 落盘 →
  *     刷新持久化 → 非法 PUT 400；
  *   - v0.3：拖拽项目组内排序 + 拖动时其他分组项目收起、规则分类行出现
- *     「⋯」菜单 → 重命名（renamed 落盘）→ 删除（成员回未分类 + hidden 落盘）、
- *     未分类恒为最末段；
+ *     「⋯」菜单 → 重命名（renamed 落盘）→ 删除（成员回顶层 + hidden 落盘）、
+ *     树中不存在「未分类」桶；
  *   - v0.4：拖拽插入位置指示线（上半=插到行前 / 下半=插到行后）：项目
  *     拖到目标行下半 → 插到目标之后；分组向下拖 → 移到目标分组之后、
  *     向上拖 → 移到目标分组之前；
+ *   - v0.4.1：从分组拖出到顶层（拖拽中顶层落点区显示、拖出落盘 null、
+ *     顶层行渲染、分组内项目菜单「移出分组」）；
+ *   - v0.6：按级别收起 + 结束后恢复 —— 拖项目只折叠项目行（分组内+顶层）、
+ *     分组行不收；拖分组只折叠分组行、项目行不收；dragend 还原拖动前快照；
  *   - 现场恢复：还原原 overlay（原无文件则删除），不留测试数据；
  *   - 依赖 host 已重启（PUT /workspace-groups/manual 可用）；
  *   - 以 0/1 退出码供质量门调用。
@@ -69,6 +73,10 @@ async function main() {
   const profileDir = await mkdtemp(join(tmpdir(), 'wg-cdp-'))
   let chrome
   let page
+  // Hoisted for the finally-block scene restore (runs even when steps throw).
+  let originalManual = null
+  let overlayPath = ''
+  let overlayExistedBefore = false
   try {
     chrome = spawn(CHROME, [
       `--remote-debugging-port=${CDP_PORT}`,
@@ -121,13 +129,20 @@ async function main() {
       report('host GET /workspace-groups/config 可访问', false, String(error))
       return 1
     }
-    const originalManual = snapshot.manual ?? { categories: [], assignments: {} }
-    const overlayPath = join(process.env.DSH_HOME ?? join(process.env.HOME ?? '.', '.dsh'), 'workspace-groups.manual.json')
-    const overlayExistedBefore = await access(overlayPath).then(() => true, () => false)
+    originalManual = snapshot.manual ?? { categories: [], assignments: {} }
+    try {
+      overlayPath = join(process.env.DSH_HOME ?? join(process.env.HOME ?? '.', '.dsh'), 'workspace-groups.manual.json')
+      overlayExistedBefore = await access(overlayPath).then(() => true, () => false)
+    } catch { /* non-fatal */ }
 
     // ---- 1. GUI 树就绪 ----
     report('GUI 三层树渲染（.wgRoot + 项目行）', await waitFor(`document.querySelectorAll('.wgProjectRow').length > 0`))
     report('区头存在「新建分组」按钮', await evaluate(`!!document.querySelector('button[aria-label="新建分组"]')`))
+    report('分组行与项目行图标可区分（文件夹 vs 项目符号）', await evaluate(`(() => {
+      const g = document.querySelector('.wgCategoryRow [data-wg-row-icon="group"] svg')?.outerHTML ?? ''
+      const p = document.querySelector('.wgProjectRow [data-wg-row-icon="project"] svg')?.outerHTML ?? ''
+      return g !== '' && p !== '' && g !== p
+    })()`))
 
     // ---- 2. 新建分组 ----
     const groupName = '验证分组'
@@ -205,143 +220,74 @@ async function main() {
     if (cat1 === undefined) {
       report('v0.3 需至少一个可见规则分类（跳过排序/收起断言）', false, `categories=${JSON.stringify(ruleKeys)}`)
     } else {
-      // Expand both rule categories so their project rows are visible.
+      // Expand both rule categories so their project rows are visible, then
+      // expand every project row (the v0.6 fold/restore assertions need them
+      // expanded before the drag starts).
       const expandCat = (key) => evaluate(`(() => {
         const row = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(key)}]')
         if (!row) return false
         if (row.getAttribute('aria-expanded') === 'false') row.click()
         return true
       })()`)
+      const expandProject = (key) => evaluate(`(() => {
+        const section = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(key)}]')?.parentElement
+        if (!section) return false
+        for (const row of section.querySelectorAll('.wgProjectRow')) {
+          if (row.getAttribute('aria-expanded') === 'false') row.click()
+        }
+        return true
+      })()`)
       await expandCat(cat1)
       await expandCat(cat2)
+      // NOTE: cat1 (first visible rule category) may have only 1 member left —
+      // the v0.2 flow dragged one project out of it, and the user environment
+      // may already have few members. Assertions must not require >= 2 rows in
+      // cat1; reorder/drag-out tests run against cat2 (验证分组) instead.
       const rowsVisible = await waitFor(`(() => {
         const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
-        return !!s1 && !!s2 && s1.querySelectorAll('.wgProjectRow').length >= 2 && s2.querySelectorAll('.wgProjectRow').length >= 1
+        return !!s1 && !!s2 && s1.querySelectorAll('.wgProjectRow').length >= 1 && s2.querySelectorAll('.wgProjectRow').length >= 1
       })()`)
       report('两个规则分类展开且项目行可见', rowsVisible)
-
-      const reorder = await evaluate(`(() => {
+      await expandProject(cat1)
+      await expandProject(cat2)
+      report('项目行展开（会话可见，供折叠断言用）', await waitFor(`(() => {
         const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return { error: 'no section' }
-        const rows = s1.querySelectorAll('.wgProjectRow')
-        const source = rows[1] // drag the second project
-        const target = rows[0] // drop before the first
-        if (!source || !target) return { error: 'rows missing' }
-        const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
-        window.__wgDt = dt // stash for the drop step (React re-renders may recreate rows)
-        return { wsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
-      })()`)
-      // React commits the collapse on the next render — wait for the other
-      // category's project rows to disappear before dropping.
-      report('拖动项目时其他分组项目收起', await waitFor(`(() => {
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
-        return !!s2 && s2.querySelectorAll('.wgProjectRow').length === 0
-      })()`, 5000))
-      await evaluate(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return false
-        const target = s1.querySelector('.wgProjectRow')
-        if (!target || !window.__wgDt) return false
-        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
-        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
-        return true
-      })()`)
-      // The user-visible contract: the dragged project now renders first in the group.
-      report('组内拖拽排序（第二个项目移到第一个之前）', await waitFor(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return false
-        const first = s1.querySelector('.wgProjectRow')
-        return !!first && first.getAttribute('data-wsid') === ${JSON.stringify(reorder.wsid)}
+        const rows1 = s1 ? [...s1.querySelectorAll('.wgProjectRow')] : []
+        const rows2 = s2 ? [...s2.querySelectorAll('.wgProjectRow')] : []
+        return rows1.length >= 1 && rows1.every(r => r.getAttribute('aria-expanded') === 'true')
+          && rows2.length >= 1 && rows2.every(r => r.getAttribute('aria-expanded') === 'true')
       })()`))
 
-      // ---- v0.4：拖到目标行下半 → 插到目标之后（指示线可见） ----
-      const reorderAfter = await evaluate(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return { error: 'no section' }
-        const rows = s1.querySelectorAll('.wgProjectRow')
-        const source = rows[0] // currently the first project
-        const target = rows[1] // drop on the BOTTOM half of the second
-        if (!source || !target) return { error: 'rows missing' }
+      // ---- 排序前置：从顶层拖一个项目进 cat2（组内排序需要 2 个成员） ----
+      // cat1 只剩 1 个成员，不能再消耗它；顶层项目（null 覆盖）是安全来源。
+      const seedTop = await evaluate(`(() => {
+        const source = document.querySelector('.wgProjectRow.wgProjectFlat')
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
+        if (!source || !target) return { error: 'no top-level row or cat2' }
         const dt = new DataTransfer()
         source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
-        const rect = target.getBoundingClientRect()
-        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
-        window.__wgDt = dt // stash for the drop step
-        return { sourceWsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
-      })()`)
-      report('拖项目悬停行下半 → 下方插入指示线', await waitFor(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        return !!s1 && !!s1.querySelector('.wgProjectRow.wgInsertAfter')
-      })()`, 5000))
-      await evaluate(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return false
-        const target = s1.querySelector('.wgProjectRow[data-wsid="${reorderAfter.targetWsid}"]')
-        if (!target || !window.__wgDt) return false
-        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + target.getBoundingClientRect().height - 1, dataTransfer: window.__wgDt }))
-        return true
-      })()`)
-      report('项目拖到目标行下半 → 插入到目标之后', await waitFor(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return false
-        const first = s1.querySelector('.wgProjectRow')
-        return !!first && first.getAttribute('data-wsid') === ${JSON.stringify(reorderAfter.targetWsid)}
-      })()`))
-
-      // ---- v0.4.1：从分组拖出 —— 未分类桶为空时拖拽中也显示为落点 ----
-      const uncatBefore = await evaluate(`!!document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')`)
-      const dragOut = await evaluate(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        if (!s1) return { error: 'no section' }
-        const source = s1.querySelector('.wgProjectRow')
-        if (!source) return { error: 'no project row' }
-        const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
-        window.__wgDt = dt // stash for the drop step
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        window.__wgDt = dt
+        window.__wgSource = source
         return { wsid: source.getAttribute('data-wsid') }
       })()`)
-      report('拖拽中未分类桶可见（原为空也显示）', !!dragOut.wsid && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')`, 5000),
-        `拖拽前未分类桶存在=${uncatBefore}`)
-      const droppedOut = await evaluate(`(() => {
-        const target = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')
+      await evaluate(`(() => {
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
         if (!target || !window.__wgDt) return false
-        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
         target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        window.__wgSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
         return true
       })()`)
-      report('拖到未分类 = 从分组拖出（assignments=null 落盘）', droppedOut && !!dragOut.wsid && await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => d.manual?.assignments?.[${JSON.stringify(dragOut.wsid)}] === null)`))
-      await evaluate(`(() => {
-        const row = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')
-        if (row && row.getAttribute('aria-expanded') === 'false') row.click()
-        return true
-      })()`)
-      report('拖出的项目出现在未分类桶', !!dragOut.wsid && await waitFor(`(() => {
-        const s = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')?.parentElement
-        return !!s && !!s.querySelector('.wgProjectRow[data-wsid=${JSON.stringify(dragOut.wsid ?? '')}]')
+      report('排序前置：顶层项目拖入验证分组（凑 2 个成员）', !!seedTop.wsid && await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        return !!s2 && s2.querySelectorAll('.wgProjectRow').length >= 2
       })()`))
+      await expandProject(cat2)
 
-      // ---- v0.4.1b：规则分类项目行菜单也提供「移到未分类」 ----
-      const menuMoveOut = await evaluate(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        const row = s1?.querySelector('.wgProjectRow')
-        if (!row) return false
-        row.querySelector('button[aria-label^="重命名 "]')?.click()
-        return true
-      })()`)
-      report('规则分类项目行菜单出现', menuMoveOut && await waitFor(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === '移到未分类')`, 4000))
-      // Close the menu (performs the move-out PUT) and let the async write
-      // settle — the following group-reorder drops are rejected by the
-      // manualSaving re-entrancy guard while a save is in flight.
-      await evaluate(`(() => {
-        const item = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '移到未分类')
-        if (item) { item.click(); return true }
-        return false
-      })()`)
-      await sleep(1000)
-
-      // ---- v0.4：分组拖动 — 下半 = 移到目标分组之后 ----
+      // ---- v0.4：分组拖动（在项目消耗测试之前，保证两分组行都在） ----
+      // 下半 = 移到目标分组之后
       const groupDown = await evaluate(`(() => {
         const source = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
         const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
@@ -351,6 +297,7 @@ async function main() {
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
         window.__wgCatDt = dt
+        window.__wgCatSource = source // dragend fires on the dragged source
         return true
       })()`)
       report('拖分组悬停目标行下半 → 下方插入指示线', groupDown && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}].wgInsertAfter')`, 5000))
@@ -358,6 +305,7 @@ async function main() {
         const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
         if (!target || !window.__wgCatDt) return false
         target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + target.getBoundingClientRect().height - 1, dataTransfer: window.__wgCatDt }))
+        window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
         return true
       })()`)
       report('分组向下拖 → 移到目标分组之后', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
@@ -365,7 +313,7 @@ async function main() {
         return o.indexOf(${JSON.stringify(cat2)}) > o.indexOf(${JSON.stringify(cat1)})
       })`))
 
-      // ---- v0.4：分组拖动 — 上半 = 移到目标分组之前 ----
+      // 上半 = 移到目标分组之前
       const groupUp = await evaluate(`(() => {
         const source = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
         const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
@@ -375,6 +323,7 @@ async function main() {
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + 1, dataTransfer: dt }))
         window.__wgCatDt = dt
+        window.__wgCatSource = source // dragend fires on the dragged source
         return true
       })()`)
       report('拖分组悬停目标行上半 → 上方插入指示线', groupUp && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}].wgInsertBefore')`, 5000))
@@ -382,14 +331,169 @@ async function main() {
         const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
         if (!target || !window.__wgCatDt) return false
         target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + 1, dataTransfer: window.__wgCatDt }))
+        window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
         return true
       })()`)
       report('分组向上拖 → 移到目标分组之前', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
         const o = d.manual?.categoryOrder ?? []
         return o.indexOf(${JSON.stringify(cat1)}) < o.indexOf(${JSON.stringify(cat2)})
       })`))
+      // Let the group-reorder PUT settle before the next drag (manualSaving
+      // rejects concurrent writes).
+      await sleep(1000)
 
-      // ---- v0.3：规则分类行出现菜单 → 重命名 → 删除回未分类 ------------------
+      // Group drags folded every group — dragend must restore the snapshot
+      // automatically (no manual re-expand needed). cat1 has 1 member, cat2
+      // has 2 (v0.2 drag-in + top-level seed).
+      const autoRestored = await waitFor(`(() => {
+        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        return !!s1 && !!s2 && s1.querySelectorAll('.wgProjectRow').length >= 1 && s2.querySelectorAll('.wgProjectRow').length >= 2
+      })()`)
+      report('分组拖动后自动恢复展开（dragend 还原快照）', autoRestored)
+
+      // ---- v0.3：组内排序（在 cat2 内；cat1 只剩 1 个成员不够排序） ----
+      const reorder = await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return { error: 'no section' }
+        const rows = s2.querySelectorAll('.wgProjectRow')
+        const source = rows[1] // drag the second project
+        const target = rows[0] // drop before the first
+        if (!source || !target) return { error: 'rows missing' }
+        const dt = new DataTransfer()
+        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        window.__wgDt = dt // stash for the drop step (React re-renders may recreate rows)
+        window.__wgSource = source // dragend fires on the dragged source
+        return { wsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
+      })()`)
+      // v0.6: dragging a PROJECT folds every project row (grouped AND
+      // top-level) but leaves group rows expanded.
+      report('拖动项目时分组行不收起', await waitFor(`(() => {
+        const r1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
+        const r2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
+        return !!r1 && !!r2 && r1.getAttribute('aria-expanded') === 'true' && r2.getAttribute('aria-expanded') === 'true'
+      })()`, 5000))
+      report('拖动项目时分组内项目行折叠', await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const rows = [...s2.querySelectorAll('.wgProjectRow')]
+        return rows.length >= 2 && rows.every(r => r.getAttribute('aria-expanded') === 'false')
+      })()`, 5000))
+      report('拖动项目时其他分组项目行也折叠', await waitFor(`(() => {
+        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
+        if (!s1) return false
+        const rows = [...s1.querySelectorAll('.wgProjectRow')]
+        return rows.length >= 1 && rows.every(r => r.getAttribute('aria-expanded') === 'false')
+      })()`, 5000))
+      await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const target = s2.querySelector('.wgProjectRow')
+        if (!target || !window.__wgDt) return false
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        window.__wgSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+        return true
+      })()`)
+      report('拖项目 dragend 后恢复项目行展开（快照还原）', await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const rows = [...s2.querySelectorAll('.wgProjectRow')]
+        return rows.length >= 2 && rows.every(r => r.getAttribute('aria-expanded') === 'true')
+      })()`, 5000))
+      // The user-visible contract: the dragged project now renders first in the group.
+      report('组内拖拽排序（第二个项目移到第一个之前）', await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const first = s2.querySelector('.wgProjectRow')
+        return !!first && first.getAttribute('data-wsid') === ${JSON.stringify(reorder.wsid)}
+      })()`))
+
+      // ---- v0.4：拖到目标行下半 → 插到目标之后（指示线可见，cat2 内） ----
+      const reorderAfter = await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return { error: 'no section' }
+        const rows = s2.querySelectorAll('.wgProjectRow')
+        const source = rows[0] // currently the first project
+        const target = rows[1] // drop on the BOTTOM half of the second
+        if (!source || !target) return { error: 'rows missing' }
+        const dt = new DataTransfer()
+        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        const rect = target.getBoundingClientRect()
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
+        window.__wgDt = dt // stash for the drop step
+        window.__wgSource = source // dragend fires on the dragged source
+        return { sourceWsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
+      })()`)
+      report('拖项目悬停行下半 → 下方插入指示线', await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        return !!s2 && !!s2.querySelector('.wgProjectRow.wgInsertAfter')
+      })()`, 5000))
+      await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const target = s2.querySelector('.wgProjectRow[data-wsid="${reorderAfter.targetWsid}"]')
+        if (!target || !window.__wgDt) return false
+        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + target.getBoundingClientRect().height - 1, dataTransfer: window.__wgDt }))
+        window.__wgSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+        return true
+      })()`)
+      report('项目拖到目标行下半 → 插入到目标之后', await waitFor(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return false
+        const first = s2.querySelector('.wgProjectRow')
+        return !!first && first.getAttribute('data-wsid') === ${JSON.stringify(reorderAfter.targetWsid)}
+      })()`))
+
+      // ---- v0.4.1：从分组拖出（用 cat2 的项目；cat1 只剩 1 个成员留给删除流程） ----
+      const dragOut = await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        if (!s2) return { error: 'no section' }
+        const source = s2.querySelector('.wgProjectRow')
+        if (!source) return { error: 'no project row' }
+        const dt = new DataTransfer()
+        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        window.__wgDt = dt // stash for the drop step
+        window.__wgSource = source // dragend fires on the dragged source
+        return { wsid: source.getAttribute('data-wsid') }
+      })()`)
+      report('拖拽中顶层移出目标可见（空落点区或顶层行）', !!dragOut.wsid && await waitFor(`!!(document.querySelector('.wgTopLevelDrop') || document.querySelector('.wgProjectRow.wgProjectFlat'))`, 5000))
+      report('拖拽中顶层落点可见（整区高亮或空落点区）', !!dragOut.wsid && await waitFor(`!!(document.querySelector('.wgTopLevelArea.wgDropTarget') || document.querySelector('.wgTopLevelDrop'))`, 5000))
+      // Drop on the top-level AREA container (the gaps between rows, not a row
+      // itself) — the whole area must act as the move-out landing spot.
+      const droppedOut = await evaluate(`(() => {
+        const target = document.querySelector('.wgTopLevelArea')
+        if (!target || !window.__wgDt) return false
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        window.__wgSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+        return true
+      })()`)
+      report('拖到顶层区域空白 = 从分组拖出（assignments=null 落盘）', droppedOut && !!dragOut.wsid && await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => d.manual?.assignments?.[${JSON.stringify(dragOut.wsid)}] === null)`))
+      report('拖出的项目出现在顶层（无分组行）', !!dragOut.wsid && await waitFor(`!!document.querySelector('.wgProjectRow.wgProjectFlat[data-wsid=${JSON.stringify(dragOut.wsid)}]')`))
+
+      // ---- v0.4.1b：分组内项目行菜单提供「移出分组」 ----
+      // cat2 还剩 1 个项目（v0.2 拖入 + 排序前置种子 - 拖出 1）；移出后
+      // 手动分组变空（仍渲染），cat1 的成员留给删除流程。
+      await expandCat(cat2)
+      const menuMoveOut = await evaluate(`(() => {
+        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
+        const row = s2?.querySelector('.wgProjectRow')
+        if (!row) return false
+        row.querySelector('button[aria-label^="重命名 "]')?.click()
+        return true
+      })()`)
+      report('分组内项目行菜单出现「移出分组」', menuMoveOut && await waitFor(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === '移出分组')`, 4000))
+      // Close the menu (performs the move-out PUT) and let the async write
+      // settle before the delete flow (manualSaving guards concurrent writes).
+      await evaluate(`(() => {
+        const item = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '移出分组')
+        if (item) { item.click(); return true }
+        return false
+      })()`)
+      await sleep(1000)
+
+      // ---- v0.3：规则分类行出现菜单 → 重命名 → 删除回顶层 --------------------
       const hasMenu = await evaluate(`(() => {
         const row = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
         if (!row) return false
@@ -419,7 +523,7 @@ async function main() {
       report('renamed 落盘（原规则名 → 新名）', await fetch(`${BASE}/workspace-groups/config`, { cache: 'no-store' })
         .then(r => r.json()).then(d => d.manual?.renamed?.[cat1] === renamed))
 
-      // Delete the renamed rule group: its projects must go to 未分类 (null).
+      // Delete the renamed rule group: its projects must go top-level (null).
       // Capture the group's members first (expand the group if collapsed),
       // then drive the delete flow.
       await evaluate(`(() => {
@@ -454,18 +558,9 @@ async function main() {
         return true
       })()`)
       report('删除分组后分组消失', await waitFor(`!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(renamed)}]')`))
-      // The uncategorized bucket first appears COLLAPSED — expand it before
-      // asserting its members (data is correct; rows render on expand).
-      await evaluate(`(() => {
-        const row = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')
-        if (row && row.getAttribute('aria-expanded') === 'false') row.click()
-        return true
-      })()`)
-      // Every former member must now render inside the 未分类 section (bottom).
-      report('删除后成员回未分类（DOM）', await waitFor(`(() => {
-        const s = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')?.parentElement
-        if (!s) return false
-        const ids = new Set([...s.querySelectorAll('.wgProjectRow')].map(r => r.getAttribute('data-wsid')))
+      // Every former member must now render as a top-level (ungrouped) row.
+      report('删除后成员回顶层（DOM）', await waitFor(`(() => {
+        const ids = new Set([...document.querySelectorAll('.wgProjectRow.wgProjectFlat')].map(r => r.getAttribute('data-wsid')))
         return ${JSON.stringify(memberIds)}.every(id => ids.has(id))
       })()`), `members=${JSON.stringify(memberIds)}`)
       const deleted = await fetch(`${BASE}/workspace-groups/config`, { cache: 'no-store' }).then(r => r.json())
@@ -474,31 +569,44 @@ async function main() {
         && !Object.values(assignments).includes(renamed)
         && !Object.keys(deleted.manual?.workspaceOrder ?? {}).includes(renamed)
         && !(deleted.manual?.categoryOrder ?? []).includes(renamed))
-      report('未分类恒为最末段', await waitFor(`(() => {
-        const rows = document.querySelectorAll('.wgCategoryRow')
-        return rows.length > 0 && rows[rows.length - 1].getAttribute('data-wg-category') === ${JSON.stringify('未分类')}
+      // No 未分类 bucket exists anywhere in the tree.
+      report('树中不存在「未分类」桶', await waitFor(`(() => {
+        const rows = [...document.querySelectorAll('.wgCategoryRow')]
+        return rows.every(r => r.getAttribute('data-wg-category') !== ${JSON.stringify('未分类')})
       })()`))
     }
-
-    // ---- 6. 现场恢复 ----
-    await fetch(`${BASE}/workspace-groups/manual`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(originalManual),
-    })
-    if (!overlayExistedBefore) {
-      // The original environment had no overlay file — remove the one we created.
-      await unlink(overlayPath).catch(() => {})
-    }
-    await page.send('Page.reload')
-    await waitFor(`!!document.querySelector('.wgRoot')`, 8000)
-    const cleaned = await fetch(`${BASE}/workspace-groups/config`, { cache: 'no-store' }).then(r => r.json())
-    const backToOriginal = JSON.stringify(cleaned.manual ?? { categories: [], assignments: {} }) === JSON.stringify(originalManual)
-    report('现场恢复：overlay 还原为原始内容', backToOriginal)
   } catch (error) {
     console.error('验证脚本异常:', error)
   } finally {
-    if (page) page.close()
+    // 现场恢复必须在 finally 执行：任何异常/中断都不能把测试数据留在
+    // 用户 overlay 里（此前恢复代码在 try 内，异常时会污染真实环境）。
+    let restored = false
+    if (page) {
+      try {
+        if (originalManual !== null) {
+          await fetch(`${BASE}/workspace-groups/manual`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(originalManual),
+          })
+          if (!overlayExistedBefore && overlayPath !== '') {
+            // The original environment had no overlay file — remove the one we created.
+            await unlink(overlayPath).catch(() => {})
+          }
+          restored = true
+        }
+      } catch { /* best-effort restore */ }
+      if (restored) {
+        try {
+          const cleaned = await fetch(`${BASE}/workspace-groups/config`, { cache: 'no-store' }).then(r => r.json())
+          const backToOriginal = JSON.stringify(cleaned.manual ?? { categories: [], assignments: {} }) === JSON.stringify(originalManual)
+          report('现场恢复：overlay 还原为原始内容', backToOriginal)
+        } catch { report('现场恢复：overlay 还原为原始内容', false, '恢复校验请求失败') }
+      } else {
+        report('现场恢复：overlay 还原为原始内容', false, '恢复请求失败')
+      }
+      page.close()
+    }
     if (chrome) chrome.kill('SIGKILL')
     await rm(profileDir, { recursive: true, force: true })
   }

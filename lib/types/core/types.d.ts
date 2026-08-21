@@ -77,11 +77,16 @@ export interface ManualGroups {
     renamed?: Record<string, string>;
     /**
      * Rule category original names hidden by a UI delete. Hidden rules are
-     * inert: workspaces matching them fall into the uncategorized bucket.
+     * inert: workspaces matching them become top-level (ungrouped).
      */
     hidden?: string[];
 }
-/** The label of the fallback bucket for unmatched workspaces. */
+/**
+ * Legacy label of the fallback bucket. The top-level (ungrouped) concept
+ * replaced the rendered "未分类" bucket: workspaces in no group render as
+ * top-level rows beside the group folders. The constant survives for data
+ * compatibility (reserved name, assignment null marker).
+ */
 export declare const UNCATEGORIZED_LABEL = "\u672A\u5206\u7C7B";
 /** Normalize a path for prefix matching: trailing slashes stripped. */
 export declare function normalizePath(path: string): string;

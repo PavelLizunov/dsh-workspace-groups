@@ -52,16 +52,18 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     onDragStartCategory?: (event: DragEvent) => void;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
     node: WorkspaceGroupNode;
     t: T;
     onToggle: () => void;
     onNewSession: () => void;
     onRename: () => void;
     onDelete: () => void;
-    /** Project currently sits inside a group — offer "move to uncategorized". */
+    /** Project currently sits inside a group — offer "move out of group". */
     canMoveOut?: boolean;
     onMoveOut?: () => void;
+    /** Render as a top-level row (no folder indentation). */
+    flat?: boolean;
     /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
     onDragStartExtra?: () => void;
 } & RowDropProps): import("react").JSX.Element;

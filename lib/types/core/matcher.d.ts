@@ -8,7 +8,7 @@
  * name (or a manual-group name). Its DISPLAY key is what the tree renders and
  * what assignments reference — for rule categories that is the rename
  * override when present. Hidden rule categories are inert: workspaces that
- * would match them fall into the uncategorized bucket.
+ * would match them become top-level (ungrouped).
  */
 import { type GroupCategory, type GroupsConfig, type ManualGroups } from './types.ts';
 /** Classify a workspace by rules only; hidden categories are inert. */
@@ -25,7 +25,8 @@ export declare function originalRuleNameForDisplay(categories: readonly GroupCat
  * Effective category entries in display order: rule categories (YAML order,
  * hidden skipped, renamed applied) first, then manual-only groups in
  * creation order — unless `manual.categoryOrder` overrides the sequence.
- * The uncategorized bucket is never included (it always renders last).
+ * Top-level (ungrouped) workspaces are never included; they render as
+ * separate top-level rows after the group folders.
  */
 export interface EffectiveCategory {
     /** Display key (what the tree renders and assignments reference). */
@@ -34,19 +35,19 @@ export interface EffectiveCategory {
     source: 'rule' | 'manual';
 }
 export declare function effectiveCategories(config: GroupsConfig, manual: ManualGroups | undefined): EffectiveCategory[];
-/** Display keys of all effective categories (uncategorized bucket excluded). */
+/** Display keys of all effective categories (top-level workspaces excluded). */
 export declare function displayCategoryKeys(config: GroupsConfig, manual: ManualGroups | undefined): string[];
 /**
- * Resolve the category key a workspace renders under. Precedence:
- * manual override (`null` = force uncategorized) → rule classification
- * (hidden rules inert) → uncategorized bucket (`undefined`).
+ * Resolve the category key a workspace renders under, or `undefined` when it
+ * is top-level (ungrouped). Precedence: manual override (`null` = forced
+ * top-level) → rule classification (hidden rules inert) → top-level.
  */
 export declare function resolveCategory(config: GroupsConfig, manual: ManualGroups | undefined, workspaceId: string, path: string, title: string): string | undefined;
 /** Whether a category key is a manual-only group (manageable via list). */
 export declare function isManualOnlyCategory(config: GroupsConfig, manual: ManualGroups | undefined, key: string): boolean;
 /**
- * Names that may not be used for a new/renamed group: the reserved
- * uncategorized label plus every current display key.
+ * Names that may not be used for a new/renamed group: the legacy reserved
+ * label plus every current display key.
  */
 export declare function takenCategoryNames(config: GroupsConfig, manual: ManualGroups | undefined): Set<string>;
 /**

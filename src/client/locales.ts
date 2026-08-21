@@ -31,7 +31,7 @@ export type WorkspaceGroupsKey =
   | 'workspace.renamePlaceholder'
   | 'workspace.renameConfirm'
   | 'workspace.renameCancel'
-  | 'workspace.moveToUncategorized'
+  | 'workspace.moveOutOfGroup'
   | 'group.create'
   | 'group.createTitle'
   | 'group.createPlaceholder'
@@ -46,6 +46,8 @@ export type WorkspaceGroupsKey =
   | 'group.deleteCancel'
   | 'group.nameDuplicate'
   | 'group.nameReserved'
+  | 'group.dropTopLevel'
+  | 'section.topLevel'
   | 'manual.saveError'
   | 'session.new'
   | 'session.rename'
@@ -97,7 +99,7 @@ export const zh: WorkspaceGroupsDict = {
   'workspace.renamePlaceholder': '工作区名称',
   'workspace.renameConfirm': '重命名',
   'workspace.renameCancel': '取消',
-  'workspace.moveToUncategorized': '移到未分类',
+  'workspace.moveOutOfGroup': '移出分组',
   'group.create': '新建分组',
   'group.createTitle': '新建分组',
   'group.createPlaceholder': '分组名称',
@@ -108,10 +110,12 @@ export const zh: WorkspaceGroupsDict = {
   'group.renameConfirm': '重命名',
   'group.delete': '删除分组',
   'group.deleteTitle': '删除分组',
-  'group.deleteConfirm': '删除后，该分组内的所有项目将回到「未分类」。确定删除？',
+  'group.deleteConfirm': '删除后，该分组内的所有项目将移到顶层（不归组）。确定删除？',
   'group.deleteCancel': '取消删除',
   'group.nameDuplicate': '已存在同名分组',
   'group.nameReserved': '该名称不可用',
+  'group.dropTopLevel': '松开以移出分组到顶层',
+  'section.topLevel': '顶层项目',
   'manual.saveError': '分组变更保存失败',
   'session.new': '新建会话',
   'session.rename': '重命名会话',
@@ -162,7 +166,7 @@ export const en: WorkspaceGroupsDict = {
   'workspace.renamePlaceholder': 'Workspace name',
   'workspace.renameConfirm': 'Rename',
   'workspace.renameCancel': 'Cancel',
-  'workspace.moveToUncategorized': 'Move to Uncategorized',
+  'workspace.moveOutOfGroup': 'Move out of group',
   'group.create': 'New group',
   'group.createTitle': 'New group',
   'group.createPlaceholder': 'Group name',
@@ -173,10 +177,12 @@ export const en: WorkspaceGroupsDict = {
   'group.renameConfirm': 'Rename',
   'group.delete': 'Delete group',
   'group.deleteTitle': 'Delete group',
-  'group.deleteConfirm': 'Deleting removes this group; every project inside it returns to Uncategorized. Delete?',
+  'group.deleteConfirm': 'Deleting removes this group; every project inside it moves to the top level (ungrouped). Delete?',
   'group.deleteCancel': 'Cancel delete',
   'group.nameDuplicate': 'A group with this name already exists',
   'group.nameReserved': 'This name is not available',
+  'group.dropTopLevel': 'Release to move out of the group',
+  'section.topLevel': 'Top-level projects',
   'manual.saveError': 'Could not save group changes',
   'session.new': 'New Session',
   'session.rename': 'Rename session',

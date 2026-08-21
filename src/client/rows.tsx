@@ -18,6 +18,7 @@ import {
   IconFolderOpen16,
   IconFolderOpenOutline16,
   IconPlusOutline16,
+  IconProjectAddOutline16,
   IconTriangleRightFill14,
   IconTrashOutline16,
   Menu,
@@ -123,7 +124,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
         <IconTriangleRightFill14 />
       </span>
-      <span className="wgCategoryIcon">
+      <span className="wgCategoryIcon" data-wg-row-icon="group">
         {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
@@ -163,23 +164,25 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
   node: WorkspaceGroupNode
   t: T
   onToggle: () => void
   onNewSession: () => void
   onRename: () => void
   onDelete: () => void
-  /** Project currently sits inside a group — offer "move to uncategorized". */
+  /** Project currently sits inside a group — offer "move out of group". */
   canMoveOut?: boolean
   onMoveOut?: () => void
+  /** Render as a top-level row (no folder indentation). */
+  flat?: boolean
   /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
   onDragStartExtra?: () => void
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuItems = [
     ...(canMoveOut && onMoveOut !== undefined
-      ? [{ id: 'moveOut', label: t('workspace.moveToUncategorized'), icon: <IconFolderOpenOutline16 size={16} /> }]
+      ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
       : []),
     { id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> },
     { id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true },
@@ -191,7 +194,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   }
   return (
     <div
-      className={`wgProjectRow${node.containsCurrent ? ' wgProjectActive' : ''}${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
+      className={`wgProjectRow${node.containsCurrent ? ' wgProjectActive' : ''}${flat ? ' wgProjectFlat' : ''}${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
       role="treeitem"
       aria-expanded={node.expanded}
       data-wsid={node.workspaceId}
@@ -205,8 +208,10 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
         <IconTriangleRightFill14 />
       </span>
-      <span className="wgCategoryIcon">
-        {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+      <span className="wgCategoryIcon" data-wg-row-icon="project">
+        {/* Project rows use the project glyph (same as the official workspace
+            browser) so groups (folder glyph) and projects stay distinguishable. */}
+        <IconProjectAddOutline16 />
       </span>
       <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       <span className="wgRowActions">

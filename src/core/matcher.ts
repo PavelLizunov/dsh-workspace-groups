@@ -8,7 +8,7 @@
  * name (or a manual-group name). Its DISPLAY key is what the tree renders and
  * what assignments reference — for rule categories that is the rename
  * override when present. Hidden rule categories are inert: workspaces that
- * would match them fall into the uncategorized bucket.
+ * would match them become top-level (ungrouped).
  */
 import {
   normalizePath,
@@ -73,7 +73,8 @@ export function originalRuleNameForDisplay(
  * Effective category entries in display order: rule categories (YAML order,
  * hidden skipped, renamed applied) first, then manual-only groups in
  * creation order — unless `manual.categoryOrder` overrides the sequence.
- * The uncategorized bucket is never included (it always renders last).
+ * Top-level (ungrouped) workspaces are never included; they render as
+ * separate top-level rows after the group folders.
  */
 export interface EffectiveCategory {
   /** Display key (what the tree renders and assignments reference). */
@@ -115,15 +116,15 @@ export function effectiveCategories(
   })
 }
 
-/** Display keys of all effective categories (uncategorized bucket excluded). */
+/** Display keys of all effective categories (top-level workspaces excluded). */
 export function displayCategoryKeys(config: GroupsConfig, manual: ManualGroups | undefined): string[] {
   return effectiveCategories(config, manual).map(e => e.key)
 }
 
 /**
- * Resolve the category key a workspace renders under. Precedence:
- * manual override (`null` = force uncategorized) → rule classification
- * (hidden rules inert) → uncategorized bucket (`undefined`).
+ * Resolve the category key a workspace renders under, or `undefined` when it
+ * is top-level (ungrouped). Precedence: manual override (`null` = forced
+ * top-level) → rule classification (hidden rules inert) → top-level.
  */
 export function resolveCategory(
   config: GroupsConfig,
@@ -133,7 +134,7 @@ export function resolveCategory(
   title: string,
 ): string | undefined {
   const override = manual?.assignments[workspaceId]
-  if (override !== undefined) return override ?? undefined // null forces the uncategorized bucket
+  if (override !== undefined) return override ?? undefined // null forces top-level
   const matched = classify(config.categories, path, title)
   if (matched === undefined) return undefined
   if (isHiddenRule(manual, matched.name)) return undefined
@@ -150,8 +151,8 @@ export function isManualOnlyCategory(
 }
 
 /**
- * Names that may not be used for a new/renamed group: the reserved
- * uncategorized label plus every current display key.
+ * Names that may not be used for a new/renamed group: the legacy reserved
+ * label plus every current display key.
  */
 export function takenCategoryNames(config: GroupsConfig, manual: ManualGroups | undefined): Set<string> {
   const taken = new Set<string>(displayCategoryKeys(config, manual))
