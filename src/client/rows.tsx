@@ -163,22 +163,22 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, hasOverride = false, onMoveOut, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
   node: WorkspaceGroupNode
   t: T
   onToggle: () => void
   onNewSession: () => void
   onRename: () => void
   onDelete: () => void
-  /** Workspace has a manual group override — offer "move to uncategorized". */
-  hasOverride?: boolean
+  /** Project currently sits inside a group — offer "move to uncategorized". */
+  canMoveOut?: boolean
   onMoveOut?: () => void
   /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
   onDragStartExtra?: () => void
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuItems = [
-    ...(hasOverride && onMoveOut !== undefined
+    ...(canMoveOut && onMoveOut !== undefined
       ? [{ id: 'moveOut', label: t('workspace.moveToUncategorized'), icon: <IconFolderOpenOutline16 size={16} /> }]
       : []),
     { id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> },

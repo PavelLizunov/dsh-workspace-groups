@@ -77,6 +77,14 @@ export declare function workspaceLabel(cwd: string | undefined): string;
  * empty; empty rule buckets stay hidden.
  */
 export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
+/**
+ * While a drag is in progress, the empty uncategorized bucket must still
+ * render as a drop target — otherwise a project can never be dragged OUT of a
+ * group when every project is grouped (the bucket hides when empty). Appends
+ * a collapsed empty uncategorized node when the bucket is absent; never
+ * duplicates an existing one. Pure; the caller decides when a drag is active.
+ */
+export declare function withDraggingUncategorized(groups: readonly CategoryNode[], dragging: boolean): readonly CategoryNode[];
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
 export interface SearchMatchSet {
     /** Session ids that matched (local metadata hits + Host content hits). */

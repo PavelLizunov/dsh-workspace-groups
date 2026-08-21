@@ -226,6 +226,25 @@ function byRecency(a: SessionSummary, b: SessionSummary): number {
   return a.id < b.id ? -1 : 1
 }
 
+/**
+ * While a drag is in progress, the empty uncategorized bucket must still
+ * render as a drop target — otherwise a project can never be dragged OUT of a
+ * group when every project is grouped (the bucket hides when empty). Appends
+ * a collapsed empty uncategorized node when the bucket is absent; never
+ * duplicates an existing one. Pure; the caller decides when a drag is active.
+ */
+export function withDraggingUncategorized(
+  groups: readonly CategoryNode[],
+  dragging: boolean,
+): readonly CategoryNode[] {
+  if (!dragging) return groups
+  if (groups.some(g => g.key === UNCATEGORIZED_KEY)) return groups
+  return [
+    ...groups,
+    { key: UNCATEGORIZED_KEY, label: UNCATEGORIZED_LABEL, expanded: false, containsCurrent: false, workspaces: [] },
+  ]
+}
+
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
 export interface SearchMatchSet {
   /** Session ids that matched (local metadata hits + Host content hits). */

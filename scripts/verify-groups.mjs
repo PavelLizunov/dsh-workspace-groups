@@ -196,11 +196,14 @@ async function main() {
     report('非法 PUT（未知分类）返回 400', bad.status === 400, `status=${bad.status}`)
 
     // ---- 5.5 v0.3：组内排序 + 拖动时其他分组项目收起 ------------------------
-    const ruleKeys = snapshot.categories?.map(c => c.name) ?? []
+    // cat1 = first VISIBLE rule category (hidden ones don't render); cat2 =
+    // the manual 验证分组 created in the v0.2 flow (already holds one project).
+    const hiddenSet = new Set(snapshot.manual?.hidden ?? [])
+    const ruleKeys = (snapshot.categories ?? []).map(c => c.name).filter(n => !hiddenSet.has(n))
     const cat1 = ruleKeys[0]
-    const cat2 = ruleKeys[1]
-    if (cat1 === undefined || cat2 === undefined) {
-      report('v0.3 需两个规则分类（跳过排序/收起断言）', false, `categories=${JSON.stringify(ruleKeys)}`)
+    const cat2 = groupName
+    if (cat1 === undefined) {
+      report('v0.3 需至少一个可见规则分类（跳过排序/收起断言）', false, `categories=${JSON.stringify(ruleKeys)}`)
     } else {
       // Expand both rule categories so their project rows are visible.
       const expandCat = (key) => evaluate(`(() => {
@@ -286,6 +289,57 @@ async function main() {
         const first = s1.querySelector('.wgProjectRow')
         return !!first && first.getAttribute('data-wsid') === ${JSON.stringify(reorderAfter.targetWsid)}
       })()`))
+
+      // ---- v0.4.1：从分组拖出 —— 未分类桶为空时拖拽中也显示为落点 ----
+      const uncatBefore = await evaluate(`!!document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')`)
+      const dragOut = await evaluate(`(() => {
+        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
+        if (!s1) return { error: 'no section' }
+        const source = s1.querySelector('.wgProjectRow')
+        if (!source) return { error: 'no project row' }
+        const dt = new DataTransfer()
+        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        window.__wgDt = dt // stash for the drop step
+        return { wsid: source.getAttribute('data-wsid') }
+      })()`)
+      report('拖拽中未分类桶可见（原为空也显示）', !!dragOut.wsid && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')`, 5000),
+        `拖拽前未分类桶存在=${uncatBefore}`)
+      const droppedOut = await evaluate(`(() => {
+        const target = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')
+        if (!target || !window.__wgDt) return false
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgDt }))
+        return true
+      })()`)
+      report('拖到未分类 = 从分组拖出（assignments=null 落盘）', droppedOut && !!dragOut.wsid && await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => d.manual?.assignments?.[${JSON.stringify(dragOut.wsid)}] === null)`))
+      await evaluate(`(() => {
+        const row = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')
+        if (row && row.getAttribute('aria-expanded') === 'false') row.click()
+        return true
+      })()`)
+      report('拖出的项目出现在未分类桶', !!dragOut.wsid && await waitFor(`(() => {
+        const s = document.querySelector('.wgCategoryRow[data-wg-category="未分类"]')?.parentElement
+        return !!s && !!s.querySelector('.wgProjectRow[data-wsid=${JSON.stringify(dragOut.wsid ?? '')}]')
+      })()`))
+
+      // ---- v0.4.1b：规则分类项目行菜单也提供「移到未分类」 ----
+      const menuMoveOut = await evaluate(`(() => {
+        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
+        const row = s1?.querySelector('.wgProjectRow')
+        if (!row) return false
+        row.querySelector('button[aria-label^="重命名 "]')?.click()
+        return true
+      })()`)
+      report('规则分类项目行菜单出现', menuMoveOut && await waitFor(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === '移到未分类')`, 4000))
+      // Close the menu (performs the move-out PUT) and let the async write
+      // settle — the following group-reorder drops are rejected by the
+      // manualSaving re-entrancy guard while a save is in flight.
+      await evaluate(`(() => {
+        const item = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '移到未分类')
+        if (item) { item.click(); return true }
+        return false
+      })()`)
+      await sleep(1000)
 
       // ---- v0.4：分组拖动 — 下半 = 移到目标分组之后 ----
       const groupDown = await evaluate(`(() => {

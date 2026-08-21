@@ -35,7 +35,7 @@ import {
 } from '../core/matcher.ts'
 import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
-import { deriveGroups, deriveSearchGroups, deriveSearchMatches, UNCATEGORIZED_KEY, type CategoryNode } from './tree.ts'
+import { deriveGroups, deriveSearchGroups, deriveSearchMatches, UNCATEGORIZED_KEY, withDraggingUncategorized, type CategoryNode } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow } from './rows.tsx'
 import css from './styles.css?inline'
 
@@ -275,12 +275,22 @@ export function GroupsBrowser({
     () => Object.entries(workspaceExpansion).filter(([, v]) => v).map(([k]) => k),
     [workspaceExpansion],
   )
+  // Whether a drag is in progress (drives the always-visible uncategorized
+  // drop target while dragging).
+  const [dragging, setDragging] = useState(false)
   const groups = useMemo(
     () => deriveGroups(list, workspaces, archivedSessionIds, config, {
       expandedCategories,
       expandedWorkspaces,
     }, manual),
     [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
+  )
+  // While a drag is active, keep the uncategorized bucket visible even when
+  // empty — it is the only way to drag a project OUT of a group when every
+  // project is currently grouped.
+  const displayGroups = useMemo(
+    () => withDraggingUncategorized(groups, dragging),
+    [groups, dragging],
   )
 
   // Add workspace flow: self-contained (no directory-flow hole dependency).
@@ -492,7 +502,7 @@ export function GroupsBrowser({
 
   // Cancel any stale indicator when a drag ends outside a row (or is aborted).
   useEffect(() => {
-    const clear = () => setDragIndicator(null)
+    const clear = () => { setDragIndicator(null); setDragging(false) }
     document.addEventListener('dragend', clear)
     return () => { document.removeEventListener('dragend', clear) }
   }, [])
@@ -567,6 +577,7 @@ export function GroupsBrowser({
   const onDropRow = (categoryKey: string, row: DropRowRef) => (event: DragEvent): void => {
     event.preventDefault()
     setDragIndicator(null)
+    setDragging(false)
     const draggedCategory = event.dataTransfer.getData(DND_CATEGORY_TYPE)
     if (draggedCategory !== '') {
       // Group reorder: only category rows are targets (project rows fold
@@ -621,6 +632,7 @@ export function GroupsBrowser({
   // expansion collapses — the source category stays open so dropping on a
   // sibling row can reorder inside it.
   const onDragStartWorkspace = (workspaceId: string) => (): void => {
+    setDragging(true)
     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
     const sourceKey = workspace === undefined
       ? undefined
@@ -640,6 +652,7 @@ export function GroupsBrowser({
   const onDragStartCategory = (categoryKey: string) => (event: DragEvent): void => {
     event.dataTransfer.setData(DND_CATEGORY_TYPE, categoryKey)
     event.dataTransfer.effectAllowed = 'move'
+    setDragging(true)
     for (const key of Object.keys(categoryExpansion)) {
       if (categoryExpansion[key]) actions.setCategoryExpanded(key, false)
     }
@@ -763,7 +776,7 @@ export function GroupsBrowser({
             {groups.length === 0 && (
               <div className="wgEmpty">{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
             )}
-            {groups.map((category) => (
+            {displayGroups.map((category) => (
               <CategorySection
                 key={category.key}
                 category={category}
@@ -803,7 +816,16 @@ export function GroupsBrowser({
                   setGroupDeleteError(null)
                 }}
                 onMoveOut={(workspaceId) => { void moveWorkspaceTo(workspaceId, UNCATEGORIZED_KEY) }}
-                hasOverride={(workspaceId) => Object.hasOwn(manual.assignments, workspaceId)}
+                canMoveOut={(workspaceId) => {
+                  // The menu "移到未分类" is offered for any project that
+                  // currently sits inside a group (rule-classified or manual) —
+                  // not just overridden ones. Projects already in the
+                  // uncategorized bucket (resolveCategory === undefined) don't
+                  // need it.
+                  const workspace = workspaces.find(w => w.workspaceId === workspaceId)
+                  return workspace !== undefined
+                    && resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) !== undefined
+                }}
               />
             ))}
           </div>
@@ -952,7 +974,7 @@ function categoriesForCurrent(
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, current, now, t, manageable, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, onGroupRename, onGroupDelete, onMoveOut, hasOverride }: {
+function CategorySection({ category, current, now, t, manageable, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, onGroupRename, onGroupDelete, onMoveOut, canMoveOut }: {
   category: CategoryNode
   current: SessionId | undefined
   now: number
@@ -978,7 +1000,7 @@ function CategorySection({ category, current, now, t, manageable, dragIndicator,
   onGroupRename: () => void
   onGroupDelete: () => void
   onMoveOut: (workspaceId: WorkspaceId) => void
-  hasOverride: (workspaceId: WorkspaceId) => boolean
+  canMoveOut: (workspaceId: WorkspaceId) => boolean
 }) {
   const categoryLine = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'category' && dragIndicator.row.key === category.key
     ? (dragIndicator.before ? 'before' : 'after')
@@ -1008,7 +1030,7 @@ function CategorySection({ category, current, now, t, manageable, dragIndicator,
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
-                hasOverride={hasOverride(workspace.workspaceId)}
+                canMoveOut={canMoveOut(workspace.workspaceId)}
                 onMoveOut={() => { onMoveOut(workspace.workspaceId) }}
                 dropActive={false}
                 {...(dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'workspace' && dragIndicator.row.key === workspace.workspaceId

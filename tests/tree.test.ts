@@ -15,7 +15,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
 }))
 
 import type { SessionListState, SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
-import { deriveGroups } from '../src/client/tree.ts'
+import { deriveGroups, withDraggingUncategorized } from '../src/client/tree.ts'
 import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../src/core/types.ts'
 
 const CONFIG: GroupsConfig = {
@@ -159,5 +159,38 @@ describe('deriveGroups with the manual overlay', () => {
     const groups = deriveGroups(listState(workspaces), workspaces, [], CONFIG, VIEW, manual)
     const byLabel = new Map(groups.map(g => [g.label, g]))
     expect(byLabel.get(UNCATEGORIZED_LABEL)?.workspaces.map(w => w.workspaceId)).toEqual(['ws-a', 'ws-c'])
+  })
+})
+
+describe('withDraggingUncategorized', () => {
+  const ws = [
+    workspace('ws-a', '/Users/zcol/Project/SomePlugin', 'DSH插件Demo'),
+    workspace('ws-b', '/Users/zcol/Project/MyDocs', 'MyDocs'),
+  ]
+  const groups = deriveGroups(listState(ws), ws, [], CONFIG, VIEW, { categories: [], assignments: {} })
+
+  it('leaves the tree untouched when no drag is active', () => {
+    expect(withDraggingUncategorized(groups, false)).toBe(groups)
+  })
+
+  it('appends a collapsed empty uncategorized bucket while dragging when absent', () => {
+    // All workspaces are grouped — the idle tree has no uncategorized section.
+    expect(groups.some(g => g.key === UNCATEGORIZED_LABEL)).toBe(false)
+    const during = withDraggingUncategorized(groups, true)
+    expect(during.length).toBe(groups.length + 1)
+    const bucket = during[during.length - 1]
+    expect(bucket?.key).toBe(UNCATEGORIZED_LABEL)
+    expect(bucket?.expanded).toBe(false)
+    expect(bucket?.workspaces).toEqual([])
+  })
+
+  it('never duplicates an existing uncategorized bucket', () => {
+    const withBucket = deriveGroups(listState(ws), ws, [], CONFIG, VIEW, {
+      categories: [], assignments: { 'ws-b': null },
+    })
+    expect(withBucket.some(g => g.key === UNCATEGORIZED_LABEL)).toBe(true)
+    const during = withDraggingUncategorized(withBucket, true)
+    expect(during).toBe(withBucket)
+    expect(during.filter(g => g.key === UNCATEGORIZED_LABEL)).toHaveLength(1)
   })
 })

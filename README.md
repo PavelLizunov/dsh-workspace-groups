@@ -43,6 +43,9 @@
 - **Drag projects into groups**: drop on any group row or on a project row inside a group
   (cross-group move = overrides the rule classification); drop on "未分类" or use the menu
   "移到未分类" = **forced uncategorized** (rule matches are ignored)
+- **Drag projects OUT of a group**: even when every project is grouped (the uncategorized
+  bucket is empty and hidden at rest), the bucket **appears while dragging** so you can
+  always drag a project out; rule-classified projects also have the "移到未分类" menu item
 - **Reorder projects inside a group**: top half of a project row = insert before it,
   bottom half = insert after it
 - **Reorder groups**: group rows are draggable — top half of another group row = move before it,
@@ -281,7 +284,10 @@ scripts/
 - v0.4 real-browser verification 30/30 (added: insertion indicator, project/group
   **downward drag** (bottom half → insert after the target), group upward drag (top half →
   move before the target); scene restored).
-- 65 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
+- v0.4.1 real-browser verification 34/34 (added: dragging projects OUT of a group —
+  the empty uncategorized bucket appears while dragging; drop on it = forced
+  uncategorized; rule-classified projects get the "移到未分类" menu item).
+- 68 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
 - Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
 
 ## License
