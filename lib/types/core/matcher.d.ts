@@ -1,15 +1,61 @@
 /**
- * Pure classification logic: decides which category a workspace belongs to.
- * Shared by the host half (validation) and the client half (tree derivation),
- * so the rule semantics can never drift between the config surface and the
- * rendered tree.
+ * Pure classification + ordering logic: decides which category a workspace
+ * belongs to and how categories/workspaces are ordered. Shared by the host
+ * half (validation) and the client half (tree derivation), so the semantics
+ * can never drift between the config surface and the rendered tree.
+ *
+ * Category identity: a category's STABLE origin is its YAML rule category
+ * name (or a manual-group name). Its DISPLAY key is what the tree renders and
+ * what assignments reference — for rule categories that is the rename
+ * override when present. Hidden rule categories are inert: workspaces that
+ * would match them fall into the uncategorized bucket.
  */
-import { type GroupCategory } from './types.ts';
-/**
- * Classify a workspace into its category.
- * @param categories - configured categories, in render order.
- * @param path - workspace canonical directory path.
- * @param title - workspace display title.
- * @returns the matching category, or undefined when no rule matches.
- */
+import { type GroupCategory, type GroupsConfig, type ManualGroups } from './types.ts';
+/** Classify a workspace by rules only; hidden categories are inert. */
 export declare function classify(categories: readonly GroupCategory[], path: string, title: string): GroupCategory | undefined;
+/** Display name of a rule category: the rename override when present. */
+export declare function ruleDisplayName(manual: ManualGroups | undefined, originalName: string): string;
+/** Whether a rule category has been hidden by a UI delete. */
+export declare function isHiddenRule(manual: ManualGroups | undefined, originalName: string): boolean;
+/** Rule category display names, in YAML render order (hidden ones excluded). */
+export declare function ruleDisplayNames(categories: readonly GroupCategory[], manual: ManualGroups | undefined): string[];
+/** Original YAML rule name whose display name equals `key` (undefined when none). */
+export declare function originalRuleNameForDisplay(categories: readonly GroupCategory[], manual: ManualGroups | undefined, key: string): string | undefined;
+/**
+ * Effective category entries in display order: rule categories (YAML order,
+ * hidden skipped, renamed applied) first, then manual-only groups in
+ * creation order — unless `manual.categoryOrder` overrides the sequence.
+ * The uncategorized bucket is never included (it always renders last).
+ */
+export interface EffectiveCategory {
+    /** Display key (what the tree renders and assignments reference). */
+    key: string;
+    /** Origin: a YAML rule category or a manual group. */
+    source: 'rule' | 'manual';
+}
+export declare function effectiveCategories(config: GroupsConfig, manual: ManualGroups | undefined): EffectiveCategory[];
+/** Display keys of all effective categories (uncategorized bucket excluded). */
+export declare function displayCategoryKeys(config: GroupsConfig, manual: ManualGroups | undefined): string[];
+/**
+ * Resolve the category key a workspace renders under. Precedence:
+ * manual override (`null` = force uncategorized) → rule classification
+ * (hidden rules inert) → uncategorized bucket (`undefined`).
+ */
+export declare function resolveCategory(config: GroupsConfig, manual: ManualGroups | undefined, workspaceId: string, path: string, title: string): string | undefined;
+/** Whether a category key is a manual-only group (manageable via list). */
+export declare function isManualOnlyCategory(config: GroupsConfig, manual: ManualGroups | undefined, key: string): boolean;
+/**
+ * Names that may not be used for a new/renamed group: the reserved
+ * uncategorized label plus every current display key.
+ */
+export declare function takenCategoryNames(config: GroupsConfig, manual: ManualGroups | undefined): Set<string>;
+/**
+ * Order a bucket of workspace ids: the stored per-category order first
+ * (filtered to actual members), then any remaining members in `fallback`
+ * (host) order. Deterministic; the renderer never re-sorts on its own.
+ */
+export declare function orderedWorkspaceIds(manual: ManualGroups | undefined, categoryKey: string, members: readonly string[]): string[];
+/** Move `id` before `beforeId` (undefined = append) within an ordered list. */
+export declare function moveBefore(list: readonly string[], id: string, beforeId: string | undefined): string[];
+/** Move `id` after `afterId` (undefined = append) within an ordered list. */
+export declare function moveAfter(list: readonly string[], id: string, afterId: string | undefined): string[];

@@ -110,10 +110,49 @@
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
+  position: relative;
 }
 
 .wgCategoryRow:hover {
   background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+}
+
+/* Manual-group menu on category rows appears on hover (like workspace rows). */
+.wgCategoryRow:hover .wgRowActions,
+.wgCategoryRow:focus-within .wgRowActions {
+  opacity: 1;
+}
+
+/* Active drag-over drop target: a workspace may be dropped into this group. */
+.wgDropTarget {
+  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+  outline: 1px dashed var(--dsw-accent, #4a90d9);
+  outline-offset: -1px;
+}
+
+/* Insertion indicator while dragging: a 2px line above (before) or below
+   (after) the row — the exact spot the dragged project/group will land.
+   Top half of the row = before, bottom half = after. */
+.wgInsertBefore::before,
+.wgInsertAfter::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dsw-accent, #4a90d9);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-accent, #4a90d9) 25%, transparent);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.wgInsertBefore::before {
+  top: -1px;
+}
+
+.wgInsertAfter::after {
+  bottom: -1px;
 }
 
 .wgChevron {
@@ -166,6 +205,7 @@
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
+  position: relative;
 }
 
 .wgProjectRow:hover {
@@ -282,6 +322,13 @@
   font-size: 11px;
   color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
   text-align: center;
+}
+
+/* Transient save errors for group operations (drag / menu). */
+.wgManualError {
+  color: var(--dsw-fg-1, inherit);
+  text-align: left;
+  word-break: break-word;
 }
 
 .wgRail {

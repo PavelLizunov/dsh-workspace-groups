@@ -28,6 +28,62 @@ export interface GroupCategory {
 export interface GroupsConfig {
   /** Category folders, in render order. First match wins. */
   categories: GroupCategory[]
+  /**
+   * Runtime grouping overlay (manual groups + per-workspace overrides).
+   * Optional: the YAML file itself never carries it — the host GET route
+   * merges it from `workspace-groups.manual.json`, and the browser PUT route
+   * replaces it whole.
+   */
+  manual?: ManualGroups
+}
+
+/**
+ * Runtime-managed grouping overlay: groups created in the sidebar UI plus
+ * per-workspace category overrides and user-controlled ordering. Owned by the
+ * plugin (JSON sidecar, `$DSH_HOME/workspace-groups.manual.json`), never
+ * written back into the operator YAML.
+ *
+ * All new fields are optional for backward compatibility (files written by
+ * older plugin versions keep working); rendering falls back to sensible
+ * defaults when they are absent.
+ */
+export interface ManualGroups {
+  /**
+   * Manually created category folder names. These have no rules — they render
+   * even while empty (a new group appears before anything is dragged into
+   * it) and hold only workspaces assigned to them.
+   */
+  categories: string[]
+  /**
+   * Per-workspace category override, keyed by workspace id. Value is a
+   * category display name (rule or manual), or `null` to force the workspace
+   * into the uncategorized bucket even when a rule would match. An absent
+   * key means "classify by rules".
+   */
+  assignments: Record<string, string | null>
+  /**
+   * Display order of all category keys (rule display names + manual names).
+   * The uncategorized bucket is never listed — it always renders last.
+   * Absent = rule categories first (YAML order), manual groups appended in
+   * creation order.
+   */
+  categoryOrder?: string[]
+  /**
+   * Per-category ordered workspace ids (user drag-reorder within a group).
+   * Keyed by category display name; absent key = host registration order.
+   */
+  workspaceOrder?: Record<string, string[]>
+  /**
+   * Rule category rename overrides: original YAML rule category name →
+   * display name (UI rename of a rule group). Rules still classify by the
+   * original name; only the rendered label/keys change.
+   */
+  renamed?: Record<string, string>
+  /**
+   * Rule category original names hidden by a UI delete. Hidden rules are
+   * inert: workspaces matching them fall into the uncategorized bucket.
+   */
+  hidden?: string[]
 }
 
 /** The label of the fallback bucket for unmatched workspaces. */

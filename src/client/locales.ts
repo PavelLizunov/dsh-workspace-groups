@@ -31,6 +31,22 @@ export type WorkspaceGroupsKey =
   | 'workspace.renamePlaceholder'
   | 'workspace.renameConfirm'
   | 'workspace.renameCancel'
+  | 'workspace.moveToUncategorized'
+  | 'group.create'
+  | 'group.createTitle'
+  | 'group.createPlaceholder'
+  | 'group.createConfirm'
+  | 'group.createCancel'
+  | 'group.rename'
+  | 'group.renameTitle'
+  | 'group.renameConfirm'
+  | 'group.delete'
+  | 'group.deleteTitle'
+  | 'group.deleteConfirm'
+  | 'group.deleteCancel'
+  | 'group.nameDuplicate'
+  | 'group.nameReserved'
+  | 'manual.saveError'
   | 'session.new'
   | 'session.rename'
   | 'session.archive'
@@ -81,6 +97,22 @@ export const zh: WorkspaceGroupsDict = {
   'workspace.renamePlaceholder': '工作区名称',
   'workspace.renameConfirm': '重命名',
   'workspace.renameCancel': '取消',
+  'workspace.moveToUncategorized': '移到未分类',
+  'group.create': '新建分组',
+  'group.createTitle': '新建分组',
+  'group.createPlaceholder': '分组名称',
+  'group.createConfirm': '创建',
+  'group.createCancel': '取消',
+  'group.rename': '重命名分组',
+  'group.renameTitle': '重命名分组',
+  'group.renameConfirm': '重命名',
+  'group.delete': '删除分组',
+  'group.deleteTitle': '删除分组',
+  'group.deleteConfirm': '删除后，该分组内的所有项目将回到「未分类」。确定删除？',
+  'group.deleteCancel': '取消删除',
+  'group.nameDuplicate': '已存在同名分组',
+  'group.nameReserved': '该名称不可用',
+  'manual.saveError': '分组变更保存失败',
   'session.new': '新建会话',
   'session.rename': '重命名会话',
   'session.archive': '归档',
@@ -130,6 +162,22 @@ export const en: WorkspaceGroupsDict = {
   'workspace.renamePlaceholder': 'Workspace name',
   'workspace.renameConfirm': 'Rename',
   'workspace.renameCancel': 'Cancel',
+  'workspace.moveToUncategorized': 'Move to Uncategorized',
+  'group.create': 'New group',
+  'group.createTitle': 'New group',
+  'group.createPlaceholder': 'Group name',
+  'group.createConfirm': 'Create',
+  'group.createCancel': 'Cancel',
+  'group.rename': 'Rename group',
+  'group.renameTitle': 'Rename group',
+  'group.renameConfirm': 'Rename',
+  'group.delete': 'Delete group',
+  'group.deleteTitle': 'Delete group',
+  'group.deleteConfirm': 'Deleting removes this group; every project inside it returns to Uncategorized. Delete?',
+  'group.deleteCancel': 'Cancel delete',
+  'group.nameDuplicate': 'A group with this name already exists',
+  'group.nameReserved': 'This name is not available',
+  'manual.saveError': 'Could not save group changes',
   'session.new': 'New Session',
   'session.rename': 'Rename session',
   'session.archive': 'Archive',

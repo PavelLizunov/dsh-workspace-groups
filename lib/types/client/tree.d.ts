@@ -5,7 +5,7 @@
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
 import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
-import { type GroupsConfig } from '../core/types.ts';
+import { type GroupsConfig, type ManualGroups } from '../core/types.ts';
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
     id: SessionId;
@@ -68,11 +68,15 @@ export declare function workspaceLabel(cwd: string | undefined): string;
  * @param list - sessions list snapshot (`current` feeds containsCurrent).
  * @param workspaces - real workspaces in stable Host order.
  * @param archivedSessionIds - registry-global archive set.
- * @param config - sidecar grouping config.
+ * @param config - sidecar grouping config (rule categories).
  * @param view - local expansion arrays.
- * @returns category sections in render order (configured categories first, uncategorized last).
+ * @param manual - runtime overlay (manual groups + overrides). A workspace's
+ * manual override wins over rule classification; removing it reverts to rules.
+ * @returns category sections in render order (rule categories first, then
+ * manual-only ones, uncategorized last). Manual groups render even while
+ * empty; empty rule buckets stay hidden.
  */
-export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView): CategoryNode[];
+export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
 export interface SearchMatchSet {
     /** Session ids that matched (local metadata hits + Host content hits). */
@@ -94,13 +98,16 @@ export declare function deriveSearchMatches(list: SessionListState, workspaces: 
  * Build a three-level search tree containing ONLY the branches that hold a
  * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
+ * Classification uses the same precedence as the idle tree (manual override →
+ * rules), so search shows the same grouping the user sees.
  *
  * @param list - sessions list snapshot.
  * @param workspaces - real workspaces in stable Host order.
  * @param config - sidecar grouping config.
  * @param matchedIds - set of session ids that matched the query.
  * @param archivedSessionIds - registry-global archive set.
+ * @param manual - runtime overlay (manual groups + overrides).
  * @param snippetsBySession - optional content-match snippets keyed by session id.
  * @returns categories in render order, pruned to matched branches only.
  */
-export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], snippetsBySession?: ReadonlyMap<SessionId, string>): CategoryNode[];
+export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>): CategoryNode[];

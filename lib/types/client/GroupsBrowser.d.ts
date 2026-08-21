@@ -1,4 +1,24 @@
 import type { GroupsBrowserProps } from './contract.ts';
+/** Row reference used by drop targets: which kind of row, which key. */
+export type DropRowRef = {
+    kind: 'category' | 'workspace';
+    key: string;
+};
+/**
+ * Current drop indicator. A `line` renders a 2px insertion line above/below a
+ * row (project reorder inside a group, or group reorder); an `into` renders
+ * the whole-row highlight used when dropping a project into a group. Drop
+ * handlers re-derive before/after from the drop event itself, so the
+ * indicator is purely visual and can never go stale.
+ */
+export type DragIndicator = {
+    mode: 'line';
+    row: DropRowRef;
+    before: boolean;
+} | {
+    mode: 'into';
+    categoryKey: string;
+} | null;
 /**
  * Render the browsing region.
  * @param props - composed slot props (shell owner share + store + injected actions).

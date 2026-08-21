@@ -1,0 +1,165 @@
+/**
+ * Manual-overlay tests: shape validation, cross-validation against rule
+ * categories, and the atomic file round-trip (temp dir, no host needed).
+ */
+import { describe, expect, it } from 'vitest'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import {
+  parseManualGroups,
+  readManualGroups,
+  validateManualGroups,
+  writeManualGroups,
+} from '../src/host-manual.ts'
+import { UNCATEGORIZED_LABEL, type ManualGroups } from '../src/core/types.ts'
+
+const RULE_NAMES = ['DSH 插件', '个人项目']
+
+describe('parseManualGroups', () => {
+  it('parses a valid overlay', () => {
+    const parsed = parseManualGroups({
+      categories: ['临时'],
+      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+    })
+    expect(parsed).toEqual({
+      categories: ['临时'],
+      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+    })
+  })
+
+  it('empty / undefined input yields an empty overlay', () => {
+    expect(parseManualGroups(undefined)).toEqual({ categories: [], assignments: {} })
+    expect(parseManualGroups({})).toEqual({ categories: [], assignments: {} })
+  })
+
+  it('rejects a non-mapping top level', () => {
+    expect(() => parseManualGroups([])).toThrow(/mapping/)
+    expect(() => parseManualGroups('nope')).toThrow(/mapping/)
+  })
+
+  it('rejects non-string / empty category names and trims them', () => {
+    expect(() => parseManualGroups({ categories: [42] })).toThrow(/non-empty string/)
+    expect(() => parseManualGroups({ categories: [''] })).toThrow(/non-empty string/)
+    expect(parseManualGroups({ categories: [' 临时 '] }).categories).toEqual(['临时'])
+  })
+
+  it('rejects the reserved uncategorized label as a manual category', () => {
+    expect(() => parseManualGroups({ categories: [UNCATEGORIZED_LABEL] })).toThrow(/reserved/)
+  })
+
+  it('rejects duplicate category names', () => {
+    expect(() => parseManualGroups({ categories: ['临时', '临时'] })).toThrow(/duplicate/)
+  })
+
+  it('rejects a non-mapping assignments value', () => {
+    expect(() => parseManualGroups({ assignments: [] })).toThrow(/assignments/)
+  })
+
+  it('rejects empty assignment keys and non-string assignment values', () => {
+    expect(() => parseManualGroups({ assignments: { '': '临时' } })).toThrow(/non-empty/)
+    expect(() => parseManualGroups({ assignments: { 'ws-1': 42 } })).toThrow(/category name/)
+  })
+
+  it('accepts null assignment values (force uncategorized)', () => {
+    const parsed = parseManualGroups({ assignments: { 'ws-1': null } })
+    expect(parsed.assignments['ws-1']).toBeNull()
+  })
+
+  it('parses the v2 ordering/rename/hidden fields', () => {
+    const parsed = parseManualGroups({
+      categories: ['临时'],
+      assignments: { 'ws-1': '临时' },
+      categoryOrder: ['临时', 'DSH 插件'],
+      workspaceOrder: { '临时': ['ws-1'] },
+      renamed: { 'DSH 插件': '插件集' },
+      hidden: ['文档'],
+    })
+    expect(parsed.categoryOrder).toEqual(['临时', 'DSH 插件'])
+    expect(parsed.workspaceOrder).toEqual({ '临时': ['ws-1'] })
+    expect(parsed.renamed).toEqual({ 'DSH 插件': '插件集' })
+    expect(parsed.hidden).toEqual(['文档'])
+  })
+
+  it('rejects duplicate categoryOrder / hidden entries', () => {
+    expect(() => parseManualGroups({ categoryOrder: ['A', 'A'] })).toThrow(/duplicate/)
+    expect(() => parseManualGroups({ hidden: ['A', 'A'] })).toThrow(/duplicate/)
+  })
+
+  it('rejects non-string renamed values', () => {
+    expect(() => parseManualGroups({ renamed: { 'DSH 插件': 42 } })).toThrow(/non-empty string/)
+  })
+})
+
+describe('validateManualGroups v2 (write boundary)', () => {
+  it('accepts null assignments and renamed-display targets', () => {
+    const manual: ManualGroups = {
+      categories: ['临时'],
+      assignments: { 'ws-1': null, 'ws-2': '插件集' },
+      renamed: { 'DSH 插件': '插件集' },
+    }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
+  })
+
+  it('rejects renamed keys that are not rule categories', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, renamed: { '幽灵规则': 'X' } }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/renamed/)
+  })
+
+  it('rejects hidden entries that are not rule categories', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, hidden: ['幽灵规则'] }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/hidden/)
+  })
+
+  it('rejects categoryOrder / workspaceOrder keys that exist nowhere', () => {
+    const manual1: ManualGroups = { categories: [], assignments: {}, categoryOrder: ['幽灵'] }
+    expect(() => validateManualGroups(manual1, RULE_NAMES)).toThrow(/categoryOrder/)
+    const manual2: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { '幽灵': [] } }
+    expect(() => validateManualGroups(manual2, RULE_NAMES)).toThrow(/workspaceOrder/)
+  })
+})
+
+describe('validateManualGroups (write boundary)', () => {
+  it('accepts assignments into rule, manual, and uncategorized categories', () => {
+    const manual: ManualGroups = {
+      categories: ['临时'],
+      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件', 'ws-3': UNCATEGORIZED_LABEL },
+    }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
+  })
+
+  it('rejects an assignment into a category that exists nowhere', () => {
+    const manual: ManualGroups = { categories: [], assignments: { 'ws-1': '幽灵分组' } }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/unknown category/)
+  })
+})
+
+describe('manual file round-trip', () => {
+  it('a missing file yields an empty overlay', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'wg-manual-'))
+    try {
+      expect(await readManualGroups(join(dir, 'missing.json'))).toEqual({ categories: [], assignments: {} })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('write then read returns the same overlay (atomic publish)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'wg-manual-'))
+    const path = join(dir, 'workspace-groups.manual.json')
+    try {
+      const overlay: ManualGroups = {
+        categories: ['临时'],
+        assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+      }
+      await writeManualGroups(path, overlay)
+      expect(await readManualGroups(path)).toEqual(overlay)
+      // The persisted file is valid JSON with a trailing newline.
+      const text = await readFile(path, 'utf8')
+      expect(JSON.parse(text)).toEqual(overlay)
+      expect(text.endsWith('\n')).toBe(true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})

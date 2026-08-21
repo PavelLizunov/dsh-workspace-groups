@@ -20,8 +20,21 @@ DeepSeek峰谷小组件 等）归入一个「DSH 插件」分类文件夹，点�
   调整归类，无需改代码、无需重启（刷新页面生效）
 - **树形搜索**：搜索命中后仍保留三层树结构（分类 → 项目 → 命中会话），命中行高亮并
   显示内容摘要，而不是扁平的结果列表
+- **手动分组管理（所有分组）**：侧边栏区头「新建分组」按钮即建即显（空分组也渲染）；
+  **每个分组行**（含规则分类）悬停出现 `⋯` 菜单 → 重命名 / 删除。删除分组后，
+  组内所有项目回到「未分类」；规则分类的重命名/删除经 overlay 生效（`renamed`/
+  `hidden`），规则 YAML 原样保留
+- **拖拽归类 + 排序**：拖动项目文件夹到任意分组行 / 分组内项目行 = 移入该组
+  （拖到某项目行上半 = 插到它前面、下半 = 插到它后面，即**组内位置排序**，
+  拖动时实时显示 2px **插入位置指示线**，落点所见即所得）；拖动时
+  **其他分组的项目自动收起**，源分组保留以便排序；拖到「未分类」或菜单
+  「移到未分类」= 强制归入未分类
+- **分组拖拽排序**：分组行也可拖动（拖动时所有分组收起），拖到另一个分组行
+  上半 = 移到它前面、下半 = 移到它后面（指示线显示落点），即改变分组顺序；
+  **「未分类」永远在列表最底部**（分组恒在未分类项目之上）
 - **零侵入**：不修改 `~/.dsh/storages/workspace.json`、不修改会话落盘结构、
-  不修改官方 `@deepseek-ai/dsh-client-ui-workspace` 包
+  不修改官方 `@deepseek-ai/dsh-client-ui-workspace` 包；手动分组/归类/排序写入独立
+  sidecar JSON（`~/.dsh/workspace-groups.manual.json`），规则 YAML 原样保留
 - **功能不退化**：打开/新建/搜索会话、Add Workspace、项目重命名/删除、
   会话重命名/派生/归档、展开状态持久化（独立 key，重启保留）
 - **产物自包含**：`lib/` 已构建并随仓库分发，Git 安装无需执行任何依赖脚本
@@ -33,8 +46,14 @@ DeepSeek峰谷小组件 等）归入一个「DSH 插件」分类文件夹，点�
   （官方以 priority 0 注册；single 槽位最低 priority 胜出）。
 - 数据源全部复用运行时 API：`useWorkspaces` / `useSessions` 全局 hooks 与
   `ctx.workspaces.*` / `ctx.sessions.*`，分类只是**展示层变换**。
-- host 半只做一件事：把 sidecar YAML 解析为 JSON，经
-  `/workspace-groups/config` 路由（`Cache-Control: no-cache`）供 client 获取。
+- host 半做两件事：把 sidecar YAML 解析为 JSON 与运行时 overlay 合并，经
+  `GET /workspace-groups/config` 路由（`Cache-Control: no-cache`）供 client 获取；
+  `PUT /workspace-groups/manual` 接收整份 overlay（手动分组、每工作区归类覆盖、
+  分组/项目排序、规则分类改名与隐藏），校验后原子写入
+  `$DSH_HOME/workspace-groups.manual.json`。
+- **归类优先级**：手动覆盖（拖拽/菜单写入；`null` = 强制未分类）→ YAML 规则
+  自动归类（被隐藏的规则分类失效）→ 「未分类」桶（恒在最底部）。
+  YAML 永不改写。
 
 ## 安装（GitHub 分发）
 
@@ -109,6 +128,45 @@ categories:
 
 未命中任何分类的项目进入「未分类」桶，不会被隐藏。
 
+## 手动分组与拖拽归类（runtime overlay）
+
+规则 YAML 之外，还有一份插件自有的运行时 overlay，**只记录 UI 里的手动操作**，
+默认位置 `$DSH_HOME/workspace-groups.manual.json`（例如 `~/.dsh/workspace-groups.manual.json`）：
+
+```json
+{
+  "categories": ["临时", "归档"],
+  "assignments": {
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "临时",
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567891": null
+  },
+  "categoryOrder": ["临时", "DSH 插件"],
+  "workspaceOrder": { "临时": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"] },
+  "renamed": { "DSH 插件": "插件集" },
+  "hidden": ["文档"]
+}
+```
+
+- `categories` —— 手动新建的分组名（无规则，空分组也渲染）；名称不可与规则分类
+  或「未分类」重复。
+- `assignments` —— 工作区 → 分组的归类覆盖，键是稳定的工作区 id（重命名不影响）。
+  **优先级高于 YAML 规则**；值为 `null` 表示**强制归入未分类**（即使规则能匹配）。
+- `categoryOrder` —— 分组显示顺序（「未分类」恒在最底部，不在此列）。
+- `workspaceOrder` —— 每个分组内项目的手动排序（拖拽排序写入）。
+- `renamed` / `hidden` —— 规则分类的 UI 改名/删除（隐藏后其规则失效，匹配项目
+  落入未分类）；规则 YAML 原样保留。
+- 文件由浏览器 UI 全量写入（`PUT /workspace-groups/manual`，原子替换），手工编辑
+  同样生效（下次加载时读取）；写坏会返回 400 并保留原文件，不会破坏规则 YAML。
+
+| 操作 | 入口 |
+|---|---|
+| 新建分组 | 区头「新建分组」按钮（文件夹图标），弹窗输入名称 |
+| 重命名/删除分组 | **任意分组**（含规则分类）悬停 `⋯` 菜单；删除后组内项目回「未分类」 |
+| 拖项目进分组 | 拖动项目行到目标分组行 / 分组内任意项目行，松手即移入 |
+| 项目排序 | 拖动项目行到同组另一项目行：**上半 = 插到它前、下半 = 插到它后**（指示线显示落点）；拖动时其他分组项目自动收起 |
+| 移出分组 | 拖到「未分类」，或项目行菜单「移到未分类」（强制归入未分类） |
+| 分组排序 | 拖动分组行到另一分组行：**上半 = 移到它前、下半 = 移到它后**（指示线显示落点；拖动时所有分组收起）；未分类恒在底部 |
+
 ## 收录标签（topics）
 
 本仓库面向 DSH 插件生态的自动收录（社区市场靠 GitHub topic 扫描发现），已设置：
@@ -125,9 +183,10 @@ categories:
 ```sh
 pnpm install
 pnpm typecheck   # host + client 双 program 类型检查
-pnpm test        # 核心规则与配置解析单测
+pnpm test        # 核心规则、overlay、树派生单测
 pnpm build       # 构建 lib/（node 半 + client bundle）
 pnpm watch       # tsdown 监听（client HMR）
+node scripts/verify-groups.mjs   # 真机 CDP 验证（host 已重启时；自启独立 headless Chrome，自动恢复现场）
 ```
 
 产物契约（与官方 client 包一致）：
@@ -146,28 +205,46 @@ pnpm watch       # tsdown 监听（client HMR）
 
 ```
 src/
-  index.ts              # host 半：config 路由
+  index.ts              # host 半：config 快照路由 + manual 写路由
   host-config.ts        # sidecar YAML 读取/校验
+  host-manual.ts        # runtime overlay 读写/校验（原子发布）
   context-types.ts      # host 侧 cordis 服务结构类型
   core/
     types.ts            # 配置类型（两半共享）
-    matcher.ts          # 分类规则纯函数（两半共享）
+    matcher.ts          # 分类规则 + 手动覆盖优先级纯函数（两半共享）
   client/
     index.ts            # apply：注册 sidebar.workspaces（priority -1）
     contract.ts         # 注入面类型
     stores.ts           # 展开状态 store（persist: dsh.workspace.groups.view.v1）
     tree.ts             # 三层树派生 + 树形搜索派生
-    GroupsBrowser.tsx   # 浏览区域组件
-    rows.tsx            # 分类/项目/会话/搜索结果行
+    GroupsBrowser.tsx   # 浏览区域组件（分组弹窗 + 拖拽归类）
+    rows.tsx            # 分类/项目/会话/搜索结果行（拖拽源/目标）
     locales.ts          # 中英文案
     styles.css          # 内联样式
 tests/
-  core.test.ts          # 分类规则 + 配置解析单测
+  core.test.ts          # 分类规则 + 手动覆盖优先级 + 配置解析
+  manual.test.ts        # overlay 校验 + 文件原子往返
+  tree.test.ts          # 树派生渲染契约（手动分组空渲染/覆盖优先）
+scripts/
+  verify-groups.mjs     # 真机 CDP 验证（自启 headless Chrome，自动恢复现场）
+docs/                   # 五级项目文档（A 基准 / B 开发运维 / C 长期记忆 / dev / archive）
+  A/A-01-PRD/           # 001-分组存储 Service / 002-分组管理工具 / 003-分组可视化 UI
+  A/A-02-技术架构/      # 02-技术选型、05-角色推导
+  A/A-04-前端架构/      # 前端架构（client）
+  B/                    # 开发规范 / 部署 / 测试 / BUG 库 / 工具清单 / 角色规格卡 / 子agent / 引导
+  C/C-01-项目长期记忆.md # 长期记忆（迁移、版本、已知限制）
+  archive/              # 归档（如 v0.1 验证记录）
 ```
 
 ## 验证记录
 
-见 `docs/verification.md`（真实组合验证：headless Chrome + CDP 实操记录）。
+- v0.1/v0.2 真实组合验证（headless Chrome + CDP 实操）：
+  `docs/archive/verification-dsh-workspace-groups.md`（已归档，结论回写 C-01）。
+- v0.3 真机验证 24/24（`scripts/verify-groups.mjs`：建组/拖拽/排序/收起/规则分类
+  菜单/重命名/删除回未分类/置底/现场恢复，零侵入断言），记录见 C-01。
+- v0.4 真机验证 30/30（新增：插入指示线、项目/分组**向下拖**（行下半 → 插到目标
+  之后）、分组向上拖（行上半 → 移到目标之前）；现场恢复通过），记录见 C-01。
+- 可复跑的自动化真机验证：`node scripts/verify-groups.mjs`（需 host 已重启）。
 
 ## License
 

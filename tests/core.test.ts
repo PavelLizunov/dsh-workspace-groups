@@ -1,11 +1,23 @@
 /**
- * Pure-logic tests: classification rules (the matcher) and config parsing.
+ * Pure-logic tests: classification rules (the matcher v2: display names,
+ * ordering, force-uncategorized) and config parsing.
  * These are the plugin's business rules — no DOM, no cordis runtime.
  */
 import { describe, expect, it } from 'vitest'
-import { classify } from '../src/core/matcher.ts'
+import {
+  displayCategoryKeys,
+  effectiveCategories,
+  isManualOnlyCategory,
+  moveAfter,
+  moveBefore,
+  orderedWorkspaceIds,
+  originalRuleNameForDisplay,
+  resolveCategory,
+  ruleDisplayName,
+  takenCategoryNames,
+} from '../src/core/matcher.ts'
 import { parseGroupsConfig } from '../src/host-config.ts'
-import type { GroupsConfig } from '../src/core/types.ts'
+import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../src/core/types.ts'
 
 const CONFIG: GroupsConfig = {
   categories: [
@@ -25,18 +37,15 @@ const CONFIG: GroupsConfig = {
 
 describe('classify', () => {
   it('matches by path prefix', () => {
-    const category = classify(CONFIG.categories, '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')
-    expect(category?.name).toBe('DSH 插件')
+    expect(resolveCategory(CONFIG, undefined, 'ws', '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')).toBe('DSH 插件')
   })
 
   it('matches by name substring', () => {
-    const category = classify(CONFIG.categories, '/Users/zcol/Project/DeepSeek峰谷小组件', 'DeepSeek峰谷小组件')
-    expect(category?.name).toBe('DSH 插件')
+    expect(resolveCategory(CONFIG, undefined, 'ws', '/Users/zcol/Project/DeepSeek峰谷小组件', 'DeepSeek峰谷小组件')).toBe('DSH 插件')
   })
 
   it('matches by basename substring', () => {
-    const category = classify(CONFIG.categories, '/Users/zcol/Project/SomeDocs', 'SomeDocs')
-    expect(category?.name).toBe('文档')
+    expect(resolveCategory(CONFIG, undefined, 'ws', '/Users/zcol/Project/SomeDocs', 'SomeDocs')).toBe('文档')
   })
 
   it('first match wins across categories', () => {
@@ -46,18 +55,131 @@ describe('classify', () => {
         { name: 'B', rules: [{ nameContains: 'common' }] },
       ],
     }
-    const category = classify(config.categories, '/p/x', 'common-project')
-    expect(category?.name).toBe('A')
+    expect(resolveCategory(config, undefined, 'ws', '/p/x', 'common-project')).toBe('A')
   })
 
   it('returns undefined when nothing matches', () => {
-    const category = classify(CONFIG.categories, '/tmp/random', 'Random')
-    expect(category).toBeUndefined()
+    expect(resolveCategory(CONFIG, undefined, 'ws', '/tmp/random', 'Random')).toBeUndefined()
+  })
+})
+
+describe('resolveCategory (v2 overlay semantics)', () => {
+  it('a manual override wins over rules', () => {
+    const manual: ManualGroups = { categories: ['临时'], assignments: { 'ws-manual': '临时' } }
+    expect(resolveCategory(CONFIG, manual, 'ws-manual', '/Users/zcol/Project/SomeDocs', 'SomeDocs')).toBe('临时')
   })
 
-  it('path prefix matching strips trailing slashes', () => {
-    const category = classify(CONFIG.categories, '/Users/zcol/Project/SkillsManagePlugins/sub', 'Sub')
-    expect(category?.name).toBe('DSH 插件')
+  it('a null override forces the uncategorized bucket even when a rule matches', () => {
+    const manual: ManualGroups = { categories: [], assignments: { 'ws-null': null } }
+    expect(resolveCategory(CONFIG, manual, 'ws-null', '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')).toBeUndefined()
+  })
+
+  it('falls back to rules without an override', () => {
+    const manual: ManualGroups = { categories: ['临时'], assignments: { 'ws-other': '临时' } }
+    expect(resolveCategory(CONFIG, manual, 'ws-x', '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')).toBe('DSH 插件')
+  })
+
+  it('a renamed rule category resolves to its display name', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, renamed: { 'DSH 插件': '插件集' } }
+    expect(ruleDisplayName(manual, 'DSH 插件')).toBe('插件集')
+    expect(resolveCategory(CONFIG, manual, 'ws-x', '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')).toBe('插件集')
+    expect(originalRuleNameForDisplay(CONFIG.categories, manual, '插件集')).toBe('DSH 插件')
+  })
+
+  it('a hidden rule category is inert — matches fall to uncategorized', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, hidden: ['DSH 插件'] }
+    expect(resolveCategory(CONFIG, manual, 'ws-x', '/Users/zcol/Project/SkillsManagePlugins', 'SkillsManagePlugins')).toBeUndefined()
+  })
+})
+
+describe('displayCategoryKeys / effectiveCategories', () => {
+  it('rule categories first, manual ones appended', () => {
+    const manual: ManualGroups = { categories: ['临时', '归档'], assignments: {} }
+    expect(displayCategoryKeys(CONFIG, manual)).toEqual(['DSH 插件', '文档', '临时', '归档'])
+  })
+
+  it('categoryOrder overrides the sequence; unknown entries keep default order', () => {
+    const manual: ManualGroups = {
+      categories: ['临时'],
+      assignments: {},
+      categoryOrder: ['临时', '文档', 'DSH 插件'],
+    }
+    expect(displayCategoryKeys(CONFIG, manual)).toEqual(['临时', '文档', 'DSH 插件'])
+  })
+
+  it('hidden rules drop out; renamed rules appear under the new name', () => {
+    const manual: ManualGroups = {
+      categories: [],
+      assignments: {},
+      hidden: ['文档'],
+      renamed: { 'DSH 插件': '插件集' },
+    }
+    const keys = displayCategoryKeys(CONFIG, manual)
+    expect(keys).toEqual(['插件集'])
+    expect(effectiveCategories(CONFIG, manual)[0]).toEqual({ key: '插件集', source: 'rule' })
+  })
+
+  it('uncategorized is never part of the key list', () => {
+    expect(displayCategoryKeys(CONFIG, undefined).includes(UNCATEGORIZED_LABEL)).toBe(false)
+  })
+})
+
+describe('isManualOnlyCategory', () => {
+  const manual: ManualGroups = { categories: ['临时'], assignments: {} }
+
+  it('true for a manual-only category', () => {
+    expect(isManualOnlyCategory(CONFIG, manual, '临时')).toBe(true)
+  })
+
+  it('false for a rule category', () => {
+    expect(isManualOnlyCategory(CONFIG, manual, 'DSH 插件')).toBe(false)
+  })
+
+  it('false for an unknown name', () => {
+    expect(isManualOnlyCategory(CONFIG, manual, '不存在')).toBe(false)
+  })
+
+  it('false when the overlay is absent', () => {
+    expect(isManualOnlyCategory(CONFIG, undefined, '临时')).toBe(false)
+  })
+})
+
+describe('takenCategoryNames', () => {
+  it('covers rule display names, manual groups and the reserved label', () => {
+    const manual: ManualGroups = {
+      categories: ['临时'],
+      assignments: {},
+      renamed: { 'DSH 插件': '插件集' },
+    }
+    const taken = takenCategoryNames(CONFIG, manual)
+    expect(taken.has('插件集')).toBe(true)
+    expect(taken.has('文档')).toBe(true)
+    expect(taken.has('临时')).toBe(true)
+    expect(taken.has(UNCATEGORIZED_LABEL)).toBe(true)
+    expect(taken.has('新分组')).toBe(false)
+  })
+})
+
+describe('orderedWorkspaceIds / moveBefore / moveAfter', () => {
+  it('stored order wins, missing members appended in fallback order', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { 'DSH 插件': ['b', 'a'] } }
+    expect(orderedWorkspaceIds(manual, 'DSH 插件', ['a', 'b', 'c'])).toEqual(['b', 'a', 'c'])
+  })
+
+  it('falls back to host order without a stored order', () => {
+    expect(orderedWorkspaceIds(undefined, 'DSH 插件', ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('moveBefore moves an id before a target (or appends)', () => {
+    expect(moveBefore(['a', 'b', 'c'], 'c', 'a')).toEqual(['c', 'a', 'b'])
+    expect(moveBefore(['a', 'b', 'c'], 'a', undefined)).toEqual(['b', 'c', 'a'])
+    expect(moveBefore(['a', 'b', 'c'], 'c', 'zzz')).toEqual(['a', 'b', 'c'])
+  })
+
+  it('moveAfter moves an id after a target (or appends)', () => {
+    expect(moveAfter(['a', 'b', 'c'], 'a', 'c')).toEqual(['b', 'c', 'a'])
+    expect(moveAfter(['a', 'b', 'c'], 'c', undefined)).toEqual(['a', 'b', 'c'])
+    expect(moveAfter(['a', 'b', 'c'], 'a', 'zzz')).toEqual(['b', 'c', 'a'])
   })
 })
 

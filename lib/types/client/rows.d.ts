@@ -1,26 +1,70 @@
+/**
+ * Row components for the workspace-groups tree. Kept dependency-light: they
+ * consume only React, primitives (StateDot/Menu/icons), and the shared CSS
+ * string. Each row owns its hover actions menu; dialogs live in the browser
+ * root so they survive row unmounts during collapse.
+ *
+ * Drag & drop: workspace rows are draggable sources; category rows (and
+ * workspace rows, standing for their containing category) are drop targets.
+ * The payload is a custom dataTransfer type so only in-plugin drags land.
+ */
+import { type DragEvent } from 'react';
 import { type StateDotState } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts';
 type T = TranslateNS<'workspaceGroups'>;
+/** dataTransfer type carrying the dragged workspace id (in-plugin drags only). */
+export declare const DND_WORKSPACE_TYPE = "application/x-dsh-workspace-groups";
+/** dataTransfer type carrying the dragged category key (group reorder). */
+export declare const DND_CATEGORY_TYPE = "application/x-dsh-workspace-groups-category";
+/** Whether a drag carries any of the plugin's payloads (drop targets accept both). */
+export declare function hasPluginDragType(types: DOMStringList | readonly string[]): boolean;
 /** Primary status dot state for a session row. */
 export declare function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState;
 /** Compact relative time ("now"/"5min"/"3h"/"2d"/"4mo"/"1y"). */
 export declare function relativeTimeLabel(updatedAt: number, now: number): string;
-/** One category folder row. */
-export declare function CategoryRow({ node, t, onToggle }: {
+/** Drop-target props shared by category and workspace rows (all optional). */
+export interface RowDropProps {
+    /** Row is under the dragged workspace — show the drop highlight. */
+    dropActive?: boolean;
+    /** Insertion indicator: a line above (before) or below (after) this row. */
+    insertLine?: 'before' | 'after';
+    /** Accept a drag over this row (must preventDefault to allow the drop). */
+    onRowDragOver?: (event: DragEvent) => void;
+    /** Clear the highlight when the pointer leaves the row. */
+    onRowDragLeave?: (event: DragEvent) => void;
+    /** Drop a workspace onto this row. */
+    onRowDrop?: (event: DragEvent) => void;
+}
+/**
+ * One category folder row: toggle, rename/delete menu (every group — rule
+ * groups via overlay renames/hides), draggable source for group reorder and
+ * drop target for both workspace moves and group reorders.
+ */
+export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory }: {
     node: CategoryNode;
     t: T;
     onToggle: () => void;
-}): import("react").JSX.Element;
-/** One workspace folder row inside a category. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete }: {
+    /** Rename/delete actions; the hover menu renders only when both provided. */
+    onRename?: () => void;
+    onDelete?: () => void;
+    /** Group reorder source; the row becomes draggable only when provided. */
+    onDragStartCategory?: (event: DragEvent) => void;
+} & RowDropProps): import("react").JSX.Element;
+/** One workspace folder row inside a category: draggable source + drop target. */
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, hasOverride, onMoveOut, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
     node: WorkspaceGroupNode;
     t: T;
     onToggle: () => void;
     onNewSession: () => void;
     onRename: () => void;
     onDelete: () => void;
-}): import("react").JSX.Element;
+    /** Workspace has a manual group override — offer "move to uncategorized". */
+    hasOverride?: boolean;
+    onMoveOut?: () => void;
+    /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
+    onDragStartExtra?: () => void;
+} & RowDropProps): import("react").JSX.Element;
 /** One session leaf row. */
 export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive }: {
     node: SessionNode;

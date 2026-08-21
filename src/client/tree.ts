@@ -15,8 +15,8 @@ import {
   type WorkspaceId,
   type WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import { classify } from '../core/matcher.ts'
-import { UNCATEGORIZED_LABEL, type GroupsConfig } from '../core/types.ts'
+import { effectiveCategories, orderedWorkspaceIds, resolveCategory } from '../core/matcher.ts'
+import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
@@ -135,9 +135,13 @@ function workspaceSessions(
  * @param list - sessions list snapshot (`current` feeds containsCurrent).
  * @param workspaces - real workspaces in stable Host order.
  * @param archivedSessionIds - registry-global archive set.
- * @param config - sidecar grouping config.
+ * @param config - sidecar grouping config (rule categories).
  * @param view - local expansion arrays.
- * @returns category sections in render order (configured categories first, uncategorized last).
+ * @param manual - runtime overlay (manual groups + overrides). A workspace's
+ * manual override wins over rule classification; removing it reverts to rules.
+ * @returns category sections in render order (rule categories first, then
+ * manual-only ones, uncategorized last). Manual groups render even while
+ * empty; empty rule buckets stay hidden.
  */
 export function deriveGroups(
   list: SessionListState,
@@ -145,37 +149,51 @@ export function deriveGroups(
   archivedSessionIds: readonly SessionId[],
   config: GroupsConfig,
   view: GroupsTreeView,
+  manual: ManualGroups,
 ): CategoryNode[] {
   const archived = new Set(archivedSessionIds)
   const expandedCategories = new Set(view.expandedCategories)
   const expandedWorkspaces = new Set(view.expandedWorkspaces)
   const descendants = indexSubagentDescendants(list.byId)
 
-  // Bucket workspaces by category, preserving host order inside each bucket.
+  // Bucket workspaces by display key. Seed with every effective category so
+  // manual groups render while empty; the uncategorized bucket is appended
+  // LAST (groups always sit above ungrouped projects).
   const byCategory = new Map<string, WorkspaceView[]>()
-  const categorized = new Set<WorkspaceId>()
-  for (const category of config.categories) {
-    byCategory.set(category.name, [])
+  for (const { key } of effectiveCategories(config, manual)) {
+    byCategory.set(key, [])
   }
+  byCategory.set(UNCATEGORIZED_KEY, [])
   for (const workspace of workspaces) {
-    const category = classify(config.categories, workspace.path, workspace.title)
-    const key = category !== undefined ? category.name : UNCATEGORIZED_KEY
+    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+      ?? UNCATEGORIZED_KEY
     if (!byCategory.has(key)) byCategory.set(key, [])
     byCategory.get(key)!.push(workspace)
-    categorized.add(workspace.workspaceId)
   }
 
+  const manualCategories = new Set(manual.categories)
   const currentWorkspaceId = list.current === undefined
     ? undefined
     : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
 
   const nodes: CategoryNode[] = []
-  for (const [key, bucket] of byCategory) {
-    if (bucket.length === 0) continue
+  // Effective categories in display order (categoryOrder applied), then the
+  // uncategorized bucket pinned to the very bottom.
+  const orderedKeys = [
+    ...effectiveCategories(config, manual).map(e => e.key),
+    UNCATEGORIZED_KEY,
+  ]
+  for (const key of orderedKeys) {
+    const bucket = byCategory.get(key) ?? []
+    // Manual groups stay visible while empty; everything else hides when empty.
+    if (bucket.length === 0 && !manualCategories.has(key)) continue
     const expanded = expandedCategories.has(key)
+    const ordered = orderedWorkspaceIds(manual, key, bucket.map(w => w.workspaceId as string))
     const workspaceNodes: WorkspaceGroupNode[] = []
     let containsCurrent = false
-    for (const workspace of bucket) {
+    for (const workspaceId of ordered) {
+      const workspace = bucket.find(w => w.workspaceId === workspaceId)
+      if (workspace === undefined) continue
       const sessions = workspaceSessions(list, workspace, archived, descendants)
       const wsExpanded = expandedWorkspaces.has(workspace.workspaceId as string)
       const wsContainsCurrent = workspace.workspaceId === currentWorkspaceId
@@ -287,12 +305,15 @@ export function deriveSearchMatches(
  * Build a three-level search tree containing ONLY the branches that hold a
  * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
+ * Classification uses the same precedence as the idle tree (manual override →
+ * rules), so search shows the same grouping the user sees.
  *
  * @param list - sessions list snapshot.
  * @param workspaces - real workspaces in stable Host order.
  * @param config - sidecar grouping config.
  * @param matchedIds - set of session ids that matched the query.
  * @param archivedSessionIds - registry-global archive set.
+ * @param manual - runtime overlay (manual groups + overrides).
  * @param snippetsBySession - optional content-match snippets keyed by session id.
  * @returns categories in render order, pruned to matched branches only.
  */
@@ -302,13 +323,15 @@ export function deriveSearchGroups(
   config: GroupsConfig,
   matchedIds: ReadonlySet<SessionId>,
   archivedSessionIds: readonly SessionId[],
+  manual: ManualGroups,
   snippetsBySession?: ReadonlyMap<SessionId, string>,
 ): CategoryNode[] {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
 
   const byCategory = new Map<string, WorkspaceGroupNode[]>()
-  for (const category of config.categories) byCategory.set(category.name, [])
+  for (const key of effectiveCategories(config, manual).map(e => e.key)) byCategory.set(key, [])
+  byCategory.set(UNCATEGORIZED_KEY, [])
 
   for (const workspace of workspaces) {
     // Only sessions that matched the query and are visible in this folder.
@@ -327,8 +350,8 @@ export function deriveSearchGroups(
     }
     if (nodes.length === 0) continue
 
-    const category = classify(config.categories, workspace.path, workspace.title)
-    const key = category !== undefined ? category.name : UNCATEGORIZED_KEY
+    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+      ?? UNCATEGORIZED_KEY
     if (!byCategory.has(key)) byCategory.set(key, [])
     byCategory.get(key)!.push({
       workspaceId: workspace.workspaceId,
@@ -343,8 +366,14 @@ export function deriveSearchGroups(
   }
 
   const categories: CategoryNode[] = []
-  for (const [key, workspaceNodes] of byCategory) {
-    if (workspaceNodes.length === 0) continue
+  // Same display order as the idle tree; the uncategorized bucket stays last.
+  const orderedKeys = [
+    ...effectiveCategories(config, manual).map(e => e.key),
+    UNCATEGORIZED_KEY,
+  ]
+  for (const key of orderedKeys) {
+    const workspaceNodes = byCategory.get(key)
+    if (workspaceNodes === undefined || workspaceNodes.length === 0) continue
     categories.push({
       key,
       label: key === UNCATEGORIZED_KEY ? UNCATEGORIZED_LABEL : key,
