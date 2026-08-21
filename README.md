@@ -1,122 +1,144 @@
+<p align="right">
+  <strong>English</strong> · <a href="./README_ZH.md">简体中文</a>
+</p>
+
 # dsh-workspace-groups
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)
+<img src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-202724" alt="DeepSeek Harness plugin">
 
-> **DeepSeek Harness（DSH）Web 客户端插件：完整的工作区分组管理工具。**
-> 把 GUI 侧边栏的工作区列表从两层「项目 → 会话」升级为三层
-> **「分类文件夹 → 项目文件夹 → 会话」**，并围绕它提供完整的分组管理能力——
-> 手动建组、重命名/删除分组、拖拽归类、项目与分组的自由排序、规则自动归类、
-> 树形搜索。所有操作**即时生效并持久化**，对官方数据**零侵入**。
+> **A DeepSeek Harness (DSH) web client plugin: a complete workspace grouping manager.**
+> Turns the GUI sidebar's two-level workspace list (Projects → Sessions) into a
+> three-level **Category folder → Project folder → Session** tree, backed by full
+> group-management capabilities: manual group creation, rename/delete of any group,
+> drag-and-drop grouping, free ordering of projects and groups, rule-based
+> auto-classification, and tree-shaped search. Every action takes effect
+> **immediately and persists**, with **zero intrusion** on official data.
 
+Typical scenario: multiple DSH plugin projects (SkillsManagePlugins / Documentation-Driven AI Coding /
+DeepSeek峰谷小组件, etc.) go into a "DSH 插件" category folder — open it to see each project,
+open a project to see its sessions. Need a scratch bucket? Create a "临时" group on the spot,
+drag projects in, then delete the group when done — every project returns to "未分类".
 
-## 截图
+## Screenshot
 
-<img src="screenshot.png" alt="dsh-workspace-groups 工作区分组管理" width="280" />
+<img src="screenshot.png" alt="dsh-workspace-groups workspace grouping manager" width="280" />
 
-## 特性
+## Features
 
-### 三层树浏览
-- **分类文件夹 → 项目文件夹 → 会话行**，分类/项目均可折叠；展开状态独立持久化
-  （`dsh.workspace.groups.view.v1`，刷新/重启保留）
-- **「未分类」兜底桶**：不匹配任何分组、被移出分组的项目自动归入，**恒在列表最底部**
+### Three-level tree browsing
+- **Category folder → project folder → session row**, both levels collapsible; expansion state
+  persists independently (`dsh.workspace.groups.view.v1`, survives refresh/restart)
+- **"未分类" fallback bucket**: projects matching no group or moved out of a group land here,
+  **always at the very bottom of the list**
 
-### 分组管理（完整生命周期）
-- **手动新建分组**：区头「新建分组」按钮即建即显，空分组也渲染
-- **重命名 / 删除任意分组**：每个分组行（**含规则分类**）悬停 `⋯` 菜单；
-  删除分组后组内所有项目回到「未分类」；规则分类的改名/删除经 overlay 生效
-  （`renamed` / `hidden`），**规则 YAML 原样保留**
-- **规则自动归类**：sidecar YAML 声明分类规则（`pathPrefix` / `pathExact` /
-  `nameContains` / `basenameContains`），改配置即可调整归类，无需改代码
+### Group management (full lifecycle)
+- **Create groups manually**: the "新建分组" button in the section header shows the group
+  immediately (empty groups render too)
+- **Rename / delete any group**: every group row (**rule categories included**) has a hover
+  `⋯` menu; deleting a group sends all of its projects back to "未分类"; rule-category
+  rename/delete rides the overlay (`renamed` / `hidden`), **the rule YAML stays untouched**
+- **Rule-based auto-classification**: the sidecar YAML declares category rules (`pathPrefix` /
+  `pathExact` / `nameContains` / `basenameContains`); edit the config to adjust grouping
+  without touching code
 
-### 拖拽归类 + 排序
-- **拖项目进分组**：拖到任意分组行 / 分组内项目行即移入（跨组移动 = 覆盖规则归类）；
-  拖到「未分类」或菜单「移到未分类」= **强制归入未分类**（规则匹配也无效）
-- **项目组内排序**：拖到项目行上半 = 插到它前面、下半 = 插到它后面
-- **分组排序**：分组行可拖动，拖到另一分组行上半 = 移到它前面、下半 = 移到它后面
-- **插入位置指示线**：拖动中实时显示 2px 指示线（行上/下方），松手落点所见即所得
-- **智能收起**：拖项目时其他分组的项目自动收起（源分组保留便于排序）；拖分组时所有
-  分组收起（分组行仍可见作排序目标）
+### Drag-and-drop grouping + ordering
+- **Drag projects into groups**: drop on any group row or on a project row inside a group
+  (cross-group move = overrides the rule classification); drop on "未分类" or use the menu
+  "移到未分类" = **forced uncategorized** (rule matches are ignored)
+- **Reorder projects inside a group**: top half of a project row = insert before it,
+  bottom half = insert after it
+- **Reorder groups**: group rows are draggable — top half of another group row = move before it,
+  bottom half = move after it
+- **Insertion position indicator**: a 2px line (above/below the row) shows the exact drop
+  point while dragging — what you see is where it lands
+- **Smart collapsing**: dragging a project folds the other groups' projects (the source group
+  stays open for ordering); dragging a group folds every group (group rows stay visible as
+  reorder targets)
 
-### 搜索与操作
-- **树形搜索**：命中后仍保留三层树结构（分类 → 项目 → 命中会话），命中行高亮 +
-  内容摘要，防抖 250ms
-- **工作区/会话操作不退化**：Add Workspace、项目重命名/删除、新建/打开/重命名/
-  派生/归档会话
+### Search & operations
+- **Tree-shaped search**: results keep the three-level structure (category → project → matched
+  session), matched rows highlighted with a content snippet, 250ms debounce
+- **No regression on workspace/session actions**: Add Workspace, project rename/delete,
+  session new/open/rename/fork/archive
 
-### 持久化与零侵入
-- 所有手动操作（分组、归类、排序、改名、隐藏）写入插件自有 overlay
-  （`~/.dsh/workspace-groups.manual.json`），host 校验后**原子写入**（写坏返回 400 并
-  保留原文件）
-- **零侵入**：不修改 `~/.dsh/storages/workspace.json`、不修改会话落盘结构、不修改官方
-  `@deepseek-ai/dsh-client-ui-workspace` 包；规则 YAML 永不改写
-- **产物自包含**：`lib/` 已构建并随仓库分发，Git 安装无需执行任何依赖脚本
+### Persistence & zero intrusion
+- Every manual action (groups, grouping, ordering, rename, hide) is written to the plugin's own
+  overlay (`~/.dsh/workspace-groups.manual.json`), validated by the host and **written
+  atomically** (a malformed write returns 400 and keeps the previous file)
+- **Zero intrusion**: never touches `~/.dsh/storages/workspace.json`, session on-disk
+  structures, or the official `@deepseek-ai/dsh-client-ui-workspace` package; the rule YAML
+  is never rewritten
+- **Self-contained artifact**: `lib/` is prebuilt and shipped with the repo — installing from
+  Git runs no dependency scripts
 
-## 工作原理
+## How it works
 
-- 本插件是 **client 插件**，注册进官方 sidebar shell 声明的 `sidebar.workspaces`
-  slot（`kind: 'single'`），以 `priority: -1` 顶替官方默认 WorkspaceBrowser
-  （官方以 priority 0 注册；single 槽位最低 priority 胜出）。
-- 数据源全部复用运行时 API：`useWorkspaces` / `useSessions` 全局 hooks 与
-  `ctx.workspaces.*` / `ctx.sessions.*`，分类只是**展示层变换**。
-- host 半做两件事：把 sidecar YAML 解析为 JSON 与运行时 overlay 合并，经
-  `GET /workspace-groups/config` 路由（`Cache-Control: no-cache`）供 client 获取；
-  `PUT /workspace-groups/manual` 接收整份 overlay（手动分组、每工作区归类覆盖、
-  分组/项目排序、规则分类改名与隐藏），校验后原子写入
-  `$DSH_HOME/workspace-groups.manual.json`。
-- **归类优先级**：手动覆盖（拖拽/菜单写入；`null` = 强制未分类）→ YAML 规则
-  自动归类（被隐藏的规则分类失效）→ 「未分类」桶（恒在最底部）。
-  YAML 永不改写。
+- The plugin is a **client plugin** registered into the official sidebar shell's
+  `sidebar.workspaces` slot (`kind: 'single'`) at `priority: -1`, replacing the official
+  WorkspaceBrowser (registered at priority 0; lowest priority wins in a single slot).
+- All data comes from the runtime API: the `useWorkspaces` / `useSessions` global hooks and
+  `ctx.workspaces.*` / `ctx.sessions.*` — grouping is purely a **presentation-layer transform**.
+- The host half does two things: parses the sidecar YAML and merges it with the runtime
+  overlay, served to the client via `GET /workspace-groups/config` (`Cache-Control: no-cache`);
+  and `PUT /workspace-groups/manual` accepts the full overlay (manual groups, per-workspace
+  grouping overrides, group/project ordering, rule-category renames and hides), validates it
+  and writes it atomically to `$DSH_HOME/workspace-groups.manual.json`.
+- **Classification priority**: manual override (written by drag/menu; `null` = forced
+  uncategorized) → YAML rule classification (hidden rule categories are inert) → "未分类"
+  bucket (always at the bottom). The YAML is never rewritten.
 
-## 安装（GitHub 分发）
+## Install (GitHub distribution)
 
-> 前置：已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-> （`dsh` 命令可用），并已初始化好目标 profile（如内置 `web`）。
+> Prerequisite: [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+> installed (`dsh` available) with a target profile initialized (e.g. the built-in `web`).
 
 ```sh
 dsh plugin --profile web add github:z-col/dsh-workspace-groups
 ```
 
-这会自动：
+This automatically:
 
-1. 在 `~/.dsh/profiles/web/package.json` 的 `dependencies` 加入
-   `"dsh-workspace-groups": "github:z-col/dsh-workspace-groups"`（含版本/commit）
-2. 在 `dsh.profile.bundles` 末尾追加 `"dsh-workspace-groups"`
-3. 运行 pnpm 安装并校验 bundle 层
+1. Adds `"dsh-workspace-groups": "github:z-col/dsh-workspace-groups"` (pinned to
+   version/commit) to `dependencies` in `~/.dsh/profiles/web/package.json`
+2. Appends `"dsh-workspace-groups"` to `dsh.profile.bundles`
+3. Runs pnpm install and validates the bundle layer
 
-**安装后重启 web profile**（bundle 与 host 半只有在重启后才会被加载）：
+**Restart the web profile after installing** (both the bundle and the host half only load
+on restart):
 
 ```sh
-# 停止现有 dsh web 进程后重新启动，例如：
+# Stop the running dsh web process and start it again, e.g.:
 dsh web
 ```
 
-验证安装：
+Verify the install:
 
 ```sh
 dsh --profile web --dump-config | grep -A3 workspace-groups
-# 应出现 - id: workspace-groups / name: dsh-workspace-groups / config: {}
+# expect: - id: workspace-groups / name: dsh-workspace-groups / config: {}
 curl http://127.0.0.1:3080/workspace-groups/config
-# 应返回 sidecar YAML 解析后的 JSON
+# expect: the sidecar YAML parsed as JSON
 ```
 
-## 卸载
+## Uninstall
 
 ```sh
 dsh plugin --profile web remove dsh-workspace-groups
 ```
 
-这会自动从 `dependencies` 删除该依赖并从 `dsh.profile.bundles` 移除对应行。
-同样需要**重启 web profile** 后生效。
+This removes the dependency from `dependencies` and the matching line from
+`dsh.profile.bundles`. A **web profile restart** is required for it to take effect.
 
-> 手动等价做法（任选其一，不要重复）：编辑 `~/.dsh/profiles/web/package.json`，
-> 从 `dependencies` 删除 `dsh-workspace-groups` 行、从 `dsh.profile.bundles`
-> 删除 `"dsh-workspace-groups"`，然后在该目录 `pnpm install`。
+> Manual equivalent (pick one, don't repeat): edit `~/.dsh/profiles/web/package.json`,
+> remove the `dsh-workspace-groups` line from `dependencies` and `"dsh-workspace-groups"`
+> from `dsh.profile.bundles`, then run `pnpm install` in that directory.
 
-## 分类配置（sidecar）
+## Classification config (sidecar)
 
-默认位置 `~/.dsh/workspace-groups.yaml`（也可用 `$DSH_HOME` 环境变量覆盖家目录）。
-模板见仓库根目录 `workspace-groups.example.yaml`。
+Default location `~/.dsh/workspace-groups.yaml` (override the home dir with the
+`$DSH_HOME` env var). Template: `workspace-groups.example.yaml` at the repo root.
 
 ```yaml
 categories:
@@ -130,21 +152,22 @@ categories:
       - pathPrefix: /Users/zcol/Project/yeluzi
 ```
 
-规则字段（每个 rule 是 OR 关系，任一命中即归类；分类按序匹配，先到先得）：
+Rule fields (each rule is an OR — any match classifies; categories are matched in order,
+first match wins):
 
-| 字段 | 含义 |
+| Field | Meaning |
 |---|---|
-| `pathPrefix` | 项目绝对路径前缀 |
-| `pathExact` | 项目绝对路径精确匹配 |
-| `nameContains` | 项目显示标题包含（忽略大小写） |
-| `basenameContains` | 项目目录名包含（忽略大小写） |
+| `pathPrefix` | Project absolute path prefix |
+| `pathExact` | Project absolute path exact match |
+| `nameContains` | Project display title contains (case-insensitive) |
+| `basenameContains` | Project directory name contains (case-insensitive) |
 
-未命中任何分类的项目进入「未分类」桶，不会被隐藏。
+Projects matching no category go into the "未分类" bucket — never hidden.
 
-## 手动分组与拖拽归类（runtime overlay）
+## Manual groups & drag-and-drop grouping (runtime overlay)
 
-规则 YAML 之外，还有一份插件自有的运行时 overlay，**只记录 UI 里的手动操作**，
-默认位置 `$DSH_HOME/workspace-groups.manual.json`（例如 `~/.dsh/workspace-groups.manual.json`）：
+Besides the rule YAML there is a plugin-owned runtime overlay, **recording only manual
+UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/workspace-groups.manual.json`):
 
 ```json
 {
@@ -160,103 +183,110 @@ categories:
 }
 ```
 
-- `categories` —— 手动新建的分组名（无规则，空分组也渲染）；名称不可与规则分类
-  或「未分类」重复。
-- `assignments` —— 工作区 → 分组的归类覆盖，键是稳定的工作区 id（重命名不影响）。
-  **优先级高于 YAML 规则**；值为 `null` 表示**强制归入未分类**（即使规则能匹配）。
-- `categoryOrder` —— 分组显示顺序（「未分类」恒在最底部，不在此列）。
-- `workspaceOrder` —— 每个分组内项目的手动排序（拖拽排序写入）。
-- `renamed` / `hidden` —— 规则分类的 UI 改名/删除（隐藏后其规则失效，匹配项目
-  落入未分类）；规则 YAML 原样保留。
-- 文件由浏览器 UI 全量写入（`PUT /workspace-groups/manual`，原子替换），手工编辑
-  同样生效（下次加载时读取）；写坏会返回 400 并保留原文件，不会破坏规则 YAML。
+- `categories` — manually created group names (no rules; empty groups render too); names
+  must not collide with rule categories or "未分类".
+- `assignments` — workspace → group classification overrides keyed by the stable workspace id
+  (renames don't affect it). **Takes precedence over YAML rules**; a value of `null` means
+  **forced uncategorized** (even when a rule would match).
+- `categoryOrder` — group display order ("未分类" is always at the bottom, not listed here).
+- `workspaceOrder` — per-group manual ordering of projects (written by drag ordering).
+- `renamed` / `hidden` — UI rename/delete of rule categories (a hidden category's rules become
+  inert and its matches fall to "未分类"); the rule YAML stays untouched.
+- The file is written in full by the browser UI (`PUT /workspace-groups/manual`, atomic
+  replace); manual edits also take effect on next load. A malformed write returns 400 and
+  keeps the previous file — the rule YAML is never at risk.
 
-| 操作 | 入口 |
+| Action | How |
 |---|---|
-| 新建分组 | 区头「新建分组」按钮（文件夹图标），弹窗输入名称 |
-| 重命名/删除分组 | **任意分组**（含规则分类）悬停 `⋯` 菜单；删除后组内项目回「未分类」 |
-| 拖项目进分组 | 拖动项目行到目标分组行 / 分组内任意项目行，松手即移入 |
-| 项目排序 | 拖动项目行到同组另一项目行：**上半 = 插到它前、下半 = 插到它后**（指示线显示落点）；拖动时其他分组项目自动收起 |
-| 移出分组 | 拖到「未分类」，或项目行菜单「移到未分类」（强制归入未分类） |
-| 分组排序 | 拖动分组行到另一分组行：**上半 = 移到它前、下半 = 移到它后**（指示线显示落点；拖动时所有分组收起）；未分类恒在底部 |
+| Create group | "新建分组" button in the section header (folder icon), enter a name in the dialog |
+| Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to "未分类" |
+| Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
+| Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); other groups' projects auto-fold while dragging |
+| Move out of a group | drop on "未分类", or the project row's "移到未分类" menu (forced uncategorized) |
+| Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging); "未分类" stays at the bottom |
 
-## 收录标签（topics）
+## Topics
 
-本仓库面向 DSH 插件生态的自动收录（社区市场靠 GitHub topic 扫描发现），已设置：
+This repo targets automatic discovery by the DSH plugin ecosystem (community marketplaces
+scan GitHub topics). Already set:
 
-- `dsh-plugin`（核心标签，[1024Store](https://github.com/imsai-sh/awesome-deepseek-harness-plugins)
-  等市场定时按此 topic 自动发现，并校验 `package.json` + 插件 bundle 清单
-  （`cordis.patch.yml`））
+- `dsh-plugin` (core tag; [1024Store](https://github.com/imsai-sh/awesome-deepseek-harness-plugins)
+  and similar marketplaces discover by this topic periodically, validating
+  `package.json` + the plugin bundle manifest (`cordis.patch.yml`))
 - `deepseek-harness` / `deepseek-harness-plugin` / `dsh`
 - `sidebar` / `workspace` / `workspace-groups`
 
-`package.json` 同时提供 `keywords` 便于 npm/搜索索引。
+`package.json` also provides `keywords` for npm/search indexing.
 
-## 开发
+## Development
 
 ```sh
 pnpm install
-pnpm typecheck   # host + client 双 program 类型检查
-pnpm test        # 核心规则、overlay、树派生单测
-pnpm build       # 构建 lib/（node 半 + client bundle）
-pnpm watch       # tsdown 监听（client HMR）
-node scripts/verify-groups.mjs   # 真机 CDP 验证（host 已重启时；自启独立 headless Chrome，自动恢复现场）
+pnpm typecheck   # host + client dual-program type checking
+pnpm test        # core rules, overlay, tree derivation unit tests
+pnpm build       # build lib/ (node half + client bundle)
+pnpm watch       # tsdown watch (client HMR)
+node scripts/verify-groups.mjs   # real-browser CDP verification (host restarted; self-spawns a headless Chrome, auto-restores the scene)
 ```
 
-产物契约（与官方 client 包一致）：
+Artifact contract (mirrors the official client packages):
 
-- `lib/index.js` —— host 半（ESM；读取 sidecar + `/workspace-groups/config` 路由，
-  js-yaml 已内联，无运行时依赖）
-- `lib/client.js` —— browser 半（`window.__ModuleLoader__.load({id, factory})`；
-  仅 require 平台 seed：react / react/jsx-runtime / @deepseek-ai/dsh-client-runtime/client /
-  @deepseek-ai/dsh-client-ui-primitives；跨插件值 import 在构建期被 purity 门拒绝）
-- `lib/types/**` —— 声明文件
+- `lib/index.js` — host half (ESM; reads the sidecar + `/workspace-groups/config` route;
+  js-yaml inlined, no runtime dependencies)
+- `lib/client.js` — browser half (`window.__ModuleLoader__.load({id, factory})`; only
+  requires platform seeds: react / react/jsx-runtime / @deepseek-ai/dsh-client-runtime/client /
+  @deepseek-ai/dsh-client-ui-primitives; cross-plugin value imports are rejected at build
+  time by the purity gate)
+- `lib/types/**` — declaration files
 
-> 发布策略说明：`lib/` 构建产物随仓库提交（无 `prepare` 脚本），因此
-> `dsh plugin add github:...` 全程无需执行第三方构建脚本，安装即用。
+> Release strategy: `lib/` build artifacts are committed (no `prepare` script), so
+> `dsh plugin add github:...` never runs third-party build scripts — install and use.
 
-## 目录结构
+## Repository layout
 
 ```
 src/
-  index.ts              # host 半：config 快照路由 + manual 写路由
-  host-config.ts        # sidecar YAML 读取/校验
-  host-manual.ts        # runtime overlay 读写/校验（原子发布）
-  context-types.ts      # host 侧 cordis 服务结构类型
+  index.ts              # host half: config snapshot route + manual write route
+  host-config.ts        # sidecar YAML reading/validation
+  host-manual.ts        # runtime overlay read/write/validation (atomic publish)
+  context-types.ts      # host-side cordis service structure types
   core/
-    types.ts            # 配置类型（两半共享）
-    matcher.ts          # 分类规则 + 手动覆盖优先级 + 排序纯函数（两半共享）
+    types.ts            # config types (shared by both halves)
+    matcher.ts          # classification + manual override priority + ordering pure functions (shared)
   client/
-    index.ts            # apply：注册 sidebar.workspaces（priority -1）
-    contract.ts         # 注入面类型
-    stores.ts           # 展开状态 store（persist: dsh.workspace.groups.view.v1）
-    tree.ts             # 三层树派生 + 树形搜索派生
-    GroupsBrowser.tsx   # 浏览区域组件（分组弹窗 + 拖拽归类/排序 + 插入指示线）
-    rows.tsx            # 分类/项目/会话/搜索结果行（拖拽源/目标）
-    locales.ts          # 中英文案
-    styles.css          # 内联样式
+    index.ts            # apply: registers sidebar.workspaces (priority -1)
+    contract.ts         # injected surface types
+    stores.ts           # expansion-state store (persist: dsh.workspace.groups.view.v1)
+    tree.ts             # three-level tree derivation + tree search derivation
+    GroupsBrowser.tsx   # browser region component (group dialogs + drag grouping/ordering + insertion indicator)
+    rows.tsx            # category/project/session/search-result rows (drag sources/targets)
+    locales.ts          # zh/en copy
+    styles.css          # inline styles
 tests/
-  core.test.ts          # 分类规则 + 手动覆盖优先级 + moveBefore/moveAfter + 配置解析
-  manual.test.ts        # overlay 校验 + 文件原子往返
-  tree.test.ts          # 树派生渲染契约（手动分组空渲染/覆盖优先）
-  store.test.ts         # 展开状态语义（折叠写 false 不删 key）
+  core.test.ts          # classification rules + override priority + moveBefore/moveAfter + config parsing
+  manual.test.ts        # overlay validation + atomic file round-trip
+  tree.test.ts          # tree derivation rendering contract (manual group empty render / override priority)
+  store.test.ts         # expansion semantics (collapse writes false, never deletes the key)
 scripts/
-  verify-groups.mjs     # 真机 CDP 验证（自启 headless Chrome，自动恢复现场）
+  verify-groups.mjs     # real-browser CDP verification (self-spawns headless Chrome, auto-restores the scene)
 ```
 
-> 开发文档（`docs/` 五级框架与 `AGENTS.md`）是开发用工程文件，**不随仓库分发**
-> （已在 `.gitignore` 排除）。
+> Development docs (`docs/` five-level framework and `AGENTS.md`) are engineering files for
+> development, **not shipped with the repo** (excluded via `.gitignore`).
 
-## 验证记录
+## Verification record
 
-- v0.1/v0.2 真实组合验证（headless Chrome + CDP 实操）：三层树顶替生效、分类正确、
-  展开持久化、搜索保留归属；`workspace.json` / 会话落盘 / 官方 store 零侵入。
-- v0.3 真机验证 24/24（`scripts/verify-groups.mjs`：建组/拖拽/排序/收起/规则分类
-  菜单/重命名/删除回未分类/置底/现场恢复，零侵入断言）。
-- v0.4 真机验证 30/30（新增：插入指示线、项目/分组**向下拖**（行下半 → 插到目标
-  之后）、分组向上拖（行上半 → 移到目标之前）；现场恢复通过）。
-- 单测 65 用例全绿（vitest：`core` / `manual` / `tree` / `store`）。
-- 可复跑的自动化真机验证：`node scripts/verify-groups.mjs`（需 host 已重启）。
+- v0.1/v0.2 real-combination verification (headless Chrome + CDP): three-level tree takeover,
+  correct classification, expansion persistence, search keeps workspace membership;
+  `workspace.json` / session on-disk / official store: zero intrusion.
+- v0.3 real-browser verification 24/24 (`scripts/verify-groups.mjs`: create group / drag /
+  order / collapse / rule-category menu / rename / delete-back-to-uncategorized / bottom-pinned /
+  scene restore; zero-intrusion assertions).
+- v0.4 real-browser verification 30/30 (added: insertion indicator, project/group
+  **downward drag** (bottom half → insert after the target), group upward drag (top half →
+  move before the target); scene restored).
+- 65 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
+- Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
 
 ## License
 
