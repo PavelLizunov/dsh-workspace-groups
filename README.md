@@ -12,7 +12,7 @@
 
 ## 截图
 
-![dsh-workspace-groups 工作区分组管理](screenshot.png)
+<img src="screenshot.png" alt="dsh-workspace-groups 工作区分组管理" width="280" />
 
 ## 特性
 
@@ -185,7 +185,8 @@ categories:
 本仓库面向 DSH 插件生态的自动收录（社区市场靠 GitHub topic 扫描发现），已设置：
 
 - `dsh-plugin`（核心标签，[1024Store](https://github.com/imsai-sh/awesome-deepseek-harness-plugins)
-  等市场定时按此 topic 自动发现，并校验 `package.json` + `dsh.bundle.patch` 字段）
+  等市场定时按此 topic 自动发现，并校验 `package.json` + 插件 bundle 清单
+  （`cordis.patch.yml`））
 - `deepseek-harness` / `deepseek-harness-plugin` / `dsh`
 - `sidebar` / `workspace` / `workspace-groups`
 
@@ -224,39 +225,37 @@ src/
   context-types.ts      # host 侧 cordis 服务结构类型
   core/
     types.ts            # 配置类型（两半共享）
-    matcher.ts          # 分类规则 + 手动覆盖优先级纯函数（两半共享）
+    matcher.ts          # 分类规则 + 手动覆盖优先级 + 排序纯函数（两半共享）
   client/
     index.ts            # apply：注册 sidebar.workspaces（priority -1）
     contract.ts         # 注入面类型
     stores.ts           # 展开状态 store（persist: dsh.workspace.groups.view.v1）
     tree.ts             # 三层树派生 + 树形搜索派生
-    GroupsBrowser.tsx   # 浏览区域组件（分组弹窗 + 拖拽归类）
+    GroupsBrowser.tsx   # 浏览区域组件（分组弹窗 + 拖拽归类/排序 + 插入指示线）
     rows.tsx            # 分类/项目/会话/搜索结果行（拖拽源/目标）
     locales.ts          # 中英文案
     styles.css          # 内联样式
 tests/
-  core.test.ts          # 分类规则 + 手动覆盖优先级 + 配置解析
+  core.test.ts          # 分类规则 + 手动覆盖优先级 + moveBefore/moveAfter + 配置解析
   manual.test.ts        # overlay 校验 + 文件原子往返
   tree.test.ts          # 树派生渲染契约（手动分组空渲染/覆盖优先）
+  store.test.ts         # 展开状态语义（折叠写 false 不删 key）
 scripts/
   verify-groups.mjs     # 真机 CDP 验证（自启 headless Chrome，自动恢复现场）
-docs/                   # 五级项目文档（A 基准 / B 开发运维 / C 长期记忆 / dev / archive）
-  A/A-01-PRD/           # 001-分组存储 Service / 002-分组管理工具 / 003-分组可视化 UI
-  A/A-02-技术架构/      # 02-技术选型、05-角色推导
-  A/A-04-前端架构/      # 前端架构（client）
-  B/                    # 开发规范 / 部署 / 测试 / BUG 库 / 工具清单 / 角色规格卡 / 子agent / 引导
-  C/C-01-项目长期记忆.md # 长期记忆（迁移、版本、已知限制）
-  archive/              # 归档（如 v0.1 验证记录）
 ```
+
+> 开发文档（`docs/` 五级框架与 `AGENTS.md`）是开发用工程文件，**不随仓库分发**
+> （已在 `.gitignore` 排除）。
 
 ## 验证记录
 
-- v0.1/v0.2 真实组合验证（headless Chrome + CDP 实操）：
-  `docs/archive/verification-dsh-workspace-groups.md`（已归档，结论回写 C-01）。
+- v0.1/v0.2 真实组合验证（headless Chrome + CDP 实操）：三层树顶替生效、分类正确、
+  展开持久化、搜索保留归属；`workspace.json` / 会话落盘 / 官方 store 零侵入。
 - v0.3 真机验证 24/24（`scripts/verify-groups.mjs`：建组/拖拽/排序/收起/规则分类
-  菜单/重命名/删除回未分类/置底/现场恢复，零侵入断言），记录见 C-01。
+  菜单/重命名/删除回未分类/置底/现场恢复，零侵入断言）。
 - v0.4 真机验证 30/30（新增：插入指示线、项目/分组**向下拖**（行下半 → 插到目标
-  之后）、分组向上拖（行上半 → 移到目标之前）；现场恢复通过），记录见 C-01。
+  之后）、分组向上拖（行上半 → 移到目标之前）；现场恢复通过）。
+- 单测 65 用例全绿（vitest：`core` / `manual` / `tree` / `store`）。
 - 可复跑的自动化真机验证：`node scripts/verify-groups.mjs`（需 host 已重启）。
 
 ## License

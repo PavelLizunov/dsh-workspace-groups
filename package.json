@@ -1,7 +1,7 @@
 {
   "name": "dsh-workspace-groups",
   "version": "0.1.0",
-  "description": "DSH web client plugin: group sidebar workspaces into configurable category folders (分类 → 项目 → 会话 three-level tree). Sidecar YAML rules, no core storage changes.",
+  "description": "Complete workspace grouping manager for the DSH web sidebar: 分类 → 项目 → 会话 three-level tree, manual group create/rename/delete, drag-and-drop grouping & ordering with insertion indicator, rule-based auto-classification, tree search. Sidecar YAML + runtime overlay, zero core-storage intrusion.",
   "keywords": [
     "dsh",
     "deepseek-harness",
