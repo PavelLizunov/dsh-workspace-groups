@@ -16,10 +16,6 @@
 > auto-classification, and tree-shaped search. Every action takes effect
 > **immediately and persists**, with **zero intrusion** on official data.
 
-Typical scenario: multiple DSH plugin projects (SkillsManagePlugins / Documentation-Driven AI Coding /
-DeepSeek峰谷小组件, etc.) go into a "DSH 插件" category folder — open it to see each project,
-open a project to see its sessions. Need a scratch bucket? Create a "临时" group on the spot,
-drag projects in, then delete the group when done — every project returns to "未分类".
 
 ## Screenshot
 
