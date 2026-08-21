@@ -1,0 +1,317 @@
+/* dsh-workspace-groups browser styles. Plain CSS injected by the plugin's
+   apply (via the ?inline virtual module) — no CSS Modules toolchain needed. */
+
+.wgRoot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.wgSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  height: 36px;
+  flex: none;
+}
+
+.wgSectionLabel {
+  flex: none;
+  max-width: 45%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-fg-1, inherit);
+}
+
+.wgIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--dsw-fg-2, inherit);
+  cursor: pointer;
+  padding: 0;
+}
+
+.wgIconButton:hover {
+  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+  color: var(--dsw-fg-1, inherit);
+}
+
+.wgIconButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wgSearch {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  max-width: 28px;
+  margin-left: auto;
+  transition: max-width 180ms ease;
+}
+
+/* Search expanded: the slot grows to fill the header so the input widens
+   (mirrors the official ui-workspace searchSlot idle/expanded swap). */
+.wgSearchExpanded {
+  max-width: 100%;
+}
+
+.wgSearchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--dsw-fg-1, inherit);
+  padding: 0;
+}
+
+.wgTreeBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.wgList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wgEmpty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+}
+
+/* Category row: top-level folder. */
+.wgCategoryRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wgCategoryRow:hover {
+  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+}
+
+.wgChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  transition: transform 120ms ease;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+}
+
+.wgChevronOpen {
+  transform: rotate(90deg);
+}
+
+.wgCategoryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--dsw-fg-2, inherit);
+}
+
+.wgCategoryLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-fg-1, inherit);
+}
+
+.wgCategoryCount {
+  flex: none;
+  font-size: 11px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+}
+
+/* Workspace row: project folder under a category. */
+.wgProjectRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px 0 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wgProjectRow:hover {
+  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+}
+
+.wgProjectActive {
+  color: var(--dsw-accent, #4a90d9);
+}
+
+.wgProjectLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--dsw-fg-1, inherit);
+}
+
+.wgRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  opacity: 0;
+}
+
+.wgProjectRow:hover .wgRowActions,
+.wgProjectRow:focus-within .wgRowActions {
+  opacity: 1;
+}
+
+/* Session row: leaf under a workspace folder. */
+.wgSessionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 40px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wgSessionRow:hover {
+  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+}
+
+.wgSessionRow:hover .wgRowActions,
+.wgSessionRow:focus-within .wgRowActions {
+  opacity: 1;
+}
+
+.wgSelected {
+  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+}
+
+.wgStatusSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.wgSessionTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--dsw-fg-1, inherit);
+}
+
+.wgSessionTime {
+  flex: none;
+  font-size: 11px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+}
+
+.wgVisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Search: the idle tree is re-rendered pruned to matched branches; matched
+   session rows get a tint, and content hits show a snippet line. */
+.wgMatched {
+  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+}
+
+.wgSessionSnippet {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+}
+
+.wgSearchStatus {
+  padding: 8px;
+  font-size: 11px;
+  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  text-align: center;
+}
+
+.wgRail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.wgAddError {
+  font-size: 12px;
+  color: var(--dsw-fg-1, inherit);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.wgRenameInput {
+  width: 100%;
+  border: 1px solid var(--dsw-border, rgba(127, 127, 127, 0.3));
+  border-radius: 6px;
+  background: var(--dsw-bg-1, transparent);
+  color: var(--dsw-fg-1, inherit);
+  font-size: 13px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.wgRenameInput:focus {
+  border-color: var(--dsw-accent, #4a90d9);
+}
