@@ -81,7 +81,8 @@ export declare function deriveGroups(list: SessionListState, workspaces: readonl
  * Top-level (ungrouped) workspace rows: workspaces resolving to no category
  * (no manual override and no matching rule, or a forced `null` override).
  * Rendered after the group folders as plain project rows (not inside any
- * folder), in host registration order.
+ * folder), in manual top-level order (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`),
+ * falling back to host registration order.
  */
 export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): WorkspaceGroupNode[];
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */

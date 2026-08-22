@@ -13,7 +13,7 @@ import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { ruleDisplayName } from './core/matcher.ts'
-import { UNCATEGORIZED_LABEL, type ManualGroups } from './core/types.ts'
+import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type ManualGroups } from './core/types.ts'
 
 /** Default overlay location: `$DSH_HOME/workspace-groups.manual.json`. */
 export function defaultManualPath(): string {
@@ -170,6 +170,8 @@ export function validateManualGroups(manual: ManualGroups, ruleCategoryNames: re
     }
   }
   for (const key of Object.keys(manual.workspaceOrder ?? {})) {
+    // The top-level order key is a reserved, non-category list.
+    if (key === TOP_LEVEL_ORDER_KEY) continue
     if (!allowed.has(key) || key === UNCATEGORIZED_LABEL) {
       throw new Error(`workspace-groups.manual.json: workspaceOrder references unknown category "${key}"`)
     }

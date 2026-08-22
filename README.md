@@ -45,11 +45,15 @@
 - **Drag projects into groups**: drop on any group row or on a project row inside a group
   (cross-group move = overrides the rule classification)
 - **Drag projects OUT of a group**: the **entire top-level area** is the move-out drop
-  target while dragging — an empty top level shows a dashed drop zone, a non-empty one
-  lights up as a whole (the rows AND the gaps between them accept the drop); grouped
-  projects also have a "移出分组" menu item (rule-classified ones included)
+  target while dragging, shown with an **insertion line** (not a highlight box) — drop on
+  any top-level row (reorder before/after it), on the blank space below the last row
+  (append), or, when the top level is empty, a standalone line under the last group
+  folder; grouped projects also have a "移出分组" menu item (rule-classified ones included)
 - **Reorder projects inside a group**: top half of a project row = insert before it,
   bottom half = insert after it
+- **Reorder top-level projects**: top-level rows are draggable too — top half = insert
+  before, bottom half = insert after; the top-level order persists under
+  `workspaceOrder["__topLevel__"]`
 - **Reorder groups**: group rows are draggable — top half of another group row = move before it,
   bottom half = move after it
 - **Insertion position indicator**: a 2px line (above/below the row) shows the exact drop
@@ -207,7 +211,8 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 | Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to the top level |
 | Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
 | Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); all project rows fold while dragging and restore on dragend |
-| Move out of a group | drop anywhere on the **top-level area** (empty → dashed drop zone / non-empty → whole-area highlight; the gaps between rows count too), or the project row's "移出分组" menu (forced top-level) |
+| Reorder top-level projects | drag a top-level row onto another top-level row: **top half = insert before, bottom half = insert after**; order persists under `workspaceOrder["__topLevel__"]` |
+| Move out of a group | drop anywhere on the **top-level area** (an insertion line shows the spot — reorder before/after a top-level row, or append below the last row; when the top level is empty a line shows under the last group), or the project row's "移出分组" menu (forced top-level) |
 | Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging, restored on dragend) |
 
 ## Topics
@@ -302,6 +307,12 @@ scripts/
 - v0.6.1 real-browser verification 42/42 (added: the whole top-level area as the move-out
   drop target with a visible landing highlight; distinct folder-vs-project row icons;
   scene restored).
+- v0.7 real-browser verification 46/46 (added: top-level landing shown with an **insertion
+  line** instead of a highlight box — reorder before/after a top-level row, append below
+  the last row, or a standalone line when the top level is empty; **top-level projects are
+  reorderable** with their order persisted under `workspaceOrder["__topLevel__"]`; also
+  fixed a host validation bug that rejected `__topLevel__` and a drop-positioning bug where
+  dropping between two top-level rows landed above the first; scene restored).
 - 66 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
 - Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
 

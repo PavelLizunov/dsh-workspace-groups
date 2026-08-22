@@ -213,26 +213,34 @@
   padding-left: 4px;
 }
 
-/* Drop target shown while dragging a project and the top-level area is
-   empty — the only way to drag a project out of a group. */
-.wgTopLevelDrop {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  margin-top: 4px;
-  border-radius: 6px;
-  font-size: 11px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
-  border: 1px dashed var(--dsw-border, rgba(127, 127, 127, 0.3));
-  user-select: none;
-}
-
-/* Top-level area container (rows present). While dragging a project it gains
-   .wgDropTarget so the whole area — rows and the gaps between them — reads as
-   the move-out landing spot. */
+/* Top-level (ungrouped) rows area. The blank space below the last row accepts
+   a drop (appends to the end of the top-level list). */
 .wgTopLevelArea {
   margin-top: 2px;
+  padding-bottom: 10px;
+}
+
+/* Empty top level while dragging a project: a standalone insertion line under
+   the last group folder — the only way to move a project OUT of a group when
+   no top-level rows exist yet. */
+.wgTopLevelEmpty {
+  position: relative;
+  height: 14px;
+  border-radius: 4px;
+}
+.wgTopLevelEmptyLine {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dsw-accent, #4a90d9);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-accent, #4a90d9) 25%, transparent);
+  pointer-events: none;
+}
+.wgTopLevelEmptyActive {
+  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
 }
 
 .wgProjectRow:hover {

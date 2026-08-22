@@ -88,5 +88,13 @@ export interface ManualGroups {
  * compatibility (reserved name, assignment null marker).
  */
 export declare const UNCATEGORIZED_LABEL = "\u672A\u5206\u7C7B";
+/**
+ * Reserved key under `workspaceOrder` holding the manual order of TOP-LEVEL
+ * (ungrouped) project rows. Distinct from any real group display name (a group
+ * may not be named this), so it can never collide; the top-level list's order
+ * is preserved exactly like a group's, and top-level rows can be reordered by
+ * dragging.
+ */
+export declare const TOP_LEVEL_ORDER_KEY = "__topLevel__";
 /** Normalize a path for prefix matching: trailing slashes stripped. */
 export declare function normalizePath(path: string): string;

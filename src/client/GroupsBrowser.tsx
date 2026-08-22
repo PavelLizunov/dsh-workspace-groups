@@ -33,7 +33,7 @@ import {
   resolveCategory,
   takenCategoryNames,
 } from '../core/matcher.ts'
-import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
+import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
 import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type WorkspaceGroupNode } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow } from './rows.tsx'
@@ -300,14 +300,14 @@ export function GroupsBrowser({
     }, manual),
     [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
   )
-  // While dragging a project, an empty top-level area must still be a visible
-  // drop target — otherwise a project can never be dragged OUT of a group when
-  // every project is currently grouped.
+  // While dragging a project, an empty top-level area must still show a landing
+  // line — otherwise a project can never be dragged OUT of a group when every
+  // project is currently grouped.
   const topLevelDropActive = dragging === 'workspace' && topLevel.length === 0
-  // With top-level rows present, the whole top-level area lights up as the
-  // move-out drop target while dragging a project (rows AND the gaps between
-  // them), so the user always sees a landing spot when dragging out.
-  const topLevelAreaActive = dragging === 'workspace' && topLevel.length > 0
+  // The top-level area is the move-out landing spot: rows reorder with an
+  // insertion line (before/after), and the blank space below the last row
+  // appends to the end of the list. No whole-area highlight box.
+  const topLevelRef: DropRowRef = { kind: 'topLevel', key: UNCATEGORIZED_KEY }
 
   // Add workspace flow: self-contained (no directory-flow hole dependency).
   const [adding, setAdding] = useState(false)
@@ -554,11 +554,21 @@ export function GroupsBrowser({
     try {
       let next: NormalizedManual
       if (categoryKey === UNCATEGORIZED_KEY) {
-        // Drop on 未分类: force uncategorized and drop from every order list.
+        // Move to the TOP LEVEL: force ungrouped (null) and drop from every
+        // group's order list, while recording the position inside the ordered
+        // top-level list (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`).
         const assignments = { ...manual.assignments, [workspaceId]: null }
-        const workspaceOrder = Object.fromEntries(
-          Object.entries(manual.workspaceOrder).map(([key, ids]) => [key, ids.filter(id => id !== workspaceId)]),
-        )
+        const workspaceOrder: Record<string, string[]> = {}
+        for (const [key, ids] of Object.entries(manual.workspaceOrder)) {
+          if (key === TOP_LEVEL_ORDER_KEY) continue
+          workspaceOrder[key] = ids.filter(id => id !== workspaceId)
+        }
+        const topLevelIds = workspaces
+          .filter(w => w.workspaceId !== workspaceId && resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined)
+          .map(w => w.workspaceId as string)
+        workspaceOrder[TOP_LEVEL_ORDER_KEY] = afterWorkspaceId !== undefined
+          ? moveAfter(topLevelIds, workspaceId, afterWorkspaceId)
+          : moveBefore(topLevelIds, workspaceId, beforeWorkspaceId)
         next = { ...manual, assignments, workspaceOrder }
       } else {
         const currentKey = resolveCategory(config, manual, workspaceId, workspace.path, workspace.title)
@@ -634,9 +644,14 @@ export function GroupsBrowser({
     const workspaceId = event.dataTransfer.getData(DND_WORKSPACE_TYPE) || event.dataTransfer.getData('text/plain')
     if (workspaceId === '') return
     if (row.kind === 'topLevel') {
-      // Dropping on the top-level area / a top-level row = move OUT of any
-      // group (forced top-level, rules ignored).
-      void moveWorkspaceTo(workspaceId, UNCATEGORIZED_KEY)
+      // Top-level row / top-level blank drop = move OUT of any group (forced
+      // top-level, rules ignored) and set the position inside the ordered
+      // top-level list. A row drop re-derives before/after from the drop
+      // position; a bare area drop (key = UNCATEGORIZED_KEY) appends to the end.
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      const before = event.clientY < rect.top + rect.height / 2
+      const specificKey = row.key === UNCATEGORIZED_KEY ? undefined : row.key
+      void moveWorkspaceTo(workspaceId, UNCATEGORIZED_KEY, before ? specificKey : undefined, !before ? specificKey : undefined)
       return
     }
     // Project move/reorder: a line on a project row = reorder before/after it;
@@ -653,19 +668,16 @@ export function GroupsBrowser({
     const draggingCategory = Array.from(event.dataTransfer.types as Iterable<string>).includes(DND_CATEGORY_TYPE)
     if (draggingCategory && row.kind !== 'category') return // group drags target category rows only
     event.preventDefault()
+    // Keep a row's dragover from bubbling to the enclosing top-level area
+    // (which would interpret it as the end-of-list landing).
+    event.stopPropagation()
     event.dataTransfer.dropEffect = 'move'
-    if (row.kind === 'topLevel') {
-      // Dropping a project on the top-level area: whole-area highlight, drop
-      // moves the project out of its group.
-      setDragIndicator(prev =>
-        prev?.mode === 'into' && prev.categoryKey === UNCATEGORIZED_KEY ? prev : { mode: 'into', categoryKey: UNCATEGORIZED_KEY })
-      return
-    }
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
     const before = event.clientY < rect.top + rect.height / 2
-    if (draggingCategory || row.kind === 'workspace') {
-      // Group reorder (line on a category row) or project reorder inside a
-      // group (line on a project row).
+    if (draggingCategory || row.kind === 'workspace' || row.kind === 'topLevel') {
+      // Group reorder (line on a category row), project reorder inside a
+      // group (line on a project row), or top-level reorder (line on a
+      // top-level project row).
       setDragIndicator(prev =>
         prev?.mode === 'line' && prev.row.kind === row.kind && prev.row.key === row.key && prev.before === before
           ? prev
@@ -680,6 +692,32 @@ export function GroupsBrowser({
   const onDragLeaveRow = (event: DragEvent): void => {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
     setDragIndicator(null)
+  }
+
+  /**
+   * Drag over the TOP-LEVEL AREA's blank space (not on a row — rows stop
+   * propagation). An insertion line shows the landing spot: empty top level →
+   * a standalone line under the last group; non-empty → a line below the last
+   * top-level row (end of the list).
+   */
+  const onDragOverTopLevelArea = (event: DragEvent): void => {
+    if (!hasPluginDragType(event.dataTransfer.types)) return
+    const draggingCategory = Array.from(event.dataTransfer.types as Iterable<string>).includes(DND_CATEGORY_TYPE)
+    if (draggingCategory) return // group drags never target the top-level area
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    const last = topLevel.length > 0 ? topLevel[topLevel.length - 1] : undefined
+    if (last !== undefined) {
+      setDragIndicator(prev =>
+        prev?.mode === 'line' && prev.row.kind === 'topLevel' && prev.row.key === last.workspaceId && prev.before === false
+          ? prev
+          : { mode: 'line', row: { kind: 'topLevel', key: last.workspaceId }, before: false })
+    } else {
+      setDragIndicator(prev =>
+        prev?.mode === 'line' && prev.row.kind === 'topLevel' && prev.row.key === topLevelRef.key && prev.before === false
+          ? prev
+          : { mode: 'line', row: topLevelRef, before: false })
+    }
   }
 
   // While dragging a project, only PROJECT rows fold — every expanded
@@ -882,18 +920,20 @@ export function GroupsBrowser({
               />
             ))}
             {/* Top-level (ungrouped) workspaces, rendered after the group
-                folders. While dragging a project, an empty top-level area
-                shows a drop target so projects can always be dragged OUT. */}
+                folders. While dragging a project the whole area is the
+                move-out landing spot (a line shows the insert position;
+                an empty top level shows a line under the last group). */}
             {(topLevel.length > 0 || topLevelDropActive) && (
               <TopLevelSection
                 topLevel={topLevel}
                 current={current}
                 now={now}
                 t={t}
-                showDropTarget={topLevelDropActive}
-                areaActive={topLevelAreaActive}
-                dropActive={dragIndicator?.mode === 'into' && dragIndicator.categoryKey === UNCATEGORIZED_KEY}
+                dragging={dragging === 'workspace'}
+                dragIndicator={dragIndicator}
+                topLevelRef={topLevelRef}
                 onDragOverRow={onDragOverRow}
+                onDragOverTopLevelArea={onDragOverTopLevelArea}
                 onDragLeaveRow={onDragLeaveRow}
                 onDropRow={onDropRow}
                 onDragStartWorkspace={onDragStartWorkspace}
@@ -1150,22 +1190,24 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
 
 /**
  * Top-level (ungrouped) workspace rows rendered after the group folders. While
- * a project drag is in progress the ENTIRE top-level area is a move-out drop
- * target: empty → a labelled placeholder (.wgTopLevelDrop); non-empty → the
- * area container lights up (.wgDropTarget) and every row + the gaps between
- * them accept the drop (rows keep their own handlers; the area container
- * catches drops on the gaps).
+ * a project drag is in progress the WHOLE top-level area is the move-out
+ * landing spot, shown with an insertion LINE (not a highlight box):
+ * - a top-level row reorders before/after it (line above/below, like a group);
+ * - the blank space below the last row appends to the end (line below the
+ *   last row);
+ * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, current, now, t, showDropTarget, areaActive, dropActive, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork }: {
+function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork }: {
   topLevel: readonly WorkspaceGroupNode[]
   current: SessionId | undefined
   now: number
   t: GroupsBrowserProps['t']
-  showDropTarget: boolean
-  /** Whole-area highlight while dragging a project (top-level rows present). */
-  areaActive: boolean
-  dropActive: boolean
+  /** A project drag is in progress (drives the empty-top-level landing line). */
+  dragging: boolean
+  dragIndicator: DragIndicator
+  topLevelRef: DropRowRef
   onDragOverRow: (row: DropRowRef) => (event: DragEvent) => void
+  onDragOverTopLevelArea: (event: DragEvent) => void
   onDragLeaveRow: (event: DragEvent) => void
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId) => () => void
@@ -1178,25 +1220,25 @@ function TopLevelSection({ topLevel, current, now, t, showDropTarget, areaActive
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
 }) {
-  const topRef: DropRowRef = { kind: 'topLevel', key: UNCATEGORIZED_KEY }
+  const emptyLineActive = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === topLevelRef.key
   return (
     <div
       role="group"
       aria-label={t('section.topLevel')}
-      className={areaActive ? 'wgTopLevelArea wgDropTarget' : 'wgTopLevelArea'}
-      onDragOver={onDragOverRow(topRef)}
+      className="wgTopLevelArea"
+      onDragOver={onDragOverTopLevelArea}
       onDragLeave={onDragLeaveRow}
-      onDrop={onDropRow(UNCATEGORIZED_KEY, topRef)}
+      onDrop={onDropRow(UNCATEGORIZED_KEY, topLevelRef)}
     >
-      {showDropTarget && (
+      {topLevel.length === 0 && dragging && (
         <div
-          className={`wgTopLevelDrop${dropActive ? ' wgDropTarget' : ''}`}
+          className={`wgTopLevelEmpty${emptyLineActive ? ' wgTopLevelEmptyActive' : ''}`}
           role="treeitem"
-          onDragOver={onDragOverRow(topRef)}
+          onDragOver={onDragOverRow(topLevelRef)}
           onDragLeave={onDragLeaveRow}
-          onDrop={onDropRow(UNCATEGORIZED_KEY, topRef)}
+          onDrop={onDropRow(UNCATEGORIZED_KEY, topLevelRef)}
         >
-          {t('group.dropTopLevel')}
+          <span className="wgTopLevelEmptyLine" />
         </div>
       )}
       {topLevel.map((workspace) => (
@@ -1209,10 +1251,12 @@ function TopLevelSection({ topLevel, current, now, t, showDropTarget, areaActive
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
-            dropActive={dropActive}
-            onRowDragOver={onDragOverRow(topRef)}
+            {...(dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === workspace.workspaceId
+              ? { insertLine: dragIndicator.before ? 'before' : 'after' }
+              : {})}
+            onRowDragOver={onDragOverRow({ kind: 'topLevel', key: workspace.workspaceId })}
             onRowDragLeave={onDragLeaveRow}
-            onRowDrop={onDropRow(UNCATEGORIZED_KEY, topRef)}
+            onRowDrop={onDropRow(UNCATEGORIZED_KEY, { kind: 'topLevel', key: workspace.workspaceId })}
             onDragStartExtra={onDragStartWorkspace(workspace.workspaceId)}
           />
           {workspace.expanded && workspace.sessions.map((session) => (

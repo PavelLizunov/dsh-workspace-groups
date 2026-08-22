@@ -46,7 +46,6 @@ export type WorkspaceGroupsKey =
   | 'group.deleteCancel'
   | 'group.nameDuplicate'
   | 'group.nameReserved'
-  | 'group.dropTopLevel'
   | 'section.topLevel'
   | 'manual.saveError'
   | 'session.new'
@@ -114,7 +113,6 @@ export const zh: WorkspaceGroupsDict = {
   'group.deleteCancel': '取消删除',
   'group.nameDuplicate': '已存在同名分组',
   'group.nameReserved': '该名称不可用',
-  'group.dropTopLevel': '松开以移出分组到顶层',
   'section.topLevel': '顶层项目',
   'manual.saveError': '分组变更保存失败',
   'session.new': '新建会话',
@@ -181,7 +179,6 @@ export const en: WorkspaceGroupsDict = {
   'group.deleteCancel': 'Cancel delete',
   'group.nameDuplicate': 'A group with this name already exists',
   'group.nameReserved': 'This name is not available',
-  'group.dropTopLevel': 'Release to move out of the group',
   'section.topLevel': 'Top-level projects',
   'manual.saveError': 'Could not save group changes',
   'session.new': 'New Session',

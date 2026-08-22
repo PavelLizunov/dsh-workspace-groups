@@ -180,4 +180,13 @@ describe('deriveTopLevel', () => {
     expect(collapsed[0]?.expanded).toBe(false)
     expect(collapsed[0]?.sessions).toEqual([])
   })
+
+  it('top-level rows honor the manual order (workspaceOrder[__topLevel__])', () => {
+    const manual: ManualGroups = {
+      categories: [], assignments: { 'ws-a': null, 'ws-b': null, 'ws-c': null },
+      workspaceOrder: { __topLevel__: ['ws-c', 'ws-a', 'ws-b'] },
+    }
+    const top = deriveTopLevel(listState(ws), ws, [], CONFIG, VIEW, manual)
+    expect(top.map(w => w.workspaceId)).toEqual(['ws-c', 'ws-a', 'ws-b'])
+  })
 })

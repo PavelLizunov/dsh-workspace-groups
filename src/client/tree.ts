@@ -16,7 +16,7 @@ import {
   type WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { effectiveCategories, orderedWorkspaceIds, resolveCategory } from '../core/matcher.ts'
-import { UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
+import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
@@ -218,7 +218,8 @@ export function deriveGroups(
  * Top-level (ungrouped) workspace rows: workspaces resolving to no category
  * (no manual override and no matching rule, or a forced `null` override).
  * Rendered after the group folders as plain project rows (not inside any
- * folder), in host registration order.
+ * folder), in manual top-level order (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`),
+ * falling back to host registration order.
  */
 export function deriveTopLevel(
   list: SessionListState,
@@ -235,12 +236,17 @@ export function deriveTopLevel(
     ? undefined
     : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
 
+  const topLevelIds = workspaces
+    .filter(w => resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined)
+    .map(w => w.workspaceId as string)
+  const ordered = orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, topLevelIds)
+
   const nodes: WorkspaceGroupNode[] = []
-  for (const workspace of workspaces) {
-    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
-    if (key !== undefined) continue // grouped — rendered inside deriveGroups
+  for (const workspaceId of ordered) {
+    const workspace = workspaces.find(w => w.workspaceId === workspaceId)
+    if (workspace === undefined) continue
     const sessions = workspaceSessions(list, workspace, archived, descendants)
-    const wsExpanded = expandedWorkspaces.has(workspace.workspaceId as string)
+    const wsExpanded = expandedWorkspaces.has(workspaceId)
     nodes.push({
       workspaceId: workspace.workspaceId,
       path: workspace.path,

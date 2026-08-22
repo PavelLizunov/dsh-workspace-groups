@@ -117,6 +117,11 @@ describe('validateManualGroups v2 (write boundary)', () => {
     const manual2: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { '幽灵': [] } }
     expect(() => validateManualGroups(manual2, RULE_NAMES)).toThrow(/workspaceOrder/)
   })
+
+  it('accepts the reserved top-level order key in workspaceOrder', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { __topLevel__: ['ws-1', 'ws-2'] } }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
+  })
 })
 
 describe('validateManualGroups (write boundary)', () => {
