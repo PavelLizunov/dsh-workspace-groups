@@ -1,31 +1,32 @@
-# dsh-workspace-groups 侧车配置（sidecar config）
+# dsh-workspace-groups sidecar config
 #
-# 本文件控制侧边栏的分类规则：左侧「分类文件夹 → 项目文件夹 → 会话」三层树
-# 的分类如何划分。修改后刷新页面即可生效，无需改代码、无需重启 DSH、不触碰
-# ~/.dsh/storages/workspace.json。
+# This file controls sidebar classification rules: how the tree
+# (category folders -> project folders -> sessions) organizes projects.
+# Changes take effect immediately after a page reload without code changes,
+# DSH restarts, or touching ~/.dsh/storages/workspace.json.
 #
-# 默认路径：~/.dsh/workspace-groups.yaml
-# 规则语义：workspace 按 categories 顺序匹配，第一个命中的分类生效；
-# 未命中任何规则的 workspace 进入「未分类」桶。
-# 每个分类的 rules 是「任一规则命中即归类」的 OR 关系。
+# Default path: ~/.dsh/workspace-groups.yaml
+# Rule semantics: workspaces match categories in order; the first matching
+# category applies. Workspaces matching no rules appear at the top level.
+# Each category's rules use OR logic (any matching rule assigns the workspace).
 
 categories:
-  # —— DSH 插件 ——
-  - name: DSH 插件
+  # -- DSH Plugins --
+  - name: DSH Plugins
     rules:
       - pathPrefix: /Users/zcol/Project/SkillsManagePlugins
       - pathPrefix: /Users/zcol/Project/Documentation-Driven AI Coding
-      - pathPrefix: /Users/zcol/Project/DeepSeek峰谷小组件
-      - pathPrefix: /Users/zcol/Project/DSH-工作区分组
-      # 也可以按项目名包含规则归类，例如：
-      # - nameContains: 插件
+      - pathPrefix: /Users/zcol/Project/DeepSeek-Peak-Valley-Widget
+      - pathPrefix: /Users/zcol/Project/DSH-Workspace-Groups
+      # You can also match by project display name or directory basename, e.g.:
+      # - nameContains: plugin
       # - basenameContains: plugin
 
-  # —— 个人项目 ——
-  - name: 个人项目
+  # -- Personal Projects --
+  - name: Personal Projects
     rules:
       - pathPrefix: /Users/zcol/Project/yeluzi
-      - pathPrefix: /Users/zcol/Project/闲谝
+      - pathPrefix: /Users/zcol/Project/chat-app
 
-# 未匹配任何分类的项目（例如日后新增的 /Users/zcol/Project/新项目）会
-# 自动出现在「未分类」桶中，不会被忽略。
+# Projects that do not match any category (e.g. newly added /Users/zcol/Project/new-project)
+# will automatically appear as top-level projects, never omitted.

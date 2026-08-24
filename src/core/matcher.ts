@@ -12,6 +12,7 @@
  */
 import {
   normalizePath,
+  TOP_LEVEL_ORDER_KEY,
   UNCATEGORIZED_LABEL,
   type GroupCategory,
   type GroupRule,
@@ -22,7 +23,12 @@ import {
 /** One rule match against a workspace's path and title. */
 function ruleMatches(rule: GroupRule, path: string, title: string): boolean {
   const normalized = normalizePath(path)
-  if (rule.pathPrefix !== undefined && normalized.startsWith(normalizePath(rule.pathPrefix))) return true
+  if (rule.pathPrefix !== undefined) {
+    const prefix = normalizePath(rule.pathPrefix)
+    if (normalized === prefix || prefix === '/' || /^[A-Za-z]:\/$/.test(prefix)
+      ? normalized.startsWith(prefix)
+      : normalized.startsWith(`${prefix}/`)) return true
+  }
   if (rule.pathExact !== undefined && normalized === normalizePath(rule.pathExact)) return true
   if (rule.nameContains !== undefined && title.toLowerCase().includes(rule.nameContains.toLowerCase())) return true
   if (rule.basenameContains !== undefined) {
@@ -134,11 +140,18 @@ export function resolveCategory(
   title: string,
 ): string | undefined {
   const override = manual?.assignments[workspaceId]
-  if (override !== undefined) return override ?? undefined // null forces top-level
-  const matched = classify(config.categories, path, title)
-  if (matched === undefined) return undefined
-  if (isHiddenRule(manual, matched.name)) return undefined
-  return ruleDisplayName(manual, matched.name)
+  if (override !== undefined) {
+    if (override === null || override === UNCATEGORIZED_LABEL) return undefined
+    const validKeys = new Set(displayCategoryKeys(config, manual))
+    return validKeys.has(override) ? override : undefined
+  }
+  for (const category of config.categories) {
+    if (isHiddenRule(manual, category.name)) continue
+    if (category.rules.some(rule => ruleMatches(rule, path, title))) {
+      return ruleDisplayName(manual, category.name)
+    }
+  }
+  return undefined
 }
 
 /** Whether a category key is a manual-only group (manageable via list). */
@@ -157,6 +170,7 @@ export function isManualOnlyCategory(
 export function takenCategoryNames(config: GroupsConfig, manual: ManualGroups | undefined): Set<string> {
   const taken = new Set<string>(displayCategoryKeys(config, manual))
   taken.add(UNCATEGORIZED_LABEL)
+  taken.add(TOP_LEVEL_ORDER_KEY)
   return taken
 }
 
@@ -189,6 +203,7 @@ export function orderedWorkspaceIds(
 
 /** Move `id` before `beforeId` (undefined = append) within an ordered list. */
 export function moveBefore(list: readonly string[], id: string, beforeId: string | undefined): string[] {
+  if (id === beforeId) return [...list]
   const rest = list.filter(x => x !== id)
   if (beforeId === undefined) return [...rest, id]
   const index = rest.indexOf(beforeId)
@@ -199,6 +214,7 @@ export function moveBefore(list: readonly string[], id: string, beforeId: string
 
 /** Move `id` after `afterId` (undefined = append) within an ordered list. */
 export function moveAfter(list: readonly string[], id: string, afterId: string | undefined): string[] {
+  if (id === afterId) return [...list]
   const rest = list.filter(x => x !== id)
   if (afterId === undefined) return [...rest, id]
   const index = rest.indexOf(afterId)

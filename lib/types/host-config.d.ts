@@ -1,5 +1,5 @@
 import { classify } from './core/matcher.ts';
-import type { GroupsConfig } from './core/types.ts';
+import { type GroupsConfig } from './core/types.ts';
 /** Default sidecar location: `$DSH_HOME/workspace-groups.yaml` (DSH_HOME falls back to ~/.dsh). */
 export declare function defaultConfigPath(): string;
 /** Parse + validate a raw sidecar document into a GroupsConfig (throws on malformed input). */

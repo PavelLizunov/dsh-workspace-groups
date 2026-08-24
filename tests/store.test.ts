@@ -23,17 +23,17 @@ function freshState(): GroupsViewState {
 describe('groups view store expansion semantics', () => {
   it('setCategoryExpanded(true) stores the key as true', () => {
     const state = freshState()
-    setCategoryExpandedImpl(state, 'DSH 插件', true)
-    expect(state.categoryExpansion['DSH 插件']).toBe(true)
+    setCategoryExpandedImpl(state, 'DSH Plugins', true)
+    expect(state.categoryExpansion['DSH Plugins']).toBe(true)
   })
 
   it('setCategoryExpanded(false) retains the key with false (never deletes)', () => {
     const state = freshState()
-    setCategoryExpandedImpl(state, 'DSH 插件', false)
+    setCategoryExpandedImpl(state, 'DSH Plugins', false)
     // The key must EXIST with false — this is what lets the auto-expand
     // guard distinguish a deliberate collapse from an untouched key.
-    expect(state.categoryExpansion).toHaveProperty('DSH 插件', false)
-    expect('DSH 插件' in state.categoryExpansion).toBe(true)
+    expect(state.categoryExpansion).toHaveProperty('DSH Plugins', false)
+    expect('DSH Plugins' in state.categoryExpansion).toBe(true)
   })
 
   it('setWorkspaceExpanded(false) retains the key with false', () => {
@@ -45,16 +45,16 @@ describe('groups view store expansion semantics', () => {
 
   it('retainKeys keeps collapsed keys (deliberate user state survives config churn)', () => {
     const state = freshState()
-    setCategoryExpandedImpl(state, 'DSH 插件', true)
-    setCategoryExpandedImpl(state, '个人项目', false)
-    retainKeysImpl(state, ['DSH 插件', '个人项目'], [])
-    expect(state.categoryExpansion).toEqual({ 'DSH 插件': true, '个人项目': false })
+    setCategoryExpandedImpl(state, 'DSH Plugins', true)
+    setCategoryExpandedImpl(state, 'Personal Projects', false)
+    retainKeysImpl(state, ['DSH Plugins', 'Personal Projects'], [])
+    expect(state.categoryExpansion).toEqual({ 'DSH Plugins': true, 'Personal Projects': false })
   })
 
   it('retainKeys drops keys for removed categories', () => {
     const state = freshState()
-    setCategoryExpandedImpl(state, '旧分类', true)
-    retainKeysImpl(state, ['新分类'], [])
+    setCategoryExpandedImpl(state, 'Old Category', true)
+    retainKeysImpl(state, ['New Category'], [])
     expect(state.categoryExpansion).toEqual({})
   })
 

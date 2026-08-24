@@ -28,10 +28,10 @@
   persists independently (`dsh.workspace.groups.view.v1`, survives refresh/restart)
 - **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
   or returned by a group delete) render as plain rows right after the group folders, at the
-  same level — **there is no "未分类" bucket**
+  same level — **there is no "Uncategorized" bucket**
 
 ### Group management (full lifecycle)
-- **Create groups manually**: the "新建分组" button in the section header shows the group
+- **Create groups manually**: the "New group" button in the section header shows the group
   immediately (empty groups render too)
 - **Rename / delete any group**: every group row (**rule categories included**) has a hover
   `⋯` menu; deleting a group sends all of its projects back to the **top level**;
@@ -48,7 +48,7 @@
   target while dragging, shown with an **insertion line** (not a highlight box) — drop on
   any top-level row (reorder before/after it), on the blank space below the last row
   (append), or, when the top level is empty, a standalone line under the last group
-  folder; grouped projects also have a "移出分组" menu item (rule-classified ones included)
+  folder; grouped projects also have a "Move out of group" menu item (rule-classified ones included)
 - **Reorder projects inside a group**: top half of a project row = insert before it,
   bottom half = insert after it
 - **Reorder top-level projects**: top-level rows are draggable too — top half = insert
@@ -150,12 +150,12 @@ Default location `~/.dsh/workspace-groups.yaml` (override the home dir with the
 
 ```yaml
 categories:
-  - name: DSH 插件
+  - name: DSH Plugins
     rules:
       - pathPrefix: /Users/zcol/Project/SkillsManagePlugins
-      - nameContains: 插件
+      - nameContains: plugin
       - basenameContains: plugin
-  - name: 个人项目
+  - name: Personal Projects
     rules:
       - pathPrefix: /Users/zcol/Project/yeluzi
 ```
@@ -180,15 +180,15 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 
 ```json
 {
-  "categories": ["临时", "归档"],
+  "categories": ["Scratch", "Archive"],
   "assignments": {
-    "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "临时",
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "Scratch",
     "a1b2c3d4-e5f6-7890-abcd-ef1234567891": null
   },
-  "categoryOrder": ["临时", "DSH 插件"],
-  "workspaceOrder": { "临时": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"] },
-  "renamed": { "DSH 插件": "插件集" },
-  "hidden": ["文档"]
+  "categoryOrder": ["Scratch", "DSH Plugins"],
+  "workspaceOrder": { "Scratch": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"] },
+  "renamed": { "DSH Plugins": "Plugin Collection" },
+  "hidden": ["Docs"]
 }
 ```
 
@@ -207,12 +207,12 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 
 | Action | How |
 |---|---|
-| Create group | "新建分组" button in the section header (folder icon), enter a name in the dialog |
+| Create group | "New group" button in the section header (folder icon), enter a name in the dialog |
 | Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to the top level |
 | Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
 | Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); all project rows fold while dragging and restore on dragend |
 | Reorder top-level projects | drag a top-level row onto another top-level row: **top half = insert before, bottom half = insert after**; order persists under `workspaceOrder["__topLevel__"]` |
-| Move out of a group | drop anywhere on the **top-level area** (an insertion line shows the spot — reorder before/after a top-level row, or append below the last row; when the top level is empty a line shows under the last group), or the project row's "移出分组" menu (forced top-level) |
+| Move out of a group | drop anywhere on the **top-level area** (an insertion line shows the spot — reorder before/after a top-level row, or append below the last row; when the top level is empty a line shows under the last group), or the project row's "Move out of group" menu (forced top-level) |
 | Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging, restored on dragend) |
 
 ## Topics
@@ -270,7 +270,9 @@ src/
     tree.ts             # three-level tree derivation + tree search derivation
     GroupsBrowser.tsx   # browser region component (group dialogs + drag grouping/ordering + insertion indicator)
     rows.tsx            # category/project/session/search-result rows (drag sources/targets)
-    locales.ts          # zh/en copy
+    locales.ts          # locale key contract and dictionary exports
+    locales/en.ts       # primary English dictionary
+    locales/zh.ts       # optional Simplified Chinese dictionary
     styles.css          # inline styles
 tests/
   core.test.ts          # classification rules + override priority + moveBefore/moveAfter + config parsing
@@ -297,8 +299,8 @@ scripts/
   move before the target); scene restored).
 - v0.4.1 real-browser verification 34/34 (added: dragging projects OUT of a group —
   top-level drop zone / top-level rows = forced top-level; grouped projects get the
-  "移出分组" menu item).
-- v0.5 real-browser verification 35/35 (model change: **no "未分类" bucket** — top-level
+  "Move out of group" menu item).
+- v0.5 real-browser verification 35/35 (model change: **no "Uncategorized" bucket** — top-level
   project rows, group delete returns members to the top level, drag/menu move-out to the
   top level, no uncategorized bucket anywhere in the tree; scene restored).
 - v0.6 real-browser verification 40/40 (added: **level-aware folding** — dragging a project
@@ -313,7 +315,7 @@ scripts/
   reorderable** with their order persisted under `workspaceOrder["__topLevel__"]`; also
   fixed a host validation bug that rejected `__topLevel__` and a drop-positioning bug where
   dropping between two top-level rows landed above the first; scene restored).
-- 66 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
+- 83 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
 - Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
 
 ## License

@@ -42,7 +42,7 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-workspace-groups: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-workspace-groups: dictionaries')
 
   const searchSessions: GroupsBrowserInjected['searchSessions'] = async (query, signal) => {
     const result = await ctx.sessions.search(query, signal)

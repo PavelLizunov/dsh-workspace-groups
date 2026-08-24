@@ -475,7 +475,7 @@ export function GroupsBrowser({
     const name = groupDeleteTarget
     const originalRule = originalRuleNameForDisplay(config.categories, manual, name)
 
-    // Every project currently in the group goes to 未分类 (forced, not rule-
+    // Every project currently in the group goes to uncategorized (forced, not rule-
     // reclassified), regardless of how it landed there.
     const assignments = { ...manual.assignments }
     for (const workspace of workspaces) {
@@ -517,7 +517,7 @@ export function GroupsBrowser({
   const [dragIndicator, setDragIndicator] = useState<DragIndicator>(null)
 
   // Expansion state taken at dragstart; dragend restores it so the folding
-  // caused by a drag is always undone afterwards ("结束后恢复").
+  // caused by a drag is always undone afterwards (restored on drag end).
   const expansionSnapshot = useRef<{ categories: Record<string, boolean>; workspaces: Record<string, boolean> } | null>(null)
   // Live expansion state for the dragend restore (the document-level listener
   // is registered once, so it must read current values through a ref).
@@ -596,7 +596,7 @@ export function GroupsBrowser({
     }
   }
 
-  /** Reorder groups: move `draggedKey` before `beforeKey` or after `afterKey` (未分类 target = append). */
+  /** Reorder groups: move `draggedKey` before `beforeKey` or after `afterKey` (uncategorized target = append). */
   const moveCategory = async (draggedKey: string, beforeKey?: string, afterKey?: string): Promise<void> => {
     if (manualSaving || draggedKey === beforeKey || draggedKey === afterKey) return
     setManualSaving(true)
@@ -909,7 +909,7 @@ export function GroupsBrowser({
                 }}
                 onMoveOut={(workspaceId) => { void moveWorkspaceTo(workspaceId, UNCATEGORIZED_KEY) }}
                 canMoveOut={(workspaceId) => {
-                  // The menu "移出分组" is offered for any project that
+                  // The menu "Move out of group" is offered for any project that
                   // currently sits inside a group (rule-classified or manual) —
                   // not just overridden ones. Top-level projects
                   // (resolveCategory === undefined) don't need it.
@@ -1280,7 +1280,7 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
 
 /**
  * Search body rendered as a three-level tree pruned to matched branches:
- * 分类文件夹 → 项目文件夹 → 命中会话行. Reuses the same row components as
+ * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
 function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t }: {

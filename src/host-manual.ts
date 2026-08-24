@@ -51,7 +51,7 @@ export function parseManualGroups(raw: unknown): ManualGroups {
         throw new Error('workspace-groups.manual.json: each manual category must be a non-empty string')
       }
       const name = entry.trim()
-      if (name === UNCATEGORIZED_LABEL) {
+      if (name === UNCATEGORIZED_LABEL || name === TOP_LEVEL_ORDER_KEY) {
         throw new Error(`workspace-groups.manual.json: manual category name "${name}" is reserved`)
       }
       if (seen.has(name)) {
@@ -100,7 +100,11 @@ export function parseManualGroups(raw: unknown): ManualGroups {
       if (typeof display !== 'string' || display.trim() === '') {
         throw new Error(`workspace-groups.manual.json: renamed "${original}" must be a non-empty string`)
       }
-      renamed[original] = display.trim()
+      const trimmed = display.trim()
+      if (trimmed === UNCATEGORIZED_LABEL || trimmed === TOP_LEVEL_ORDER_KEY) {
+        throw new Error(`workspace-groups.manual.json: renamed display name "${trimmed}" is reserved`)
+      }
+      renamed[original] = trimmed
     }
     manual.renamed = renamed
   }

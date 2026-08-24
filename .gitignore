@@ -2,6 +2,6 @@ node_modules/
 *.log
 .DS_Store
 
-# 开发工程文件：docs 五级文档框架不进项目 git 仓库
+# Development-only engineering files are not tracked by this plugin repository.
 docs/
 AGENTS.md

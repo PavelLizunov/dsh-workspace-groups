@@ -12,19 +12,19 @@ import {
   validateManualGroups,
   writeManualGroups,
 } from '../src/host-manual.ts'
-import { UNCATEGORIZED_LABEL, type ManualGroups } from '../src/core/types.ts'
+import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type ManualGroups } from '../src/core/types.ts'
 
-const RULE_NAMES = ['DSH 插件', '个人项目']
+const RULE_NAMES = ['DSH Plugins', 'Personal Projects']
 
 describe('parseManualGroups', () => {
   it('parses a valid overlay', () => {
     const parsed = parseManualGroups({
-      categories: ['临时'],
-      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+      categories: ['Temporary'],
+      assignments: { 'ws-1': 'Temporary', 'ws-2': 'DSH Plugins' },
     })
     expect(parsed).toEqual({
-      categories: ['临时'],
-      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+      categories: ['Temporary'],
+      assignments: { 'ws-1': 'Temporary', 'ws-2': 'DSH Plugins' },
     })
   })
 
@@ -41,15 +41,19 @@ describe('parseManualGroups', () => {
   it('rejects non-string / empty category names and trims them', () => {
     expect(() => parseManualGroups({ categories: [42] })).toThrow(/non-empty string/)
     expect(() => parseManualGroups({ categories: [''] })).toThrow(/non-empty string/)
-    expect(parseManualGroups({ categories: [' 临时 '] }).categories).toEqual(['临时'])
+    expect(parseManualGroups({ categories: [' Temporary '] }).categories).toEqual(['Temporary'])
   })
 
   it('rejects the reserved uncategorized label as a manual category', () => {
     expect(() => parseManualGroups({ categories: [UNCATEGORIZED_LABEL] })).toThrow(/reserved/)
   })
 
+  it('rejects the reserved top-level key as a manual category', () => {
+    expect(() => parseManualGroups({ categories: [TOP_LEVEL_ORDER_KEY] })).toThrow(/reserved/)
+  })
+
   it('rejects duplicate category names', () => {
-    expect(() => parseManualGroups({ categories: ['临时', '临时'] })).toThrow(/duplicate/)
+    expect(() => parseManualGroups({ categories: ['Temporary', 'Temporary'] })).toThrow(/duplicate/)
   })
 
   it('rejects a non-mapping assignments value', () => {
@@ -57,7 +61,7 @@ describe('parseManualGroups', () => {
   })
 
   it('rejects empty assignment keys and non-string assignment values', () => {
-    expect(() => parseManualGroups({ assignments: { '': '临时' } })).toThrow(/non-empty/)
+    expect(() => parseManualGroups({ assignments: { '': 'Temporary' } })).toThrow(/non-empty/)
     expect(() => parseManualGroups({ assignments: { 'ws-1': 42 } })).toThrow(/category name/)
   })
 
@@ -68,17 +72,17 @@ describe('parseManualGroups', () => {
 
   it('parses the v2 ordering/rename/hidden fields', () => {
     const parsed = parseManualGroups({
-      categories: ['临时'],
-      assignments: { 'ws-1': '临时' },
-      categoryOrder: ['临时', 'DSH 插件'],
-      workspaceOrder: { '临时': ['ws-1'] },
-      renamed: { 'DSH 插件': '插件集' },
-      hidden: ['文档'],
+      categories: ['Temporary'],
+      assignments: { 'ws-1': 'Temporary' },
+      categoryOrder: ['Temporary', 'DSH Plugins'],
+      workspaceOrder: { 'Temporary': ['ws-1'] },
+      renamed: { 'DSH Plugins': 'Plugin Collection' },
+      hidden: ['Docs'],
     })
-    expect(parsed.categoryOrder).toEqual(['临时', 'DSH 插件'])
-    expect(parsed.workspaceOrder).toEqual({ '临时': ['ws-1'] })
-    expect(parsed.renamed).toEqual({ 'DSH 插件': '插件集' })
-    expect(parsed.hidden).toEqual(['文档'])
+    expect(parsed.categoryOrder).toEqual(['Temporary', 'DSH Plugins'])
+    expect(parsed.workspaceOrder).toEqual({ 'Temporary': ['ws-1'] })
+    expect(parsed.renamed).toEqual({ 'DSH Plugins': 'Plugin Collection' })
+    expect(parsed.hidden).toEqual(['Docs'])
   })
 
   it('rejects duplicate categoryOrder / hidden entries', () => {
@@ -87,39 +91,48 @@ describe('parseManualGroups', () => {
   })
 
   it('rejects non-string renamed values', () => {
-    expect(() => parseManualGroups({ renamed: { 'DSH 插件': 42 } })).toThrow(/non-empty string/)
+    expect(() => parseManualGroups({ renamed: { 'DSH Plugins': 42 } })).toThrow(/non-empty string/)
+  })
+
+  it('rejects the reserved top-level key as a renamed display value', () => {
+    expect(() => parseManualGroups({ renamed: { 'DSH Plugins': TOP_LEVEL_ORDER_KEY } })).toThrow(/reserved/)
   })
 })
 
 describe('validateManualGroups v2 (write boundary)', () => {
   it('accepts null assignments and renamed-display targets', () => {
     const manual: ManualGroups = {
-      categories: ['临时'],
-      assignments: { 'ws-1': null, 'ws-2': '插件集' },
-      renamed: { 'DSH 插件': '插件集' },
+      categories: ['Temporary'],
+      assignments: { 'ws-1': null, 'ws-2': 'Plugin Collection' },
+      renamed: { 'DSH Plugins': 'Plugin Collection' },
     }
     expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
   })
 
   it('rejects renamed keys that are not rule categories', () => {
-    const manual: ManualGroups = { categories: [], assignments: {}, renamed: { '幽灵规则': 'X' } }
+    const manual: ManualGroups = { categories: [], assignments: {}, renamed: { 'GhostRule': 'X' } }
     expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/renamed/)
   })
 
   it('rejects hidden entries that are not rule categories', () => {
-    const manual: ManualGroups = { categories: [], assignments: {}, hidden: ['幽灵规则'] }
+    const manual: ManualGroups = { categories: [], assignments: {}, hidden: ['GhostRule'] }
     expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/hidden/)
   })
 
   it('rejects categoryOrder / workspaceOrder keys that exist nowhere', () => {
-    const manual1: ManualGroups = { categories: [], assignments: {}, categoryOrder: ['幽灵'] }
+    const manual1: ManualGroups = { categories: [], assignments: {}, categoryOrder: ['Ghost'] }
     expect(() => validateManualGroups(manual1, RULE_NAMES)).toThrow(/categoryOrder/)
-    const manual2: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { '幽灵': [] } }
+    const manual2: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { 'Ghost': [] } }
     expect(() => validateManualGroups(manual2, RULE_NAMES)).toThrow(/workspaceOrder/)
   })
 
+  it('rejects the reserved top-level order key in categoryOrder', () => {
+    const manual: ManualGroups = { categories: [], assignments: {}, categoryOrder: [TOP_LEVEL_ORDER_KEY] }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/categoryOrder/)
+  })
+
   it('accepts the reserved top-level order key in workspaceOrder', () => {
-    const manual: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { __topLevel__: ['ws-1', 'ws-2'] } }
+    const manual: ManualGroups = { categories: [], assignments: {}, workspaceOrder: { [TOP_LEVEL_ORDER_KEY]: ['ws-1', 'ws-2'] } }
     expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
   })
 })
@@ -127,14 +140,19 @@ describe('validateManualGroups v2 (write boundary)', () => {
 describe('validateManualGroups (write boundary)', () => {
   it('accepts assignments into rule, manual, and uncategorized categories', () => {
     const manual: ManualGroups = {
-      categories: ['临时'],
-      assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件', 'ws-3': UNCATEGORIZED_LABEL },
+      categories: ['Temporary'],
+      assignments: { 'ws-1': 'Temporary', 'ws-2': 'DSH Plugins', 'ws-3': UNCATEGORIZED_LABEL },
     }
     expect(() => validateManualGroups(manual, RULE_NAMES)).not.toThrow()
   })
 
   it('rejects an assignment into a category that exists nowhere', () => {
-    const manual: ManualGroups = { categories: [], assignments: { 'ws-1': '幽灵分组' } }
+    const manual: ManualGroups = { categories: [], assignments: { 'ws-1': 'GhostGroup' } }
+    expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/unknown category/)
+  })
+
+  it('rejects the reserved top-level order key as an assignment category', () => {
+    const manual: ManualGroups = { categories: [], assignments: { 'ws-1': TOP_LEVEL_ORDER_KEY } }
     expect(() => validateManualGroups(manual, RULE_NAMES)).toThrow(/unknown category/)
   })
 })
@@ -154,8 +172,8 @@ describe('manual file round-trip', () => {
     const path = join(dir, 'workspace-groups.manual.json')
     try {
       const overlay: ManualGroups = {
-        categories: ['临时'],
-        assignments: { 'ws-1': '临时', 'ws-2': 'DSH 插件' },
+        categories: ['Temporary'],
+        assignments: { 'ws-1': 'Temporary', 'ws-2': 'DSH Plugins' },
       }
       await writeManualGroups(path, overlay)
       expect(await readManualGroups(path)).toEqual(overlay)

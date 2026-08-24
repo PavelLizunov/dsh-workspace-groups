@@ -9,7 +9,7 @@ import { resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { load as parseYaml } from 'js-yaml'
 import { classify } from './core/matcher.ts'
-import type { GroupsConfig, GroupCategory } from './core/types.ts'
+import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type GroupCategory } from './core/types.ts'
 
 /** Default sidecar location: `$DSH_HOME/workspace-groups.yaml` (DSH_HOME falls back to ~/.dsh). */
 export function defaultConfigPath(): string {
@@ -38,6 +38,10 @@ export function parseGroupsConfig(raw: unknown): GroupsConfig {
     const name = (entry as { name?: unknown }).name
     if (typeof name !== 'string' || name.trim() === '') {
       throw new Error('workspace-groups.yaml: each category needs a non-empty name')
+    }
+    const trimmedName = name.trim()
+    if (trimmedName === UNCATEGORIZED_LABEL || trimmedName === TOP_LEVEL_ORDER_KEY) {
+      throw new Error(`workspace-groups.yaml: category name "${trimmedName}" is reserved`)
     }
     const rulesValue = (entry as { rules?: unknown }).rules
     if (rulesValue === undefined) {
@@ -70,7 +74,7 @@ export function parseGroupsConfig(raw: unknown): GroupsConfig {
     if (rules.length === 0) {
       throw new Error(`workspace-groups.yaml: category "${name}" needs at least one rule`)
     }
-    categories.push({ name: name.trim(), rules })
+    categories.push({ name: trimmedName, rules })
   }
   return { categories }
 }

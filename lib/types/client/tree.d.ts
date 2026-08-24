@@ -1,6 +1,6 @@
 /**
- * Derives the three-level workspace-groups tree: 分类文件夹 → 项目文件夹 →
- * 会话行. Pure derivation — all inputs are snapshots; the renderer never
+ * Derives the three-level workspace-groups tree: category folder → workspace folder →
+ * session row. Pure derivation — all inputs are snapshots; the renderer never
  * scans. Session visibility rules mirror the official ui-workspace tree
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
@@ -111,7 +111,7 @@ export interface SearchTree {
 }
 /**
  * Build a three-level search tree containing ONLY the branches that hold a
- * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
+ * matched session: category folder → workspace folder → matched session row. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
  * Classification uses the same precedence as the idle tree (manual override →
  * rules), so search shows the same grouping the user sees. Matched top-level

@@ -82,11 +82,12 @@ export interface ManualGroups {
     hidden?: string[];
 }
 /**
- * Legacy label of the fallback bucket. The top-level (ungrouped) concept
- * replaced the rendered "未分类" bucket: workspaces in no group render as
- * top-level rows beside the group folders. The constant survives for data
- * compatibility (reserved name, assignment null marker).
+ * Legacy persisted label of the former fallback bucket. It is accepted only
+ * for backward compatibility; the current UI renders ungrouped workspaces as
+ * top-level rows and never exposes this value as primary copy.
  */
+export declare const LEGACY_UNCATEGORIZED_LABEL = "\u672A\u5206\u7C7B";
+/** @deprecated Use LEGACY_UNCATEGORIZED_LABEL for compatibility checks only. */
 export declare const UNCATEGORIZED_LABEL = "\u672A\u5206\u7C7B";
 /**
  * Reserved key under `workspaceOrder` holding the manual order of TOP-LEVEL
@@ -96,5 +97,5 @@ export declare const UNCATEGORIZED_LABEL = "\u672A\u5206\u7C7B";
  * dragging.
  */
 export declare const TOP_LEVEL_ORDER_KEY = "__topLevel__";
-/** Normalize a path for prefix matching: trailing slashes stripped. */
+/** Normalize separators and trailing slashes while preserving filesystem roots. */
 export declare function normalizePath(path: string): string;

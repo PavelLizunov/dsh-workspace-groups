@@ -1,6 +1,6 @@
 /**
- * Derives the three-level workspace-groups tree: 分类文件夹 → 项目文件夹 →
- * 会话行. Pure derivation — all inputs are snapshots; the renderer never
+ * Derives the three-level workspace-groups tree: category folder → workspace folder →
+ * session row. Pure derivation — all inputs are snapshots; the renderer never
  * scans. Session visibility rules mirror the official ui-workspace tree
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
@@ -17,6 +17,8 @@ import {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { effectiveCategories, orderedWorkspaceIds, resolveCategory } from '../core/matcher.ts'
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
+
+const UNKNOWN_WORKSPACE_LABEL = 'Unknown workspace'
 
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
@@ -80,7 +82,7 @@ export const UNCATEGORIZED_KEY = UNCATEGORIZED_LABEL
 
 /** Directory display label: basename of the path (both separators accepted). */
 export function workspaceLabel(cwd: string | undefined): string {
-  if (cwd === undefined || cwd === '') return UNCATEGORIZED_LABEL
+  if (cwd === undefined || cwd === '') return UNKNOWN_WORKSPACE_LABEL
   const base = cwd.replace(/[/\\]+$/, '').split(/[/\\]/).pop()
   return base !== undefined && base !== '' ? base : cwd
 }
@@ -352,7 +354,7 @@ export interface SearchTree {
 
 /**
  * Build a three-level search tree containing ONLY the branches that hold a
- * matched session: 分类文件夹 → 项目文件夹 → 命中会话行. Every matched
+ * matched session: category folder → workspace folder → matched session row. Every matched
  * session carries `matched: true` so rows render with the search-hit tint.
  * Classification uses the same precedence as the idle tree (manual override →
  * rules), so search shows the same grouping the user sees. Matched top-level
