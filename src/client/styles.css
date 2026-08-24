@@ -9,64 +9,115 @@
 }
 
 .wgSectionHeader {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 0 12px;
+  padding: 0 8px;
   height: 36px;
   flex: none;
+  overflow: hidden;
 }
 
 .wgSectionLabel {
-  flex: none;
-  max-width: 45%;
+  flex: 1;
   min-width: 0;
+  max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--dsw-fg-1, inherit);
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-1, inherit));
+  opacity: 1;
+  visibility: visible;
+  transition: max-width 0.18s ease, margin-right 0.18s ease, opacity 0.12s ease, transform 0.18s ease, visibility 0s linear;
+}
+
+.wgSectionLabelHidden {
+  opacity: 0;
+  visibility: hidden;
+  max-width: 0;
+  margin-right: -4px;
+  transition-delay: 0s, 0s, 0s, 0s, 0.18s;
+  transform: translate(-4px);
+}
+
+.wgHeaderActions {
+  opacity: 1;
+  visibility: visible;
+  max-width: 64px;
+  transition: max-width 0.18s ease, opacity 0.12s ease, transform 0.18s ease, visibility 0s linear;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  display: flex;
+  overflow: hidden;
+}
+
+.wgHeaderActionsHidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  max-width: 0;
+  transition-delay: 0s, 0s, 0s, 0.18s;
+  transform: translate(4px);
 }
 
 .wgIconButton {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
-  border-radius: 6px;
-  color: var(--dsw-fg-2, inherit);
+  border-radius: 50%;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
   cursor: pointer;
   padding: 0;
+  flex: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .wgIconButton:hover {
-  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
-  color: var(--dsw-fg-1, inherit);
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgIconButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: 1px;
 }
 
 .wgIconButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
 }
 
 .wgSearch {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
   max-width: 28px;
+  height: 28px;
   margin-left: auto;
-  transition: max-width 180ms ease;
+  border-radius: 50%;
+  background: transparent;
+  transition: max-width 0.18s ease, border-radius 0.18s ease, background-color 0.18s ease;
 }
 
 /* Search expanded: the slot grows to fill the header so the input widens
    (mirrors the official ui-workspace searchSlot idle/expanded swap). */
 .wgSearchExpanded {
   max-width: 100%;
+  height: 30px;
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-border, rgba(127, 127, 127, 0.3)));
+  border-radius: 8px;
+  padding: 0 4px;
 }
 
 .wgSearchInput {
@@ -75,9 +126,27 @@
   border: none;
   background: transparent;
   outline: none;
-  font-size: 12px;
-  color: var(--dsw-fg-1, inherit);
-  padding: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+  padding: 0 4px;
+}
+
+.wgSearchInput::placeholder {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
+}
+
+.wgSearchExpanded:focus-within {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: 1px;
+}
+
+.wgSearchExpanded .wgIconButton:focus-visible {
+  outline: none;
+}
+
+.wgSearchInput:focus-visible {
+  outline: none;
 }
 
 .wgTreeBody {
@@ -90,43 +159,58 @@
 .wgList {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .wgEmpty {
   padding: 16px 8px;
   text-align: center;
-  font-size: 12px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  font-size: 13px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
-/* Category row: top-level folder. */
+/* Category row: top-level group section header. */
 .wgCategoryRow {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 4px;
-  border-radius: 6px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
   position: relative;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .wgCategoryRow:hover {
-  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
 }
 
-/* Manual-group menu on category rows appears on hover (like workspace rows). */
+.wgCategoryRow:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: -2px;
+}
+
+.wgCategoryRow.wgMenuOpen {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+}
+
 .wgCategoryRow:hover .wgRowActions,
-.wgCategoryRow:focus-within .wgRowActions {
+.wgCategoryRow:focus-within .wgRowActions,
+.wgCategoryRow.wgMenuOpen .wgRowActions {
   opacity: 1;
 }
 
 /* Active drag-over drop target: a workspace may be dropped into this group. */
 .wgDropTarget {
-  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
-  outline: 1px dashed var(--dsw-accent, #4a90d9);
+  background: var(--dsw-alias-state-business-tertiary, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
+  outline: 1px dashed var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
   outline-offset: -1px;
 }
 
@@ -141,8 +225,8 @@
   right: 2px;
   height: 2px;
   border-radius: 1px;
-  background: var(--dsw-accent, #4a90d9);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-accent, #4a90d9) 25%, transparent);
+  background: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9)) 25%, transparent);
   pointer-events: none;
   z-index: 6;
 }
@@ -162,8 +246,8 @@
   width: 14px;
   height: 14px;
   flex: none;
-  transition: transform 120ms ease;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  transition: transform 0.15s ease;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
 .wgChevronOpen {
@@ -175,7 +259,7 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  color: var(--dsw-fg-2, inherit);
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-2, inherit));
 }
 
 .wgCategoryLabel {
@@ -184,33 +268,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--dsw-fg-1, inherit);
+  color: inherit;
 }
 
 .wgCategoryCount {
   flex: none;
   font-size: 11px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
-/* Workspace row: project folder under a category. */
+/* Workspace row: project folder under a category. Primary visual weight. */
 .wgProjectRow {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 4px 0 20px;
-  border-radius: 6px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 8px 0 24px;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
   position: relative;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+  transition: background-color 0.12s ease;
 }
 
-/* Top-level (ungrouped) workspace row: no folder indentation. */
+/* Top-level (ungrouped) workspace row: flush indentation. */
 .wgProjectFlat {
-  padding-left: 4px;
+  padding-left: 8px;
 }
 
 /* Top-level (ungrouped) rows area. The blank space below the last row accepts
@@ -228,6 +316,7 @@
   height: 14px;
   border-radius: 4px;
 }
+
 .wgTopLevelEmptyLine {
   position: absolute;
   left: 2px;
@@ -235,20 +324,40 @@
   top: 50%;
   height: 2px;
   border-radius: 1px;
-  background: var(--dsw-accent, #4a90d9);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-accent, #4a90d9) 25%, transparent);
+  background: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9)) 25%, transparent);
   pointer-events: none;
 }
+
 .wgTopLevelEmptyActive {
-  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+  background: var(--dsw-alias-state-business-tertiary, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
 }
 
 .wgProjectRow:hover {
-  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
 }
 
+.wgProjectRow:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: -2px;
+}
+
+.wgProjectRow.wgMenuOpen {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+}
+
+/* Active workspace: highlighted distinctly from selected session without full bg card. */
 .wgProjectActive {
-  color: var(--dsw-accent, #4a90d9);
+  color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+}
+
+.wgProjectActive .wgCategoryIcon {
+  color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+}
+
+.wgProjectActive .wgProjectLabel {
+  color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  font-weight: 600;
 }
 
 .wgProjectLabel {
@@ -257,8 +366,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: var(--dsw-fg-1, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
 }
 
 .wgRowActions {
@@ -267,36 +377,65 @@
   gap: 2px;
   flex: none;
   opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.wgRowActions .wgIconButton {
+  width: 24px;
+  height: 24px;
 }
 
 .wgProjectRow:hover .wgRowActions,
-.wgProjectRow:focus-within .wgRowActions {
+.wgProjectRow:focus-within .wgRowActions,
+.wgProjectRow.wgMenuOpen .wgRowActions {
   opacity: 1;
 }
 
-/* Session row: leaf under a workspace folder. */
+/* Session row: leaf under a workspace folder. Quieter hierarchy. */
 .wgSessionRow {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 4px 0 40px;
-  border-radius: 6px;
+  height: 32px;
+  padding: 0 8px 0 40px;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
+  position: relative;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .wgSessionRow:hover {
-  background: var(--dsw-bg-hover, rgba(127, 127, 127, 0.12));
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgSessionRow:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: -2px;
+}
+
+.wgSessionRow.wgMenuOpen {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
 }
 
 .wgSessionRow:hover .wgRowActions,
-.wgSessionRow:focus-within .wgRowActions {
+.wgSessionRow:focus-within .wgRowActions,
+.wgSessionRow.wgMenuOpen .wgRowActions {
   opacity: 1;
 }
 
+/* Selected session has interactive tint */
 .wgSelected {
-  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgSelected .wgSessionTitle {
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+  font-weight: 500;
 }
 
 .wgStatusSlot {
@@ -314,14 +453,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: var(--dsw-fg-1, inherit);
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-1, inherit));
+}
+
+.wgSessionRow:hover .wgSessionTitle {
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
 }
 
 .wgSessionTime {
   flex: none;
   font-size: 11px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
 .wgVisuallyHidden {
@@ -339,7 +482,7 @@
 /* Search: the idle tree is re-rendered pruned to matched branches; matched
    session rows get a tint, and content hits show a snippet line. */
 .wgMatched {
-  background: var(--dsw-bg-selected, rgba(74, 144, 217, 0.18));
+  background: var(--dsw-alias-state-business-tertiary, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
 }
 
 .wgSessionSnippet {
@@ -349,19 +492,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
 .wgSearchStatus {
-  padding: 8px;
-  font-size: 11px;
-  color: var(--dsw-fg-3, rgba(127, 127, 127, 0.8));
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
   text-align: center;
 }
 
 /* Transient save errors for group operations (drag / menu). */
 .wgManualError {
-  color: var(--dsw-fg-1, inherit);
+  color: var(--dsw-alias-state-error-primary, var(--dsw-fg-1, inherit));
   text-align: left;
   word-break: break-word;
 }
@@ -374,9 +518,16 @@
   padding: 8px 0;
 }
 
+.wgRail .wgIconButton {
+  width: 36px;
+  height: 36px;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
 .wgAddError {
   font-size: 12px;
-  color: var(--dsw-fg-1, inherit);
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary, var(--dsw-fg-1, inherit));
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 200px;
@@ -384,16 +535,48 @@
 }
 
 .wgRenameInput {
+  box-sizing: border-box;
   width: 100%;
-  border: 1px solid var(--dsw-border, rgba(127, 127, 127, 0.3));
-  border-radius: 6px;
-  background: var(--dsw-bg-1, transparent);
-  color: var(--dsw-fg-1, inherit);
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-border, rgba(127, 127, 127, 0.3)));
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base, var(--dsw-bg-1, transparent));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
   font-size: 13px;
-  padding: 6px 8px;
+  line-height: 20px;
+  padding: 6px 10px;
   outline: none;
+  transition: border-color 0.12s ease;
 }
 
 .wgRenameInput:focus {
-  border-color: var(--dsw-accent, #4a90d9);
+  border-color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+}
+
+.wgRenameInput:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: -1px;
+}
+
+/* Touch & coarse pointer support: ensure row actions are always visible */
+@media (hover: none), (pointer: coarse) {
+  .wgRowActions {
+    opacity: 1;
+  }
+}
+
+/* Reduced-motion handling */
+@media (prefers-reduced-motion: reduce) {
+  .wgSectionLabel,
+  .wgHeaderActions,
+  .wgSearch,
+  .wgIconButton,
+  .wgCategoryRow,
+  .wgProjectRow,
+  .wgSessionRow,
+  .wgChevron,
+  .wgRowActions,
+  .wgRenameInput {
+    transition: none !important;
+    animation: none !important;
+  }
 }

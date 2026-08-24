@@ -8,7 +8,7 @@
  * workspace rows, standing for their containing category) are drop targets.
  * The payload is a custom dataTransfer type so only in-plugin drags land.
  */
-import { useState, type DragEvent } from 'react'
+import { useState, type DragEvent, type KeyboardEvent } from 'react'
 import {
   IconArchiveOutline20,
   IconBranchOutline16,
@@ -107,15 +107,23 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
   const [menuOpen, setMenuOpen] = useState(false)
   const count = node.workspaces.length
   const manageable = onRename !== undefined && onDelete !== undefined
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.target !== event.currentTarget) return
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    onToggle()
+  }
   return (
     <div
-      className={`wgCategoryRow${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
+      className={`wgCategoryRow${menuOpen ? ' wgMenuOpen' : ''}${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
       role="treeitem"
+      tabIndex={0}
       aria-expanded={node.expanded}
-      aria-label={t('section.workspaces')}
+      aria-label={`${node.label} (${count})`}
       data-wg-category={node.key}
       draggable={onDragStartCategory !== undefined}
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
       onDragStart={onDragStartCategory}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
@@ -150,8 +158,9 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
                 type="button"
                 className="wgIconButton"
                 draggable={false}
-                aria-label={`${t('group.rename')} ${node.label}`}
+                aria-label={`${t('group.actions')}: ${node.label}`}
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+                onKeyDown={(e) => { e.stopPropagation() }}
               >
                 <IconEllipsisOutline16 />
               </button>
@@ -192,14 +201,23 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
     event.dataTransfer.effectAllowed = 'move'
     onDragStartExtra?.()
   }
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.target !== event.currentTarget) return
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    onToggle()
+  }
   return (
     <div
-      className={`wgProjectRow${node.containsCurrent ? ' wgProjectActive' : ''}${flat ? ' wgProjectFlat' : ''}${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
+      className={`wgProjectRow${node.containsCurrent ? ' wgProjectActive' : ''}${flat ? ' wgProjectFlat' : ''}${menuOpen ? ' wgMenuOpen' : ''}${dropActive ? ' wgDropTarget' : ''}${insertLine === 'before' ? ' wgInsertBefore' : insertLine === 'after' ? ' wgInsertAfter' : ''}`}
       role="treeitem"
+      tabIndex={0}
       aria-expanded={node.expanded}
+      aria-label={node.label}
       data-wsid={node.workspaceId}
       draggable
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
       onDragStart={onDragStart}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
@@ -232,8 +250,9 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
               type="button"
               className="wgIconButton"
               draggable={false}
-              aria-label={`${t('workspace.rename')} ${node.label}`}
+              aria-label={`${t('workspace.actions')}: ${node.label}`}
               onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+              onKeyDown={(e) => { e.stopPropagation() }}
             >
               <IconEllipsisOutline16 />
             </button>
@@ -245,6 +264,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
           draggable={false}
           aria-label={`${t('session.new')} ${node.label}`}
           onClick={(e) => { e.stopPropagation(); onNewSession() }}
+          onKeyDown={(e) => { e.stopPropagation() }}
         >
           <IconPlusOutline16 />
         </button>
@@ -272,12 +292,22 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
     { id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 /> },
     { id: 'archive', label: t('session.archive'), icon: <IconArchiveOutline20 size={16} /> },
   ]
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.target !== event.currentTarget) return
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    onOpen(node.id)
+  }
   return (
     <div
-      className={`wgSessionRow${selected ? ' wgSelected' : ''}${node.matched === true ? ' wgMatched' : ''}`}
+      className={`wgSessionRow${selected ? ' wgSelected' : ''}${menuOpen ? ' wgMenuOpen' : ''}${node.matched === true ? ' wgMatched' : ''}`}
       role="treeitem"
+      tabIndex={0}
       aria-selected={selected}
+      aria-current={selected ? 'true' : undefined}
+      aria-label={node.title}
       onClick={() => { onOpen(node.id) }}
+      onKeyDown={handleKeyDown}
     >
       <span className="wgStatusSlot">
         {showStatus && <StateDot state={sessionDotState(node)} />}
@@ -305,8 +335,9 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
               <button
                 type="button"
                 className="wgIconButton"
-                aria-label={`${t('session.rename')} ${node.title}`}
+                aria-label={`${t('session.actions')}: ${node.title}`}
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+                onKeyDown={(e) => { e.stopPropagation() }}
               >
                 <IconEllipsisOutline16 />
               </button>

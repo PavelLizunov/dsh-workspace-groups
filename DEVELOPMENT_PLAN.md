@@ -44,11 +44,14 @@
 
 ## Этап 3 — Accessibility
 
-- [ ] Реализовать roving focus и WAI-ARIA Tree keyboard navigation.
-- [ ] Исправить accessible names категорий и search input.
+- [x] Добавить базовый keyboard focus и Enter/Space activation для Group, Workspace и Session rows в рамках DSH-native redesign.
+- [ ] Реализовать roving focus и полную WAI-ARIA Tree keyboard navigation.
+- [x] Исправить accessible names категорий и search input.
 - [ ] Добавить меню «Переместить в группу», «Выше», «Ниже» как альтернативу drag-and-drop.
-- [ ] Сделать row actions доступными без hover и на touch-устройствах.
+- [x] Сделать row actions доступными без hover и на touch-устройствах.
 - [ ] Добавить live announcements для перемещения и ошибок.
+
+**Промежуточный статус:** DSH-native redesign добавляет фокус, Enter/Space activation, корректные accessible names и touch-visible actions; roving focus, Arrow navigation, keyboard move actions и live announcements остаются открыты.
 
 **Готово, когда:** основной сценарий группировки и сортировки полностью выполняется только клавиатурой; axe/manual screen-reader smoke не показывает blocker-ошибок.
 

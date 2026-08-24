@@ -34,7 +34,7 @@ Client apply (src/client/index.ts)
 
 ## Repair status
 
-The first core-correctness batch is fixed on branch `fix/core-english-first`: cross-platform separator/root normalization, segment-boundary `pathPrefix`, hidden-rule fallback, safe handling of unavailable manual assignments, reserved `__topLevel__`, and self-drop no-op now have regression coverage. The primary runtime, tests, metadata, examples, verifier copy, and `README.md` are English-first; Simplified Chinese is isolated to its locale module and `README_ZH.md`. Ordering defects in `GroupsBrowser.tsx`, concurrency, search actions, accessibility, and the fail-open verifier remain open.
+The first core-correctness batch is fixed on `main`: cross-platform separator/root normalization, segment-boundary `pathPrefix`, hidden-rule fallback, safe handling of unavailable manual assignments, reserved `__topLevel__`, and self-drop no-op now have regression coverage. The primary runtime, tests, metadata, examples, verifier copy, and `README.md` are English-first; Simplified Chinese is isolated to its locale module and `README_ZH.md`. The DSH-native redesign adds theme-token alignment, clearer row hierarchy, keyboard focus plus Enter/Space activation, corrected accessible names, and touch-visible actions. Ordering defects in `GroupsBrowser.tsx`, concurrency, search actions, full WAI-ARIA tree navigation, keyboard move alternatives, and the fail-open verifier remain open.
 
 ## Confirmed findings
 
@@ -48,7 +48,7 @@ The first core-correctness batch is fixed on branch `fix/core-english-first`: cr
 6. **Fixed on `fix/core-english-first`: dropping a workspace on itself moves it to the end** — `moveBefore`/`moveAfter` now return the unchanged order for self-targets.
 7. **Search result action menus are no-ops** — visible New Session/Rename/Delete/Fork/Archive controls call empty handlers (`src/client/GroupsBrowser.tsx:1315-1372`). Opening a session is the only functional search-row action.
 8. **Browser verification can report success without running tests** — early Chrome failure produces `0/0 passed`, exit code `0` (`scripts/verify-groups.mjs:75-104,691-733`). Reproduced with `/bin/false`.
-9. **Tree rows are not keyboard operable** — `role="treeitem"` rows have no `tabIndex`, roving focus, or Enter/Space/Arrow handlers (`src/client/rows.tsx:111-123,196-207,276-281`).
+9. **Partially fixed by DSH-native redesign: tree rows are not fully keyboard operable** — rows now have focus and Enter/Space activation, but roving focus, Arrow navigation, and keyboard move/reorder actions remain open.
 
 ### Medium
 

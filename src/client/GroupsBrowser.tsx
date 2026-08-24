@@ -756,7 +756,11 @@ export function GroupsBrowser({
   return (
     <div className={`wgRoot${wide ? '' : ' wgRail'}`}>
       <div className="wgSectionHeader">
-        {wide && <span className="wgSectionLabel">{t('section.workspaces')}</span>}
+        {wide && (
+          <span className={`wgSectionLabel${searchExpanded ? ' wgSectionLabelHidden' : ''}`}>
+            {t('section.workspaces')}
+          </span>
+        )}
         {wide && (
           <div className={`wgSearch${searchExpanded ? ' wgSearchExpanded' : ''}`} ref={searchRoot}>
             <button
@@ -772,6 +776,7 @@ export function GroupsBrowser({
                 ref={searchInput}
                 className="wgSearchInput"
                 type="text"
+                aria-label={t('search.placeholder')}
                 placeholder={t('search.placeholder')}
                 maxLength={SEARCH_QUERY_MAX_CODE_UNITS}
                 value={query}
@@ -800,31 +805,33 @@ export function GroupsBrowser({
             )}
           </div>
         )}
-        <Tooltip label={t('group.create')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className="wgIconButton"
-            aria-label={t('group.create')}
-            onClick={() => {
-              setGroupDraft('')
-              setGroupError(null)
-              setGroupDialog({ mode: 'create' })
-            }}
-          >
-            <IconFolderOpenOutline16 size={wide ? 16 : 18} />
-          </button>
-        </Tooltip>
-        <Tooltip label={t('workspace.add')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className="wgIconButton"
-            aria-label={t('workspace.add')}
-            disabled={adding}
-            onClick={addWorkspace}
-          >
-            <IconProjectAddOutline16 size={wide ? 16 : 18} />
-          </button>
-        </Tooltip>
+        <div className={`wgHeaderActions${wide && searchExpanded ? ' wgHeaderActionsHidden' : ''}`}>
+          <Tooltip label={t('group.create')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className="wgIconButton"
+              aria-label={t('group.create')}
+              onClick={() => {
+                setGroupDraft('')
+                setGroupError(null)
+                setGroupDialog({ mode: 'create' })
+              }}
+            >
+              <IconFolderOpenOutline16 size={wide ? 16 : 18} />
+            </button>
+          </Tooltip>
+          <Tooltip label={t('workspace.add')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className="wgIconButton"
+              aria-label={t('workspace.add')}
+              disabled={adding}
+              onClick={addWorkspace}
+            >
+              <IconProjectAddOutline16 size={wide ? 16 : 18} />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {!wide && (
