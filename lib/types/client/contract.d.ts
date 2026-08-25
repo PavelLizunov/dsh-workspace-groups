@@ -1,12 +1,13 @@
 /**
  * Registrant-private injected share for the workspace-groups browser entry.
  * Mirrors the official ui-workspace browser inject (same runtime calls), with
- * two differences: no directory-flow hole dependency (Add Workspace is
- * self-contained via `pickDirectory`), and no locale-keyed naming collision.
+ * two differences: this plugin owns its in-app browse dialog while reusing
+ * the official workspace service APIs (does not claim the official child hole),
+ * and no locale-keyed naming collision.
  */
 import type { PropsHooks, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots';
 import type { HostDescriptionSource } from '@deepseek-ai/dsh-client-connection/client';
-import type { SessionId, SessionSearchResultItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import type { DirectoryListing, SessionId, SessionSearchResultItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
 import type { createGroupsViewStore } from './stores.ts';
 /** Injected share (arrives via the register inject factory). */
 export type GroupsBrowserInjected = {
@@ -39,8 +40,10 @@ export type GroupsBrowserInjected = {
     createWorkspace: (input: {
         path: string;
     }) => Promise<WorkspaceView>;
-    /** Ask the local Host to open its native single-directory chooser (self-contained Add Workspace). */
-    pickDirectory: () => Promise<string | null>;
+    /** List one directory level through the Host's `browse` capability. */
+    listDirectory: (path?: string, signal?: AbortSignal) => Promise<DirectoryListing>;
+    /** Create one child directory through the Host's `browse` capability. */
+    createDirectory: (path: string, name: string) => Promise<string>;
     /** Browser-private injected hooks (host description; bound by the slot renderer). */
     hooks: {
         /** Current generation's Host description. */

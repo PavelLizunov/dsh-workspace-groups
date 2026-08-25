@@ -1,0 +1,143 @@
+.wgDirectoryDialog {
+  width: min(680px, calc(100vw - 32px));
+}
+
+.wgDirectoryBrowser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: min(440px, 60vh);
+}
+
+.wgDirectoryCrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.wgDirectoryCrumbPart {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.wgDirectoryCrumbPart button,
+.wgDirectoryNewFolder {
+  font: inherit;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 7px;
+}
+
+.wgDirectoryCrumbPart button:hover:not(:disabled),
+.wgDirectoryNewFolder:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.wgDirectoryCrumbPart button:disabled {
+  color: var(--dsw-alias-label-primary);
+  cursor: default;
+}
+
+.wgDirectoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 220px;
+  max-height: min(420px, 48vh);
+  overflow-y: auto;
+}
+
+.wgDirectoryRow {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.wgDirectoryRow span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgDirectoryRow:hover:not(:disabled),
+.wgDirectoryRowSelected {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.wgDirectoryRow:focus-visible,
+.wgDirectoryCrumbPart button:focus-visible,
+.wgDirectoryNewFolder:focus-visible,
+.wgDirectoryCreate input:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
+.wgDirectoryStatus,
+.wgDirectoryError {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.wgDirectoryStatus {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.wgDirectoryError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.wgDirectoryError span {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.wgDirectoryNewFolder {
+  align-self: flex-start;
+}
+
+.wgDirectoryCreate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wgDirectoryCreate input {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 34px;
+  flex: 1;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+@media (max-width: 560px) {
+  .wgDirectoryBrowser { min-height: 52vh; }
+  .wgDirectoryCreate { align-items: stretch; flex-direction: column; }
+  .wgDirectoryCreate input { width: 100%; flex: none; }
+}

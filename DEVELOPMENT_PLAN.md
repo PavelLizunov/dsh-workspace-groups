@@ -36,18 +36,20 @@
 - [ ] Подключить реальные Workspace/Session actions в результатах поиска либо убрать недоступные кнопки.
 - [ ] Показывать ошибки fork/archive и дать retry для config/manual failures.
 - [ ] Защитить модальные операции от stale promise settlement и повторного открытия другой сущности.
-- [ ] Исправить rail mode и поведение Add Workspace при свернутом sidebar.
+- [x] Восстановить Add Workspace через browse APIs и локальный directory dialog; native-only `pickDirectory` запрещён.
+- [ ] Исправить остальные rail mode сценарии при свернутом sidebar.
 - [ ] Гарантировать раскрытие целевой группы после успешного drop.
-- [ ] Добавить browser/component tests для поиска, диалогов и DnD.
+- [ ] Добавить rendered browser/component interaction tests для поиска, диалогов, keyboard propagation и DnD (source-contract tests недостаточны).
 
 **Готово, когда:** каждый видимый action работает и ошибки видны пользователю; поиск не меняет семантику операций и порядка.
 
 ## Этап 3 — Accessibility
 
 - [x] Добавить базовый keyboard focus и Enter/Space activation для Group, Workspace и Session rows в рамках DSH-native redesign.
-- [ ] Реализовать roving focus и полную WAI-ARIA Tree keyboard navigation.
+- [ ] Исправить ARIA tree ownership/level structure, затем реализовать roving focus и полную WAI-ARIA Tree keyboard navigation.
 - [x] Исправить accessible names категорий и search input.
-- [ ] Добавить меню «Переместить в группу», «Выше», «Ниже» как альтернативу drag-and-drop.
+- [x] Добавить Workspace submenu «Переместить в группу» как альтернативу drag-and-drop.
+- [ ] Добавить keyboard actions «Выше» и «Ниже» для полной альтернативы drag-and-drop.
 - [x] Сделать row actions доступными без hover и на touch-устройствах.
 - [ ] Добавить live announcements для перемещения и ошибок.
 

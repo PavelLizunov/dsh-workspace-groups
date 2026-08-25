@@ -19,6 +19,11 @@ export interface GroupsViewState {
   workspaceExpansion: Record<string, boolean>
 }
 
+export interface ExpansionSnapshot {
+  categories: Record<string, boolean>
+  workspaces: Record<string, boolean>
+}
+
 /** Collapse writes `false` (key retained); expand writes `true`. */
 export function setCategoryExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void {
   state.categoryExpansion[key] = expanded
@@ -27,6 +32,31 @@ export function setCategoryExpandedImpl(state: GroupsViewState, key: string, exp
 /** Collapse writes `false` (key retained); expand writes `true`. */
 export function setWorkspaceExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void {
   state.workspaceExpansion[key] = expanded
+}
+
+/** Snapshot current expansion state before temporary drag folding. */
+export function captureExpansionSnapshot(state: GroupsViewState): ExpansionSnapshot {
+  return {
+    categories: { ...state.categoryExpansion },
+    workspaces: { ...state.workspaceExpansion },
+  }
+}
+
+/** Restore temporary drag folding while preserving keys the user toggled during the drag. */
+export function restoreExpansionSnapshotImpl(
+  state: GroupsViewState,
+  snapshot: ExpansionSnapshot,
+  touchedCategories: readonly string[],
+  touchedWorkspaces: readonly string[],
+): void {
+  const categoryTouches = new Set(touchedCategories)
+  const workspaceTouches = new Set(touchedWorkspaces)
+  for (const [key, value] of Object.entries(snapshot.categories)) {
+    if (!categoryTouches.has(key)) state.categoryExpansion[key] = value
+  }
+  for (const [key, value] of Object.entries(snapshot.workspaces)) {
+    if (!workspaceTouches.has(key)) state.workspaceExpansion[key] = value
+  }
 }
 
 /** Drop expansion keys that no longer exist (renames/deletes/config edits). */

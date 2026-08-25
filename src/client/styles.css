@@ -385,6 +385,54 @@
   height: 24px;
 }
 
+.wgDragHandle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
+  cursor: grab;
+  user-select: none;
+  flex: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.wgDragHandle:active {
+  cursor: grabbing;
+}
+
+.wgDragHandle:hover {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgDragHandle:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: 1px;
+}
+
+.wgGripIcon {
+  display: inline-block;
+  width: 8px;
+  height: 12px;
+  background-image: radial-gradient(circle at 1.5px 1.5px, currentColor 1.2px, transparent 1.2px);
+  background-size: 5px 4.5px;
+  background-repeat: repeat;
+  opacity: 0.7;
+}
+
+.wgDragHandle:hover .wgGripIcon {
+  opacity: 1;
+}
+
 .wgProjectRow:hover .wgRowActions,
 .wgProjectRow:focus-within .wgRowActions,
 .wgProjectRow.wgMenuOpen .wgRowActions {
@@ -559,7 +607,8 @@
 
 /* Touch & coarse pointer support: ensure row actions are always visible */
 @media (hover: none), (pointer: coarse) {
-  .wgRowActions {
+  .wgRowActions,
+  .wgDragHandle {
     opacity: 1;
   }
 }
@@ -570,6 +619,7 @@
   .wgHeaderActions,
   .wgSearch,
   .wgIconButton,
+  .wgDragHandle,
   .wgCategoryRow,
   .wgProjectRow,
   .wgSessionRow,

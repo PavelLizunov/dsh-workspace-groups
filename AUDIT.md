@@ -34,7 +34,7 @@ Client apply (src/client/index.ts)
 
 ## Repair status
 
-The first core-correctness batch is fixed on `main`: cross-platform separator/root normalization, segment-boundary `pathPrefix`, hidden-rule fallback, safe handling of unavailable manual assignments, reserved `__topLevel__`, and self-drop no-op now have regression coverage. The primary runtime, tests, metadata, examples, verifier copy, and `README.md` are English-first; Simplified Chinese is isolated to its locale module and `README_ZH.md`. The DSH-native redesign adds theme-token alignment, clearer row hierarchy, keyboard focus plus Enter/Space activation, corrected accessible names, and touch-visible actions. Ordering defects in `GroupsBrowser.tsx`, concurrency, search actions, full WAI-ARIA tree navigation, keyboard move alternatives, and the fail-open verifier remain open.
+The first core-correctness batch is fixed on `main`: cross-platform separator/root normalization, segment-boundary `pathPrefix`, hidden-rule fallback, safe handling of unavailable manual assignments, reserved `__topLevel__`, and self-drop no-op now have regression coverage. The primary runtime, tests, metadata, examples, verifier copy, and `README.md` are English-first; Simplified Chinese is isolated to its locale module and `README_ZH.md`. The DSH-native redesign adds theme-token alignment, clearer row hierarchy, keyboard focus plus Enter/Space activation, corrected accessible names, and touch-visible actions. The critical sidebar fix replaces native-only Add Workspace with a guarded browse dialog, restricts Group reorder to a handle, protects user collapse state from stale drag restoration, and adds Workspace Move-to-group submenus. Ordering defects, concurrency, search actions, full WAI-ARIA tree navigation, keyboard up/down alternatives, and the fail-open verifier remain open.
 
 ## Confirmed findings
 
@@ -43,8 +43,8 @@ The first core-correctness batch is fixed on `main`: cross-platform separator/ro
 1. **Fixed on `fix/core-english-first`: directory prefix false positives** — `pathPrefix` now checks exact paths or child-segment boundaries; `/projects/app-v2` no longer matches `/projects/app`.
 2. **Fixed on `fix/core-english-first`: Windows separator mismatch** — path normalization now unifies separators and preserves POSIX/drive roots.
 3. **Fixed on `fix/core-english-first`: hidden rule shadows later active rules** — resolution skips hidden categories before matching and continues to later active rules.
-4. **Initial grouped reorder is wrong** — when a category lacks `workspaceOrder`, reorder starts from `[]`; the drop target is lost and the dragged workspace becomes the first stored item (`src/client/GroupsBrowser.tsx:579-586`).
-5. **Repeated top-level reorder resets untouched items** — the next order is rebuilt from Host order instead of the existing manual top-level order (`src/client/GroupsBrowser.tsx:566-572`).
+4. **Fixed by critical sidebar patch: initial grouped reorder started from `[]`** — both group and top-level reorder now start from `orderedWorkspaceIds`, preserving effective fallback/manual order and the drop target.
+5. **Fixed by critical sidebar patch: repeated top-level reorder reset untouched items** — current manual top-level order is retained before applying before/after movement.
 6. **Fixed on `fix/core-english-first`: dropping a workspace on itself moves it to the end** — `moveBefore`/`moveAfter` now return the unchanged order for self-targets.
 7. **Search result action menus are no-ops** — visible New Session/Rename/Delete/Fork/Archive controls call empty handlers (`src/client/GroupsBrowser.tsx:1315-1372`). Opening a session is the only functional search-row action.
 8. **Browser verification can report success without running tests** — early Chrome failure produces `0/0 passed`, exit code `0` (`scripts/verify-groups.mjs:75-104,691-733`). Reproduced with `/bin/false`.
@@ -56,7 +56,7 @@ The first core-correctness batch is fixed on `main`: cross-platform separator/ro
 2. **Fixed on `fix/core-english-first`: reserved `__topLevel__` name is accepted** — YAML/manual parsing, rename validation, assignment validation, and Client taken-name checks now reserve it; only `workspaceOrder` accepts the key.
 3. **Fixed on `fix/core-english-first`: assignments to hidden categories can disappear from both group and top-level trees** — unavailable overrides now resolve safely to top level.
 4. **Search order differs from normal tree** — search grouping does not apply `manual.workspaceOrder` (`src/client/tree.ts:371-436`).
-5. **Target group expansion may be restored to collapsed after drop** — drop expands the target, then document `dragend` restores the pre-drag snapshot (`src/client/GroupsBrowser.tsx:529-546,588-592`).
+5. **Fixed by critical sidebar patch: target/user expansion could be overwritten after drag** — restoration is now revision-guarded, so a later user toggle or target expansion wins over a stale drag snapshot.
 6. **Async dialogs can affect a newly opened target** — rename/delete dialogs remain dismissible while mutations are pending; old promise settlement can close or populate a new dialog (`src/client/GroupsBrowser.tsx:345-393,962-1069`).
 7. **Package Client manifest omits required `connection` dependency ordering** — runtime inject requires it, but `dsh.client.inject` does not list it (`package.json:48-55`; `src/client/index.ts:36,81`).
 8. **Hardcoded root-relative config endpoints** — `/workspace-groups/*` bypass the DSH API carrier/base-path abstraction (`src/client/GroupsBrowser.tsx:89-113`). The active profile currently returns the app shell for these routes because this plugin is not mounted.

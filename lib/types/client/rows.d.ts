@@ -12,6 +12,11 @@ import { type DragEvent } from 'react';
 import { type StateDotState } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts';
+export interface WorkspaceMoveTarget {
+    key: string;
+    label: string;
+    current: boolean;
+}
 type T = TranslateNS<'workspaceGroups'>;
 /** dataTransfer type carrying the dragged workspace id (in-plugin drags only). */
 export declare const DND_WORKSPACE_TYPE = "application/x-dsh-workspace-groups";
@@ -52,7 +57,7 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     onDragStartCategory?: (event: DragEvent) => void;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
     node: WorkspaceGroupNode;
     t: T;
     onToggle: () => void;
@@ -62,6 +67,9 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     /** Project currently sits inside a group — offer "move out of group". */
     canMoveOut?: boolean;
     onMoveOut?: () => void;
+    /** All group/top-level destinations for the Move to group submenu. */
+    moveTargets?: readonly WorkspaceMoveTarget[];
+    onMoveTo?: (categoryKey: string) => void;
     /** Render as a top-level row (no folder indentation). */
     flat?: boolean;
     /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */

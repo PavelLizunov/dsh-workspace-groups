@@ -10,7 +10,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  captureExpansionSnapshot,
   retainKeysImpl,
+  restoreExpansionSnapshotImpl,
   setCategoryExpandedImpl,
   setWorkspaceExpandedImpl,
   type GroupsViewState,
@@ -41,6 +43,45 @@ describe('groups view store expansion semantics', () => {
     setWorkspaceExpandedImpl(state, 'ws-1', false)
     expect(state.workspaceExpansion).toHaveProperty('ws-1', false)
     expect('ws-1' in state.workspaceExpansion).toBe(true)
+  })
+
+  it('restores temporary drag folding when the state was not changed by the user', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: { A: true },
+      workspaceExpansion: { 'ws-1': true },
+    }
+    const snapshot = captureExpansionSnapshot(state)
+    state.categoryExpansion.A = false
+    state.workspaceExpansion['ws-1'] = false
+    restoreExpansionSnapshotImpl(state, snapshot, [], [])
+    expect(state.categoryExpansion.A).toBe(true)
+    expect(state.workspaceExpansion['ws-1']).toBe(true)
+  })
+
+  it('does not overwrite a user toggle made after temporary drag folding', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: { A: true },
+      workspaceExpansion: { 'ws-1': true },
+    }
+    const snapshot = captureExpansionSnapshot(state)
+    state.categoryExpansion.A = false
+    state.workspaceExpansion['ws-1'] = false
+    state.categoryExpansion.A = true
+    state.workspaceExpansion['ws-1'] = true
+    restoreExpansionSnapshotImpl(state, snapshot, ['A'], ['ws-1'])
+    expect(state.categoryExpansion.A).toBe(true)
+    expect(state.workspaceExpansion['ws-1']).toBe(true)
+  })
+
+  it('restores untouched siblings while preserving a user-toggled key', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: { A: false, B: false },
+      workspaceExpansion: {},
+    }
+    const snapshot = { categories: { A: true, B: true }, workspaces: {} }
+    state.categoryExpansion.A = true
+    restoreExpansionSnapshotImpl(state, snapshot, ['A'], [])
+    expect(state.categoryExpansion).toEqual({ A: true, B: true })
   })
 
   it('retainKeys keeps collapsed keys (deliberate user state survives config churn)', () => {

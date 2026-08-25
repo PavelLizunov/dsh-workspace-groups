@@ -29,6 +29,12 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { WorkspaceGroupsKey } from './locales.ts'
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts'
 
+export interface WorkspaceMoveTarget {
+  key: string
+  label: string
+  current: boolean
+}
+
 type T = TranslateNS<'workspaceGroups'>
 
 /** dataTransfer type carrying the dragged workspace id (in-plugin drags only). */
@@ -121,10 +127,8 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       aria-expanded={node.expanded}
       aria-label={`${node.label} (${count})`}
       data-wg-category={node.key}
-      draggable={onDragStartCategory !== undefined}
       onClick={onToggle}
       onKeyDown={handleKeyDown}
-      onDragStart={onDragStartCategory}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
       onDrop={onRowDrop}
@@ -137,35 +141,55 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
-      {manageable && (
+      {(manageable || onDragStartCategory !== undefined) && (
         <span className="wgRowActions">
-          <Menu
-            open={menuOpen}
-            onClose={() => { setMenuOpen(false) }}
-            items={[
-              { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
-              { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
-            ]}
-            onSelect={(id) => {
-              setMenuOpen(false)
-              if (id === 'rename') onRename()
-              if (id === 'delete') onDelete()
-            }}
-            portal
-            closeOnPointerLeave
-            anchor={(
-              <button
-                type="button"
-                className="wgIconButton"
-                draggable={false}
-                aria-label={`${t('group.actions')}: ${node.label}`}
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
-                onKeyDown={(e) => { e.stopPropagation() }}
-              >
-                <IconEllipsisOutline16 />
-              </button>
-            )}
-          />
+          {onDragStartCategory !== undefined && (
+            <button
+              type="button"
+              className="wgDragHandle"
+              data-wg-drag-handle="category"
+              draggable
+              aria-label={t('group.reorder')}
+              title={t('group.reorder')}
+              onDragStart={onDragStartCategory}
+              onClick={(e) => { e.stopPropagation() }}
+              onDoubleClick={(e) => { e.stopPropagation() }}
+              onPointerDown={(e) => { e.stopPropagation() }}
+              onMouseDown={(e) => { e.stopPropagation() }}
+              onKeyDown={(e) => { e.stopPropagation() }}
+            >
+              <span className="wgGripIcon" aria-hidden="true" />
+            </button>
+          )}
+          {manageable && (
+            <Menu
+              open={menuOpen}
+              onClose={() => { setMenuOpen(false) }}
+              items={[
+                { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
+                { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
+              ]}
+              onSelect={(id) => {
+                setMenuOpen(false)
+                if (id === 'rename') onRename()
+                if (id === 'delete') onDelete()
+              }}
+              portal
+              closeOnPointerLeave
+              anchor={(
+                <button
+                  type="button"
+                  className="wgIconButton"
+                  draggable={false}
+                  aria-label={`${t('group.actions')}: ${node.label}`}
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+                  onKeyDown={(e) => { e.stopPropagation() }}
+                >
+                  <IconEllipsisOutline16 />
+                </button>
+              )}
+            />
+          )}
         </span>
       )}
     </div>
@@ -173,7 +197,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
   node: WorkspaceGroupNode
   t: T
   onToggle: () => void
@@ -183,6 +207,9 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   /** Project currently sits inside a group — offer "move out of group". */
   canMoveOut?: boolean
   onMoveOut?: () => void
+  /** All group/top-level destinations for the Move to group submenu. */
+  moveTargets?: readonly WorkspaceMoveTarget[]
+  onMoveTo?: (categoryKey: string) => void
   /** Render as a top-level row (no folder indentation). */
   flat?: boolean
   /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
@@ -190,9 +217,20 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuItems = [
-    ...(canMoveOut && onMoveOut !== undefined
-      ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
-      : []),
+    ...(moveTargets !== undefined && onMoveTo !== undefined
+      ? [{
+          id: 'moveToGroup',
+          label: t('workspace.moveToGroup'),
+          icon: <IconFolderOpenOutline16 size={16} />,
+          submenu: moveTargets.map(target => ({
+            id: `moveTo:${target.key}`,
+            label: target.label,
+            disabled: target.current,
+          })),
+        }]
+      : canMoveOut && onMoveOut !== undefined
+        ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
+        : []),
     { id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> },
     { id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true },
   ]
@@ -240,6 +278,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
           onSelect={(id) => {
             setMenuOpen(false)
             if (id === 'moveOut') onMoveOut?.()
+            if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
             if (id === 'rename') onRename()
             if (id === 'delete') onDelete()
           }}

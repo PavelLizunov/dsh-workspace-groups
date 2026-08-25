@@ -11,11 +11,12 @@
  * this file only binds them through defineStore.
  */
 import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client';
-import { retainKeysImpl, setCategoryExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.ts';
+import { retainKeysImpl, restoreExpansionSnapshotImpl, setCategoryExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.ts';
 /** Annotation twin of the actions literal below (structural type, satisfies `ActionsDecl`). */
 type GroupsViewActions = {
     setCategoryExpanded: typeof setCategoryExpandedImpl;
     setWorkspaceExpanded: typeof setWorkspaceExpandedImpl;
+    restoreExpansionSnapshot: typeof restoreExpansionSnapshotImpl;
     retainKeys: typeof retainKeysImpl;
 };
 /**

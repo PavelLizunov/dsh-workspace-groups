@@ -17,9 +17,17 @@ export interface GroupsViewState {
     /** Workspace folder expansion keyed by workspace id (absent = never touched). */
     workspaceExpansion: Record<string, boolean>;
 }
+export interface ExpansionSnapshot {
+    categories: Record<string, boolean>;
+    workspaces: Record<string, boolean>;
+}
 /** Collapse writes `false` (key retained); expand writes `true`. */
 export declare function setCategoryExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void;
 /** Collapse writes `false` (key retained); expand writes `true`. */
 export declare function setWorkspaceExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void;
+/** Snapshot current expansion state before temporary drag folding. */
+export declare function captureExpansionSnapshot(state: GroupsViewState): ExpansionSnapshot;
+/** Restore temporary drag folding while preserving keys the user toggled during the drag. */
+export declare function restoreExpansionSnapshotImpl(state: GroupsViewState, snapshot: ExpansionSnapshot, touchedCategories: readonly string[], touchedWorkspaces: readonly string[]): void;
 /** Drop expansion keys that no longer exist (renames/deletes/config edits). */
 export declare function retainKeysImpl(state: GroupsViewState, categoryKeys: readonly string[], workspaceKeys: readonly string[]): void;

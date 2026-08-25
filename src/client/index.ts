@@ -10,8 +10,9 @@
  *   sidebar renders this browser instead of the official one.
  * - This entry deliberately declares NO child slots: the official entry
  *   already declared `sidebar.workspaces.directoryFlow` (a second declaration
- *   of an occupied child key throws). Add Workspace is therefore self-
- *   contained — `ctx.workspaces.pickDirectory()` + `create()`, no hole.
+ *   of an occupied child key throws). This plugin owns its in-app browse dialog
+ *   while reusing the official workspace service APIs (`listDirectory`,
+ *   `createDirectory`, `create`), without claiming the official child hole.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
@@ -76,7 +77,8 @@ export function apply(ctx: ClientContext): void {
       await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => ctx.workspaces.create(input),
-    pickDirectory: () => ctx.workspaces.pickDirectory(),
+    listDirectory: (path, signal) => ctx.workspaces.listDirectory(path, signal),
+    createDirectory: (path, name) => ctx.workspaces.createDirectory(path, name),
     hooks: {
       hostDescription: (ctx.get('connection') as ConnectionHandle).hostDescription,
     },
