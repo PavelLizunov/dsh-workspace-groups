@@ -37,7 +37,7 @@
 - [ ] Показывать ошибки fork/archive и дать retry для config/manual failures.
 - [ ] Защитить модальные операции от stale promise settlement и повторного открытия другой сущности.
 - [x] Восстановить Add Workspace через browse APIs и локальный directory dialog; native-only `pickDirectory` запрещён.
-- [ ] Исправить остальные rail mode сценарии при свернутом sidebar.
+- [x] Исправить rail mode: скрывать дерево и New Group, оставлять Add Workspace и Search.
 - [ ] Гарантировать раскрытие целевой группы после успешного drop.
 - [ ] Добавить rendered browser/component interaction tests для поиска, диалогов, keyboard propagation и DnD (source-contract tests недостаточны).
 

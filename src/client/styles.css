@@ -333,6 +333,54 @@
   background: var(--dsw-alias-state-business-tertiary, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
 }
 
+/* Category drop-end append target / insertion line */
+[data-wg-category-drop-end],
+.wgCategoryDropEnd {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.wgCategoryDropEndActive {
+  height: 18px;
+}
+
+.wgCategoryDropEndLine {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  pointer-events: none;
+}
+
+[data-wg-category-drop-end].wgDropTarget,
+.wgCategoryDropEnd.wgDropTarget {
+  background: var(--dsw-alias-state-business-tertiary, var(--dsw-bg-selected, rgba(74, 144, 217, 0.18)));
+  outline: 1px dashed var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: -1px;
+}
+
+[data-wg-category-drop-end].wgInsertAfter::after,
+[data-wg-category-drop-end].wgInsertBefore::before,
+.wgCategoryDropEnd.wgInsertAfter::after,
+.wgCategoryDropEnd.wgInsertBefore::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9)) 25%, transparent);
+  pointer-events: none;
+  z-index: 6;
+}
+
 .wgProjectRow:hover {
   background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
 }
@@ -385,7 +433,8 @@
   height: 24px;
 }
 
-.wgDragHandle {
+.wgDragHandle,
+[data-wg-drag-handle="category"] {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -401,20 +450,26 @@
   color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: element;
+  touch-action: none;
   flex: none;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.wgDragHandle:active {
+.wgDragHandle:active,
+[data-wg-drag-handle="category"]:active {
   cursor: grabbing;
 }
 
-.wgDragHandle:hover {
+.wgDragHandle:hover,
+[data-wg-drag-handle="category"]:hover {
   background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
   color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
 }
 
-.wgDragHandle:focus-visible {
+.wgDragHandle:focus-visible,
+[data-wg-drag-handle="category"]:focus-visible {
   outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
   outline-offset: 1px;
 }
@@ -429,7 +484,8 @@
   opacity: 0.7;
 }
 
-.wgDragHandle:hover .wgGripIcon {
+.wgDragHandle:hover .wgGripIcon,
+[data-wg-drag-handle="category"]:hover .wgGripIcon {
   opacity: 1;
 }
 
@@ -608,7 +664,8 @@
 /* Touch & coarse pointer support: ensure row actions are always visible */
 @media (hover: none), (pointer: coarse) {
   .wgRowActions,
-  .wgDragHandle {
+  .wgDragHandle,
+  [data-wg-drag-handle="category"] {
     opacity: 1;
   }
 }
@@ -620,6 +677,7 @@
   .wgSearch,
   .wgIconButton,
   .wgDragHandle,
+  [data-wg-drag-handle="category"],
   .wgCategoryRow,
   .wgProjectRow,
   .wgSessionRow,

@@ -17,7 +17,7 @@
  *   - v0.4.1: Drag out of group to top level (top-level drop area shown during drag, drag-out persists null,
  *     top-level row render, in-group project menu "Move out of group");
  *   - v0.6: Level-based collapse + post-drag restore -- dragging project only folds project rows (in-group + top-level),
- *     group rows stay open; dragging group only folds group rows, project rows stay open; dragend restores pre-drag snapshot;
+ *     group rows stay open; group expansion stays stable during reorder; dragend restores pre-drag snapshot;
  *   - v0.7: Top-level area uses insertion line indicator (no full-block highlight) -- top-level row reordering,
  *     blank space below last row appends to end; empty top-level shows indicator line below last group row;
  *     top-level order persisted in `workspaceOrder[__topLevel__]`;
@@ -36,6 +36,8 @@ const CHROME = process.argv[4] ?? '/Applications/Google Chrome.app/Contents/MacO
 
 const LEGACY_UNCATEGORIZED_ZH = '\u672A\u5206\u7C7B'
 const LEGACY_PLUGINS_ZH = '\u63D2\u4EF6'
+const DND_CATEGORY_TYPE = 'application/x-dsh-workspace-groups-category'
+const DND_WORKSPACE_TYPE = 'application/x-dsh-workspace-groups'
 
 const results = []
 function report(name, ok, detail = '') {
@@ -331,70 +333,120 @@ async function main() {
       await expandProject(cat2)
 
       // ---- v0.4: Drag group (before project consumption tests, ensure both group rows exist) ----
-      // Bottom half = move after target group
-      const groupDown = await evaluate(`(() => {
-        const source = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
-        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
-        if (!source || !target) return false
-        const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
-        const rect = target.getBoundingClientRect()
-        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
-        window.__wgCatDt = dt
-        window.__wgCatSource = source // dragend fires on the dragged source
-        return true
-      })()`)
-      report('Drag group hovering bottom half -> bottom insertion indicator line', groupDown && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}].wgInsertAfter')`, 5000))
-      await evaluate(`(() => {
-        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
-        if (!target || !window.__wgCatDt) return false
-        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + target.getBoundingClientRect().height - 1, dataTransfer: window.__wgCatDt }))
-        window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
-        return true
-      })()`)
-      report('Drag group down -> moved after target group', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
-        const o = d.manual?.categoryOrder ?? []
-        return o.indexOf(${JSON.stringify(cat2)}) > o.indexOf(${JSON.stringify(cat1)})
-      })`))
+      // Group drag source must be [data-wg-drag-handle="category"] within source row, not the row.
+      // Assert dragstart populated DND_CATEGORY_TYPE.
+      // Capture categoryOrder/effective DOM order before each group drag and assert intended relative order changed.
+      const getCategoryDomOrder = async () => evaluate(`(() => [...document.querySelectorAll('.wgCategoryRow')].map(r => r.getAttribute('data-wg-category')))()`)
 
-      // Top half = move before target group
+      const initialOrder = await getCategoryDomOrder()
+      const idx1 = initialOrder.indexOf(cat1)
+      const idx2 = initialOrder.indexOf(cat2)
+      // Identify which category currently renders first vs second in DOM
+      const [firstGroup, secondGroup] = idx1 < idx2 ? [cat1, cat2] : [cat2, cat1]
+
+      // Top half = move before target group (drag secondGroup before firstGroup)
       const groupUp = await evaluate(`(() => {
-        const source = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
-        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
-        if (!source || !target) return false
+        const sourceRow = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(secondGroup)}]')
+        const source = sourceRow?.querySelector('[data-wg-drag-handle="category"]')
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}]')
+        if (!source || !target) return { error: 'source handle or target missing' }
         const dt = new DataTransfer()
         source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        const types = Array.prototype.slice.call(dt.types || [])
+        const categoryData = dt.getData(${JSON.stringify(DND_CATEGORY_TYPE)})
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + 1, dataTransfer: dt }))
         window.__wgCatDt = dt
-        window.__wgCatSource = source // dragend fires on the dragged source
-        return true
+        window.__wgCatSource = source // dragend fires on the dragged source handle
+        return { ok: true, types, categoryData }
       })()`)
-      report('Drag group hovering top half -> top insertion indicator line', groupUp && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}].wgInsertBefore')`, 5000))
+      report('Group dragstart populated DND_CATEGORY_TYPE', groupUp.types?.includes(DND_CATEGORY_TYPE) === true, `types=${JSON.stringify(groupUp.types)} data=${groupUp.categoryData}`)
+      report('Drag group hovering top half -> top insertion indicator line', groupUp.ok && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}].wgInsertBefore')`, 5000))
       await evaluate(`(() => {
-        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}]')
         if (!target || !window.__wgCatDt) return false
         target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + 1, dataTransfer: window.__wgCatDt }))
         window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
         return true
       })()`)
-      report('Drag group up -> moved before target group', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
+      report('Drag group up -> moved before target group (relative order changed)', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
         const o = d.manual?.categoryOrder ?? []
-        return o.indexOf(${JSON.stringify(cat1)}) < o.indexOf(${JSON.stringify(cat2)})
+        return o.indexOf(${JSON.stringify(secondGroup)}) !== -1 && o.indexOf(${JSON.stringify(firstGroup)}) !== -1 && o.indexOf(${JSON.stringify(secondGroup)}) < o.indexOf(${JSON.stringify(firstGroup)})
       })`))
-      // Let the group-reorder PUT settle before the next drag (manualSaving
-      // rejects concurrent writes).
       await sleep(1000)
 
-      // Group drags folded every group — dragend must restore the snapshot
-      // automatically (no manual re-expand needed). cat1 has 1 member, cat2
-      // has 2 (v0.2 drag-in + top-level seed).
-      const autoRestored = await waitFor(`(() => {
-        const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
-        const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
-        return !!s1 && !!s2 && s1.querySelectorAll('.wgProjectRow').length >= 1 && s2.querySelectorAll('.wgProjectRow').length >= 2
+      // Bottom half = move after target group (drag secondGroup back after firstGroup)
+      const groupDown = await evaluate(`(() => {
+        const sourceRow = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(secondGroup)}]')
+        const source = sourceRow?.querySelector('[data-wg-drag-handle="category"]')
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}]')
+        if (!source || !target) return { error: 'source handle or target missing' }
+        const dt = new DataTransfer()
+        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        const types = Array.prototype.slice.call(dt.types || [])
+        const categoryData = dt.getData(${JSON.stringify(DND_CATEGORY_TYPE)})
+        const rect = target.getBoundingClientRect()
+        target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
+        window.__wgCatDt = dt
+        window.__wgCatSource = source // dragend fires on the dragged source handle
+        return { ok: true, types, categoryData }
       })()`)
-      report('Group drag automatically restores expansion (dragend restores snapshot)', autoRestored)
+      report('Drag group hovering bottom half -> bottom insertion indicator line', groupDown.ok && await waitFor(`!!document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}].wgInsertAfter')`, 5000))
+      await evaluate(`(() => {
+        const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(firstGroup)}]')
+        if (!target || !window.__wgCatDt) return false
+        target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientY: target.getBoundingClientRect().top + target.getBoundingClientRect().height - 1, dataTransfer: window.__wgCatDt }))
+        window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+        return true
+      })()`)
+      report('Drag group down -> moved after target group (relative order changed)', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
+        const o = d.manual?.categoryOrder ?? []
+        return o.indexOf(${JSON.stringify(secondGroup)}) !== -1 && o.indexOf(${JSON.stringify(firstGroup)}) !== -1 && o.indexOf(${JSON.stringify(secondGroup)}) > o.indexOf(${JSON.stringify(firstGroup)})
+      })`))
+      await sleep(1000)
+
+      // Bottom append-target group drag assertion using data-wg-category-drop-end if available
+      const hasDropEnd = await evaluate(`!!document.querySelector('[data-wg-category-drop-end]')`)
+      if (hasDropEnd) {
+        const orderBeforeAppend = await getCategoryDomOrder()
+        const topCat = orderBeforeAppend[0]
+        if (topCat) {
+          const appendDrag = await evaluate(`(() => {
+            const sourceRow = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(topCat)}]')
+            const source = sourceRow?.querySelector('[data-wg-drag-handle="category"]')
+            const target = document.querySelector('[data-wg-category-drop-end]')
+            if (!source || !target) return false
+            const dt = new DataTransfer()
+            source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+            target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
+            window.__wgCatDt = dt
+            window.__wgCatSource = source
+            return true
+          })()`)
+          if (appendDrag) {
+            await evaluate(`(() => {
+              const target = document.querySelector('[data-wg-category-drop-end]')
+              if (!target || !window.__wgCatDt) return false
+              target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__wgCatDt }))
+              window.__wgCatSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+              return true
+            })()`)
+            report('Drag group to bottom append target (data-wg-category-drop-end)', await waitFor(`fetch(${JSON.stringify(BASE)} + '/workspace-groups/config', { cache: 'no-store' }).then(r => r.json()).then(d => {
+              const o = d.manual?.categoryOrder ?? []
+              return o.length > 0 && o[o.length - 1] === ${JSON.stringify(topCat)}
+            })`))
+            await sleep(1000)
+          }
+        }
+      }
+
+      // Group expansion stays stable during reorder (Group drag no longer folds groups)
+      const groupExpansionStable = await waitFor(`(() => {
+        const r1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
+        const r2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
+        return !!r1 && !!r2 && r1.getAttribute('aria-expanded') === 'true' && r2.getAttribute('aria-expanded') === 'true'
+      })()`)
+      report('Group expansion stays stable during reorder', groupExpansionStable)
 
       // ---- v0.3: In-group reorder (inside cat2; cat1 has only 1 member left, not enough for reordering) ----
       const reorder = await evaluate(`(() => {

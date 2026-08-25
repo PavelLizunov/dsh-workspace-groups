@@ -144,8 +144,9 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       {(manageable || onDragStartCategory !== undefined) && (
         <span className="wgRowActions">
           {onDragStartCategory !== undefined && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               className="wgDragHandle"
               data-wg-drag-handle="category"
               draggable
@@ -154,12 +155,10 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
               onDragStart={onDragStartCategory}
               onClick={(e) => { e.stopPropagation() }}
               onDoubleClick={(e) => { e.stopPropagation() }}
-              onPointerDown={(e) => { e.stopPropagation() }}
-              onMouseDown={(e) => { e.stopPropagation() }}
               onKeyDown={(e) => { e.stopPropagation() }}
             >
               <span className="wgGripIcon" aria-hidden="true" />
-            </button>
+            </span>
           )}
           {manageable && (
             <Menu

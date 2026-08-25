@@ -8,6 +8,7 @@ const rowsPath = path.resolve(__dirname, '../src/client/rows.tsx')
 const browserPath = path.resolve(__dirname, '../src/client/GroupsBrowser.tsx')
 const stylesPath = path.resolve(__dirname, '../src/client/styles.css')
 const directoryBrowserPath = path.resolve(__dirname, '../src/client/DirectoryBrowser.tsx')
+const verifyGroupsPath = path.resolve(__dirname, '../scripts/verify-groups.mjs')
 
 const contractSource = fs.readFileSync(contractPath, 'utf-8')
 const clientIndexSource = fs.readFileSync(clientIndexPath, 'utf-8')
@@ -15,6 +16,7 @@ const rowsSource = fs.readFileSync(rowsPath, 'utf-8')
 const browserSource = fs.readFileSync(browserPath, 'utf-8')
 const stylesSource = fs.readFileSync(stylesPath, 'utf-8')
 const directoryBrowserSource = fs.readFileSync(directoryBrowserPath, 'utf-8')
+const verifyGroupsSource = fs.readFileSync(verifyGroupsPath, 'utf-8')
 
 function extractFunction(source: string, name: string): string {
   const start = source.indexOf(`function ${name}`)
@@ -100,6 +102,21 @@ describe('redesign source contracts: rows.tsx', () => {
     expect(handleTag).toMatch(/\bdraggable\b/)
     expect(handleTag).toMatch(/\bonDragStart\b/)
   })
+
+  it('category drag handle is non-button or has -webkit-user-drag without pointerdown/mousedown stopPropagation', () => {
+    const handleMatch = rowsSource.match(/<([a-zA-Z0-9]+)[^>]*data-wg-drag-handle=["']category["'][^>]*>/)
+    expect(handleMatch).not.toBeNull()
+    const tagName = handleMatch ? handleMatch[1] : ''
+    const handleTag = handleMatch ? handleMatch[0] : ''
+
+    if (tagName === 'button') {
+      expect(stylesSource).toMatch(/-webkit-user-drag\s*:/)
+      expect(handleTag).not.toMatch(/onPointerDown\s*=\s*\{[^}]*stopPropagation/)
+      expect(handleTag).not.toMatch(/onMouseDown\s*=\s*\{[^}]*stopPropagation/)
+    } else {
+      expect(tagName).not.toBe('button')
+    }
+  })
 })
 
 describe('redesign source contracts: GroupsBrowser.tsx', () => {
@@ -134,6 +151,45 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
   it('reorders from current effective workspace order instead of raw Host order', () => {
     expect(browserSource).toContain('orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, topLevelMembers)')
     expect(browserSource).toContain('orderedWorkspaceIds(manual, categoryKey, targetMembers)')
+  })
+
+  it('gates tree, search, and categories behind wide', () => {
+    expect(browserSource).toMatch(/\{wide\s*&&[\s\S]*?(?:wgTreeBody|wgList|CategorySection|SearchBody)/)
+  })
+
+  it('renders New Group button only in wide mode', () => {
+    expect(browserSource).toMatch(/\{wide\s*&&[\s\S]*?(?:group\.create|setGroupDialog)/)
+  })
+
+  it('preserves Add Workspace action and rail Search button', () => {
+    expect(browserSource).toMatch(/t\(['"]workspace\.add['"]\)|addWorkspace/)
+    expect(browserSource).toMatch(/!wide\s*&&[\s\S]*?(?:expandSidebar|t\(['"]search['"]\))/)
+  })
+
+  it('group dragstart does not call setCategoryExpanded or temporaryCategories', () => {
+    const dragStartCategoryIndex = browserSource.indexOf('onDragStartCategory')
+    expect(dragStartCategoryIndex).toBeGreaterThan(-1)
+    const dragStartCategorySrc = browserSource.slice(
+      dragStartCategoryIndex,
+      browserSource.indexOf('const now = Date.now()', dragStartCategoryIndex),
+    )
+    expect(dragStartCategorySrc).not.toMatch(/setCategoryExpanded/)
+    expect(dragStartCategorySrc).not.toMatch(/temporaryCategories/)
+  })
+
+  it('provides append target with data-wg-category-drop-end attribute', () => {
+    expect(browserSource).toMatch(/data-wg-category-drop-end/)
+  })
+
+  it('filters TOP_LEVEL_ORDER_KEY when moving top-level workspace into a group', () => {
+    const moveWorkspaceIndex = browserSource.indexOf('const moveWorkspaceTo =')
+    expect(moveWorkspaceIndex).toBeGreaterThan(-1)
+    const moveWorkspaceSrc = browserSource.slice(
+      moveWorkspaceIndex,
+      browserSource.indexOf('const moveCategory =', moveWorkspaceIndex),
+    )
+    const elseBranch = moveWorkspaceSrc.slice(moveWorkspaceSrc.indexOf('} else {'))
+    expect(elseBranch).toMatch(/TOP_LEVEL_ORDER_KEY/)
   })
 })
 
@@ -191,5 +247,12 @@ describe('redesign source contracts: styles.css', () => {
     expect(stylesSource).toMatch(/\[data-wg-drag-handle=["']?category["']?\]|\.wgDragHandle\b/)
     expect(stylesSource).toMatch(/(?:\[data-wg-drag-handle|\.wgDragHandle).*?:focus-visible|:focus-visible.*?(?:\[data-wg-drag-handle|\.wgDragHandle)/s)
     expect(stylesSource).toMatch(/@media[^{]*(?:pointer:\s*coarse|hover:\s*none)[^{]*\{[^}]*(?:\[data-wg-drag-handle|\.wgDragHandle)/s)
+  })
+})
+
+describe('verification script source contracts: verify-groups.mjs', () => {
+  it('targets drag handle and asserts MIME type in drag tests', () => {
+    expect(verifyGroupsSource).toMatch(/data-wg-drag-handle|\.wgDragHandle/)
+    expect(verifyGroupsSource).toMatch(/application\/x-dsh-workspace-groups/)
   })
 })
