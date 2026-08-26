@@ -1,4 +1,4 @@
-import type { GroupsContext } from './context-types.ts';
+import type { GroupsContext } from './context-types.js';
 /** Plugin identity for cordis.yml rows. */
 export declare const name = "dsh-workspace-groups";
 /** Services required before mounting: the webserver route. */

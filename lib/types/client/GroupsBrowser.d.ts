@@ -1,4 +1,4 @@
-import type { GroupsBrowserProps } from './contract.ts';
+import type { GroupsBrowserProps } from './contract.js';
 /** Row reference used by drop targets: which kind of row, which key. */
 export type DropRowRef = {
     kind: 'category' | 'workspace' | 'topLevel';

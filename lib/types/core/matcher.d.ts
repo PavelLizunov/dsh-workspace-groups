@@ -10,7 +10,7 @@
  * override when present. Hidden rule categories are inert: workspaces that
  * would match them become top-level (ungrouped).
  */
-import { type GroupCategory, type GroupsConfig, type ManualGroups } from './types.ts';
+import { type GroupCategory, type GroupsConfig, type ManualGroups } from './types.js';
 /** Classify a workspace by rules only; hidden categories are inert. */
 export declare function classify(categories: readonly GroupCategory[], path: string, title: string): GroupCategory | undefined;
 /** Display name of a rule category: the rename override when present. */

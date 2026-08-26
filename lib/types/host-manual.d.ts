@@ -1,4 +1,4 @@
-import { type ManualGroups } from './core/types.ts';
+import { type ManualGroups } from './core/types.js';
 /** Default overlay location: `$DSH_HOME/workspace-groups.manual.json`. */
 export declare function defaultManualPath(): string;
 /**

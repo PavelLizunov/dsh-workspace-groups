@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "dsh-workspace-groups": ["../../lib/types/index.d.ts"],
+      "dsh-workspace-groups/client": ["../../lib/types/client/index.d.ts"]
+    }
+  },
+  "include": [
+    "fixture.ts"
+  ]
+}

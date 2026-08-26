@@ -9,12 +9,79 @@
   min-height: min(440px, 60vh);
 }
 
+.wgDirectoryToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wgDirectoryToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.wgDirectoryPathEdit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wgDirectoryPathInput {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 32px;
+  flex: 1;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 0 10px;
+  font: inherit;
+}
+
+.wgDirectoryIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.wgDirectoryIconButton:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.wgDirectoryIconButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wgDirectoryIconButton:focus-visible,
+.wgDirectoryPathInput:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
 .wgDirectoryCrumbs {
   display: flex;
   align-items: center;
   gap: 2px;
   min-width: 0;
   overflow-x: auto;
+  flex: 1;
 }
 
 .wgDirectoryCrumbPart {
@@ -114,8 +181,42 @@
   overflow-wrap: anywhere;
 }
 
+.wgDirectoryTruncated {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.wgDirectoryBottomBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .wgDirectoryNewFolder {
   align-self: flex-start;
+}
+
+.wgDirectoryHiddenToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.wgDirectoryHiddenToggle input {
+  margin: 0;
+  cursor: pointer;
 }
 
 .wgDirectoryCreate {
@@ -140,4 +241,5 @@
   .wgDirectoryBrowser { min-height: 52vh; }
   .wgDirectoryCreate { align-items: stretch; flex-direction: column; }
   .wgDirectoryCreate input { width: 100%; flex: none; }
+  .wgDirectoryPathEdit { flex-direction: column; align-items: stretch; }
 }

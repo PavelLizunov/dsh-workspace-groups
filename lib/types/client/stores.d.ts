@@ -11,7 +11,7 @@
  * this file only binds them through defineStore.
  */
 import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client';
-import { retainKeysImpl, restoreExpansionSnapshotImpl, setCategoryExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.ts';
+import { retainKeysImpl, restoreExpansionSnapshotImpl, setCategoryExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.js';
 /** Annotation twin of the actions literal below (structural type, satisfies `ActionsDecl`). */
 type GroupsViewActions = {
     setCategoryExpanded: typeof setCategoryExpandedImpl;
@@ -24,4 +24,4 @@ type GroupsViewActions = {
  * @returns the store handle (spec + type + identity + factory in one).
  */
 export declare function createGroupsViewStore(): EngineStoreHandle<GroupsViewState, GroupsViewActions>;
-export type { GroupsViewState } from './store-core.ts';
+export type { GroupsViewState } from './store-core.js';

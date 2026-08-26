@@ -11,7 +11,7 @@
 import { type DragEvent } from 'react';
 import { type StateDotState } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
-import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts';
+import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.js';
 export interface WorkspaceMoveTarget {
     key: string;
     label: string;

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.client.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "src/css-modules.d.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ]
+}

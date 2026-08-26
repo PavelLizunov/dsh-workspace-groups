@@ -29,7 +29,6 @@ import {
   displayCategoryKeys,
   moveAfter,
   moveBefore,
-  orderedWorkspaceIds,
   originalRuleNameForDisplay,
   resolveCategory,
   takenCategoryNames,
@@ -37,6 +36,7 @@ import {
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
+import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup } from './overlay-core.ts'
 import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type WorkspaceGroupNode } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
@@ -384,8 +384,13 @@ export function GroupsBrowser({
     const targetId = deleteTarget.workspaceId
     setDeleting(true)
     setDeleteError(null)
-    deleteWorkspace(targetId).then(() => {
+    deleteWorkspace(targetId).then(async () => {
       if (generation !== deleteGeneration.current) return
+      const nextManual = normalizeManual(removeWorkspace(manual, targetId))
+      await saveManualOverlay(nextManual)
+      if (generation !== deleteGeneration.current) return
+      setManual(nextManual)
+      setManualError(null)
       setDeleting(false)
       setDeleteTarget(null)
     }).catch((reason: unknown) => {
@@ -479,22 +484,8 @@ export function GroupsBrowser({
     if (groupDialog.mode === 'create') {
       next = { ...manual, categories: [...manual.categories, name] }
     } else {
-      // Rename: rule groups ride the `renamed` map, manual groups the list;
-      // every reference (assignments / workspaceOrder / categoryOrder) follows.
       const originalRule = from !== undefined ? originalRuleNameForDisplay(config.categories, manual, from) : undefined
-      next = {
-        ...manual,
-        ...(originalRule !== undefined
-          ? { renamed: { ...manual.renamed, [originalRule]: name } }
-          : { categories: manual.categories.map(c => c === from ? name : c) }),
-        assignments: Object.fromEntries(
-          Object.entries(manual.assignments).map(([id, category]): [string, string | null] => [id, category === from ? name : category]),
-        ),
-        workspaceOrder: Object.fromEntries(
-          Object.entries(manual.workspaceOrder).map(([key, ids]): [string, string[]] => [key === from ? name : key, ids]),
-        ),
-        categoryOrder: manual.categoryOrder.map(key => key === from ? name : key),
-      }
+      next = normalizeManual(renameGroup(manual, from ?? '', name, originalRule === undefined ? {} : { originalRuleName: originalRule }))
     }
 
     const generation = ++groupGeneration.current
@@ -521,29 +512,7 @@ export function GroupsBrowser({
     const name = groupDeleteTarget
     const originalRule = originalRuleNameForDisplay(config.categories, manual, name)
 
-    // Every project currently in the group goes to uncategorized (forced, not rule-
-    // reclassified), regardless of how it landed there.
-    const assignments = { ...manual.assignments }
-    for (const workspace of workspaces) {
-      if (resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) === name) {
-        assignments[workspace.workspaceId] = null
-      }
-    }
-    const workspaceOrder = Object.fromEntries(
-      Object.entries(manual.workspaceOrder).filter(([key]) => key !== name),
-    )
-    const next: NormalizedManual = {
-      ...manual,
-      assignments,
-      workspaceOrder,
-      categoryOrder: manual.categoryOrder.filter(key => key !== name),
-      ...(originalRule !== undefined
-        ? {
-            renamed: Object.fromEntries(Object.entries(manual.renamed).filter(([key]) => key !== originalRule)),
-            hidden: [...manual.hidden, originalRule],
-          }
-        : { categories: manual.categories.filter(c => c !== name) }),
-    }
+    const next = normalizeManual(removeGroup(manual, name, originalRule === undefined ? {} : { originalRuleName: originalRule }))
 
     const generation = ++groupDeleteGeneration.current
     setGroupDeleting(true)
@@ -604,50 +573,18 @@ export function GroupsBrowser({
     const currentKey = resolveCategory(config, manual, workspaceId, workspace.path, workspace.title)
     const targetKey = categoryKey === UNCATEGORIZED_KEY ? undefined : categoryKey
     if (currentKey === targetKey && beforeWorkspaceId === undefined && afterWorkspaceId === undefined) return
+    const targetMembers = workspaces
+      .filter(w => w.workspaceId === workspaceId || resolveCategory(config, manual, w.workspaceId, w.path, w.title) === targetKey)
+      .map(w => w.workspaceId as string)
     setManualSaving(true)
     try {
-      let next: NormalizedManual
-      if (categoryKey === UNCATEGORIZED_KEY) {
-        // Move to the TOP LEVEL: force ungrouped (null) and drop from every
-        // group's order list, while recording the position inside the ordered
-        // top-level list (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`).
-        const assignments = { ...manual.assignments, [workspaceId]: null }
-        const workspaceOrder: Record<string, string[]> = {}
-        for (const [key, ids] of Object.entries(manual.workspaceOrder)) {
-          if (key === TOP_LEVEL_ORDER_KEY) continue
-          workspaceOrder[key] = ids.filter(id => id !== workspaceId)
-        }
-        const topLevelMembers = workspaces
-          .filter(w => w.workspaceId === workspaceId || resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined)
-          .map(w => w.workspaceId as string)
-        const topLevelOrder = orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, topLevelMembers)
-        workspaceOrder[TOP_LEVEL_ORDER_KEY] = afterWorkspaceId !== undefined
-          ? moveAfter(topLevelOrder, workspaceId, afterWorkspaceId)
-          : moveBefore(topLevelOrder, workspaceId, beforeWorkspaceId)
-        next = { ...manual, assignments, workspaceOrder }
-      } else {
-        const movingAcross = currentKey !== categoryKey
-        const assignments = movingAcross
-          ? { ...manual.assignments, [workspaceId]: categoryKey }
-          : manual.assignments
-        const targetMembers = workspaces
-          .filter(w => w.workspaceId === workspaceId || resolveCategory(config, manual, w.workspaceId, w.path, w.title) === categoryKey)
-          .map(w => w.workspaceId as string)
-        const effectiveTargetOrder = orderedWorkspaceIds(manual, categoryKey, targetMembers)
-        const targetOrder = afterWorkspaceId !== undefined
-          ? moveAfter(effectiveTargetOrder, workspaceId, afterWorkspaceId)
-          : moveBefore(effectiveTargetOrder, workspaceId, beforeWorkspaceId)
-        const workspaceOrder = { ...manual.workspaceOrder, [categoryKey]: targetOrder }
-        if (movingAcross) {
-          if (currentKey !== undefined && workspaceOrder[currentKey] !== undefined) {
-            workspaceOrder[currentKey] = workspaceOrder[currentKey]!.filter(id => id !== workspaceId)
-          }
-          if (workspaceOrder[TOP_LEVEL_ORDER_KEY] !== undefined) {
-            workspaceOrder[TOP_LEVEL_ORDER_KEY] = workspaceOrder[TOP_LEVEL_ORDER_KEY]!.filter(id => id !== workspaceId)
-          }
-        }
-        next = { ...manual, assignments, workspaceOrder }
-      }
+      const next = normalizeManual(moveWorkspaceOverlay(manual, {
+        workspaceId,
+        targetCategoryKey: targetKey ?? null,
+        beforeId: beforeWorkspaceId,
+        afterId: afterWorkspaceId,
+        targetMembers,
+      }))
       await saveManualOverlay(next)
       setManual(next)
       setManualError(null)
@@ -1239,6 +1176,11 @@ export function GroupsBrowser({
           open: t('directory.open'),
           loading: t('directory.loading'),
           retry: t('directory.retry'),
+          showHidden: t('directory.showHidden'),
+          truncated: t('directory.truncated'),
+          pathPlaceholder: t('directory.pathPlaceholder'),
+          go: t('directory.go'),
+          refresh: t('directory.refresh'),
         }}
       />
 

@@ -153,9 +153,9 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
     expect(browserSource).toContain('moveWorkspaceTo(workspaceId, categoryKey, beforeWsid, afterWsid)')
   })
 
-  it('reorders from current effective workspace order instead of raw Host order', () => {
-    expect(browserSource).toContain('orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, topLevelMembers)')
-    expect(browserSource).toContain('orderedWorkspaceIds(manual, categoryKey, targetMembers)')
+  it('routes Workspace moves through the shared overlay mutation', () => {
+    expect(browserSource).toContain('moveWorkspaceOverlay(manual')
+    expect(browserSource).toContain('targetMembers')
   })
 
   it('gates tree, search, and categories behind wide', () => {
@@ -206,15 +206,8 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
     expect(browserSource).toMatch(/disabled=\{sessionRenaming\}/)
   })
 
-  it('filters TOP_LEVEL_ORDER_KEY when moving top-level workspace into a group', () => {
-    const moveWorkspaceIndex = browserSource.indexOf('const moveWorkspaceTo =')
-    expect(moveWorkspaceIndex).toBeGreaterThan(-1)
-    const moveWorkspaceSrc = browserSource.slice(
-      moveWorkspaceIndex,
-      browserSource.indexOf('const moveCategory =', moveWorkspaceIndex),
-    )
-    const elseBranch = moveWorkspaceSrc.slice(moveWorkspaceSrc.indexOf('} else {'))
-    expect(elseBranch).toMatch(/TOP_LEVEL_ORDER_KEY/)
+  it('cleans all order references in the production overlay helper', () => {
+    expect(browserSource).toContain("from './overlay-core.ts'")
   })
 })
 

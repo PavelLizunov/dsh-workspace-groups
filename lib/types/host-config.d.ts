@@ -1,5 +1,5 @@
-import { classify } from './core/matcher.ts';
-import { type GroupsConfig } from './core/types.ts';
+import { classify } from './core/matcher.js';
+import { type GroupsConfig } from './core/types.js';
 /** Default sidecar location: `$DSH_HOME/workspace-groups.yaml` (DSH_HOME falls back to ~/.dsh). */
 export declare function defaultConfigPath(): string;
 /** Parse + validate a raw sidecar document into a GroupsConfig (throws on malformed input). */
@@ -11,4 +11,4 @@ export declare function parseGroupsConfig(raw: unknown): GroupsConfig;
  */
 export declare function readGroupsConfig(path: string): Promise<GroupsConfig>;
 export { classify };
-export type { GroupsConfig, GroupCategory, GroupRule } from './core/types.ts';
+export type { GroupsConfig, GroupCategory, GroupRule } from './core/types.js';

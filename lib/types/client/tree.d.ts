@@ -5,7 +5,7 @@
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
 import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
-import { type GroupsConfig, type ManualGroups } from '../core/types.ts';
+import { type GroupsConfig, type ManualGroups } from '../core/types.js';
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
     id: SessionId;

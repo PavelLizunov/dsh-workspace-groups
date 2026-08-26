@@ -8,7 +8,7 @@
 import type { PropsHooks, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots';
 import type { HostDescriptionSource } from '@deepseek-ai/dsh-client-connection/client';
 import type { DirectoryListing, SessionId, SessionSearchResultItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
-import type { createGroupsViewStore } from './stores.ts';
+import type { createGroupsViewStore } from './stores.js';
 /** Injected share (arrives via the register inject factory). */
 export type GroupsBrowserInjected = {
     /** Start a New Session in a Workspace (reuse-or-create its blank session and open it). */

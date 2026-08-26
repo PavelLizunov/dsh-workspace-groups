@@ -26,15 +26,15 @@ type SupportedDshVersion = '0.1.0-rc.8' | '0.1.1-rc.2'
 
 ## 3. Verification Checklist
 - [x] Real Search actions; pending dialog guards; busy and Fork/Archive errors.
-- [ ] Orphan overlay cleanup and stale-config recovery.
+- [x] Orphan overlay cleanup; stale-config recovery remains with revision wave.
 - [ ] Revision/ETag conflicts with multi-client tests.
 - [ ] Group/Workspace keyboard-touch controls, Open Folder, Copy Path, source indicator.
-- [ ] Directory path edit, hidden toggle, truncation and IME/focus tests.
+- [x] Directory path edit, hidden toggle, truncation and IME/focus tests.
 - [ ] Session reorder and safe Copy ID/Title.
 - [ ] Valid ARIA tree, roving focus, Arrow/Home/End and live announcements.
 - [ ] Minimal View Options and Session overflow without speculative entities.
 - [ ] Fail-closed portable verifier and rendered component tests.
-- [ ] Deterministic build, clean declarations, complete tarball and consumer fixture.
+- [x] Deterministic build, clean declarations, complete tarball and consumer fixture.
 - [ ] rc.8/rc.2 disposable compatibility matrix and 100/500/1000 Workspace measurements.
 - [ ] Every wave: Gemini swarm, lead integration, Sol review, verification, Conventional Commit and push.
 - [ ] Close `DEVELOPMENT_PLAN.md`, `AUDIT.md`, and baseline debt ledger with evidence.

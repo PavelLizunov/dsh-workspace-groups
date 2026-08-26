@@ -1,3 +1,3 @@
-import type { WorkspaceGroupsDict } from '../locales.ts';
+import type { WorkspaceGroupsDict } from '../locales.js';
 /** Simplified Chinese dictionary. */
 export declare const zh: WorkspaceGroupsDict;

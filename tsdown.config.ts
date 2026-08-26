@@ -19,7 +19,7 @@
  * Types ship from lib/types (tsc -p tsconfig.build.json), not from tsdown.
  */
 import { readFile } from 'node:fs/promises'
-import { dirname, resolve as resolvePath, isAbsolute } from 'node:path'
+import { dirname, resolve as resolvePath, isAbsolute, relative } from 'node:path'
 import { existsSync } from 'node:fs'
 import { builtinModules } from 'node:module'
 import type { UserConfig } from 'tsdown'
@@ -126,14 +126,16 @@ function clientConfig(): UserConfig {
             : importer !== undefined
               ? sourceAssetPath(stylesheet, importer)
               : stylesheet
-          return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
+          const rel = relative(process.cwd(), abs).replace(/\\/g, '/')
+          return CSS_VIRTUAL_PREFIX + rel + CSS_VIRTUAL_SUFFIX
         },
         async load(virtualId: string) {
           if (!virtualId.startsWith(CSS_VIRTUAL_PREFIX)) return null
-          const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
-          this.addWatchFile(fileId)
-          const source = await readFile(fileId)
-          const { code } = transform({ filename: fileId, code: source, minify: true })
+          const relPath = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+          const absPath = resolvePath(process.cwd(), relPath)
+          this.addWatchFile(absPath)
+          const source = await readFile(absPath)
+          const { code } = transform({ filename: relPath, code: source, minify: true })
           return `export default ${JSON.stringify(code.toString())};`
         },
       },
