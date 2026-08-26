@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { en, zh } from '../src/client/locales.ts'
 
 const contractPath = path.resolve(__dirname, '../src/client/contract.ts')
 const clientIndexPath = path.resolve(__dirname, '../src/client/index.ts')
@@ -272,5 +273,50 @@ describe('verification script source contracts: verify-groups.mjs', () => {
   it('targets drag handle and asserts MIME type in drag tests', () => {
     expect(verifyGroupsSource).toMatch(/data-wg-drag-handle|\.wgDragHandle/)
     expect(verifyGroupsSource).toMatch(/application\/x-dsh-workspace-groups/)
+  })
+})
+
+describe('redesign source contracts: localization for extra controls and concurrency', () => {
+  const localesPath = path.resolve(__dirname, '../src/client/locales.ts')
+  const enPath = path.resolve(__dirname, '../src/client/locales/en.ts')
+  const zhPath = path.resolve(__dirname, '../src/client/locales/zh.ts')
+
+  const localesSource = fs.readFileSync(localesPath, 'utf-8')
+  const enSource = fs.readFileSync(enPath, 'utf-8')
+  const zhSource = fs.readFileSync(zhPath, 'utf-8')
+
+  const requiredKeys = [
+    'group.moveUp',
+    'group.moveDown',
+    'workspace.moveUp',
+    'workspace.moveDown',
+    'workspace.openFolder',
+    'workspace.copyPath',
+    'workspace.pathCopied',
+    'manual.conflictError',
+  ] as const
+
+  it('defines extra controls and concurrency keys in WorkspaceGroupsKey type', () => {
+    for (const key of requiredKeys) {
+      expect(localesSource).toContain(`| '${key}'`)
+    }
+  })
+
+  it('defines extra controls and concurrency keys in English dictionary', () => {
+    for (const key of requiredKeys) {
+      expect(enSource).toMatch(new RegExp(`['"]${key.replace('.', '\\.')}['"]\\s*:`))
+      expect(en[key]).toBeDefined()
+      expect(typeof en[key]).toBe('string')
+      expect(en[key].length).toBeGreaterThan(0)
+    }
+  })
+
+  it('defines extra controls and concurrency keys in Chinese dictionary', () => {
+    for (const key of requiredKeys) {
+      expect(zhSource).toMatch(new RegExp(`['"]${key.replace('.', '\\.')}['"]\\s*:`))
+      expect(zh[key]).toBeDefined()
+      expect(typeof zh[key]).toBe('string')
+      expect(zh[key].length).toBeGreaterThan(0)
+    }
   })
 })
