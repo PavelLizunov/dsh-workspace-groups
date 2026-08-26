@@ -46,7 +46,7 @@ export interface RowDropProps {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown }: {
+export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: CategoryNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -62,9 +62,12 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     isLast?: boolean;
     canMoveUp?: boolean;
     canMoveDown?: boolean;
+    'aria-level'?: number;
+    'aria-posinset'?: number;
+    'aria-setsize'?: number;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: WorkspaceGroupNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -90,9 +93,12 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     flat?: boolean;
     /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
     onDragStartExtra?: () => void;
+    'aria-level'?: number;
+    'aria-posinset'?: number;
+    'aria-setsize'?: number;
 } & RowDropProps): import("react").JSX.Element;
 /** One session leaf row. */
-export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy }: {
+export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
@@ -102,5 +108,8 @@ export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, 
     onFork?: (id: SessionNode['id']) => void;
     onArchive?: (id: SessionNode['id']) => void;
     actionBusy?: boolean;
+    'aria-level'?: number;
+    'aria-posinset'?: number;
+    'aria-setsize'?: number;
 }): import("react").JSX.Element;
 export type { T };

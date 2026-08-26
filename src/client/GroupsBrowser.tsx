@@ -1070,6 +1070,8 @@ export function GroupsBrowser({
                 <CategorySection
                   key={category.key}
                   category={category}
+                  categoryIndex={idx}
+                  totalRootItems={groups.length + topLevel.length}
                   current={current}
                   now={now}
                   t={t}
@@ -1148,6 +1150,8 @@ export function GroupsBrowser({
               {(topLevel.length > 0 || topLevelDropActive) && (
                 <TopLevelSection
                   topLevel={topLevel}
+                  totalGroups={groups.length}
+                  totalRootItems={groups.length + topLevel.length}
                   current={current}
                   now={now}
                   t={t}
@@ -1371,9 +1375,107 @@ function categoriesForCurrent(
   return resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
 }
 
+/**
+ * Roving focus listener for tree navigation via ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, End.
+ */
+function handleTreeKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (!navKeys.includes(event.key)) return
+
+  const targetTag = (event.target as HTMLElement).tagName
+  if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'SELECT') return
+
+  const tree = event.currentTarget
+  const items = Array.from(tree.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+  if (items.length === 0) return
+
+  const targetItem = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]')
+  if (!targetItem || !items.includes(targetItem)) return
+
+  const currentIndex = items.indexOf(targetItem)
+  let nextIndex: number | undefined
+
+  switch (event.key) {
+    case 'ArrowDown':
+      nextIndex = Math.min(items.length - 1, currentIndex + 1)
+      break
+    case 'ArrowUp':
+      nextIndex = Math.max(0, currentIndex - 1)
+      break
+    case 'Home':
+      nextIndex = 0
+      break
+    case 'End':
+      nextIndex = items.length - 1
+      break
+    case 'ArrowRight': {
+      const expanded = targetItem.getAttribute('aria-expanded')
+      if (expanded === 'false') {
+        event.preventDefault()
+        targetItem.click()
+        return
+      } else if (expanded === 'true') {
+        if (currentIndex + 1 < items.length) {
+          nextIndex = currentIndex + 1
+        }
+      }
+      break
+    }
+    case 'ArrowLeft': {
+      const expanded = targetItem.getAttribute('aria-expanded')
+      if (expanded === 'true') {
+        event.preventDefault()
+        targetItem.click()
+        return
+      } else {
+        const currentLevel = parseInt(targetItem.getAttribute('aria-level') || '1', 10)
+        if (currentLevel > 1) {
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const level = parseInt(items[i]!.getAttribute('aria-level') || '1', 10)
+            if (level === currentLevel - 1) {
+              nextIndex = i
+              break
+            }
+          }
+        }
+      }
+      break
+    }
+  }
+
+  if (nextIndex !== undefined && nextIndex !== currentIndex) {
+    event.preventDefault()
+    const nextItem = items[nextIndex]!
+    items.forEach(item => {
+      if (item === nextItem) {
+        item.setAttribute('tabindex', '0')
+      } else {
+        item.setAttribute('tabindex', '-1')
+      }
+    })
+    nextItem.focus()
+  }
+}
+
+function handleTreeFocus(event: React.FocusEvent<HTMLElement>): void {
+  const targetItem = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]')
+  if (!targetItem) return
+  const tree = event.currentTarget
+  const items = tree.querySelectorAll<HTMLElement>('[role="treeitem"]')
+  items.forEach(item => {
+    if (item === targetItem) {
+      item.setAttribute('tabindex', '0')
+    } else {
+      item.setAttribute('tabindex', '-1')
+    }
+  })
+}
+
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup }: {
   category: CategoryNode
+  categoryIndex: number
+  totalRootItems: number
   current: SessionId | undefined
   now: number
   t: GroupsBrowserProps['t']
@@ -1418,6 +1520,9 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
       <CategoryRow
         node={category}
         t={t}
+        aria-level={1}
+        aria-posinset={categoryIndex + 1}
+        aria-setsize={totalRootItems}
         onToggle={onToggleCategory}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
@@ -1441,6 +1546,9 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
               <WorkspaceRow
                 node={workspace}
                 t={t}
+                aria-level={2}
+                aria-posinset={idx + 1}
+                aria-setsize={category.workspaces.length}
                 onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
@@ -1466,13 +1574,16 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
                 onRowDrop={onDropRow(category.key, { kind: 'workspace', key: workspace.workspaceId })}
                 onDragStartExtra={onDragStartWorkspace(workspace.workspaceId)}
               />
-              {workspace.expanded && workspace.sessions.map((session) => (
+              {workspace.expanded && workspace.sessions.map((session, sIdx) => (
                 <SessionRow
                   key={session.id}
                   node={session}
                   currentId={current}
                   now={now}
                   t={t}
+                  aria-level={3}
+                  aria-posinset={sIdx + 1}
+                  aria-setsize={workspace.sessions.length}
                   onOpen={onOpen}
                   onRename={onSessionRename}
                   onFork={onFork}
@@ -1497,8 +1608,10 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath }: {
+function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath }: {
   topLevel: readonly WorkspaceGroupNode[]
+  totalGroups: number
+  totalRootItems: number
   current: SessionId | undefined
   now: number
   t: GroupsBrowserProps['t']
@@ -1548,12 +1661,15 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
           <span className="wgTopLevelEmptyLine" />
         </div>
       )}
-      {topLevel.map((workspace) => (
+      {topLevel.map((workspace, idx) => (
         <div key={workspace.workspaceId} role="group">
           <WorkspaceRow
             node={workspace}
             t={t}
             flat
+            aria-level={1}
+            aria-posinset={totalGroups + idx + 1}
+            aria-setsize={totalRootItems}
             onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
@@ -1568,13 +1684,16 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
             onRowDrop={onDropRow(UNCATEGORIZED_KEY, { kind: 'topLevel', key: workspace.workspaceId })}
             onDragStartExtra={onDragStartWorkspace(workspace.workspaceId)}
           />
-          {workspace.expanded && workspace.sessions.map((session) => (
+          {workspace.expanded && workspace.sessions.map((session, sIdx) => (
             <SessionRow
               key={session.id}
               node={session}
               currentId={current}
               now={now}
               t={t}
+              aria-level={2}
+              aria-posinset={sIdx + 1}
+              aria-setsize={workspace.sessions.length}
               onOpen={onOpen}
               onRename={onSessionRename}
               onFork={onFork}
@@ -1627,29 +1746,42 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
   const searchTopLevel = searchTree.topLevel
   const pending = currentRemote.status === 'loading'
   const failed = currentRemote.status === 'error'
+  const totalRootItems = groups.length + searchTopLevel.length
   return (
-    <div className="wgList" role="tree" aria-label={t('search.results.aria')}>
-      {groups.map((category) => (
+    <div className="wgList" role="tree" aria-label={t('search.results.aria')} onKeyDown={handleTreeKeyDown} onFocusCapture={handleTreeFocus}>
+      {groups.map((category, idx) => (
         <div key={category.key} role="group">
-          <CategoryRow node={category} t={t} />
+          <CategoryRow
+            node={category}
+            t={t}
+            aria-level={1}
+            aria-posinset={idx + 1}
+            aria-setsize={totalRootItems}
+          />
           <div role="group">
-            {category.workspaces.map((workspace) => (
+            {category.workspaces.map((workspace, wIdx) => (
               <div key={workspace.workspaceId} role="group">
                 <WorkspaceRow
                   node={workspace}
                   t={t}
+                  aria-level={2}
+                  aria-posinset={wIdx + 1}
+                  aria-setsize={category.workspaces.length}
                   onNewSession={() => { startSession(workspace.workspaceId) }}
                   onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
                   onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
                 />
                 <div role="group">
-                  {workspace.sessions.map((session) => (
+                  {workspace.sessions.map((session, sIdx) => (
                     <SessionRow
                       key={session.id}
                       node={session}
                       currentId={current}
                       now={now}
                       t={t}
+                      aria-level={3}
+                      aria-posinset={sIdx + 1}
+                      aria-setsize={workspace.sessions.length}
                       onOpen={open}
                       onRename={onSessionRename}
                       onFork={onSessionFork}
@@ -1663,24 +1795,30 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
           </div>
         </div>
       ))}
-      {searchTopLevel.map((workspace) => (
+      {searchTopLevel.map((workspace, tIdx) => (
         <div key={workspace.workspaceId} role="group">
           <WorkspaceRow
             node={workspace}
             t={t}
             flat
+            aria-level={1}
+            aria-posinset={groups.length + tIdx + 1}
+            aria-setsize={totalRootItems}
             onNewSession={() => { startSession(workspace.workspaceId) }}
             onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
           />
           <div role="group">
-            {workspace.sessions.map((session) => (
+            {workspace.sessions.map((session, sIdx) => (
               <SessionRow
                 key={session.id}
                 node={session}
                 currentId={current}
                 now={now}
                 t={t}
+                aria-level={2}
+                aria-posinset={sIdx + 1}
+                aria-setsize={workspace.sessions.length}
                 onOpen={open}
                 onRename={onSessionRename}
                 onFork={onSessionFork}

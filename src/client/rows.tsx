@@ -100,7 +100,7 @@ export interface RowDropProps {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown }: {
+export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: CategoryNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -116,6 +116,9 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
   isLast?: boolean
   canMoveUp?: boolean
   canMoveDown?: boolean
+  'aria-level'?: number
+  'aria-posinset'?: number
+  'aria-setsize'?: number
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const count = node.workspaces.length
@@ -133,6 +136,9 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       tabIndex={0}
       aria-expanded={node.expanded}
       aria-label={`${node.label} (${count})`}
+      aria-level={ariaLevel}
+      aria-posinset={ariaPosinset}
+      aria-setsize={ariaSetsize}
       data-wg-category={node.key}
       onClick={onToggle}
       onKeyDown={onToggle === undefined ? undefined : handleKeyDown}
@@ -207,7 +213,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: WorkspaceGroupNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -233,6 +239,9 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   flat?: boolean
   /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
   onDragStartExtra?: () => void
+  'aria-level'?: number
+  'aria-posinset'?: number
+  'aria-setsize'?: number
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const manageable = onRename !== undefined && onDelete !== undefined
@@ -276,6 +285,9 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       tabIndex={0}
       aria-expanded={node.expanded}
       aria-label={node.label}
+      aria-level={ariaLevel}
+      aria-posinset={ariaPosinset}
+      aria-setsize={ariaSetsize}
       data-wsid={node.workspaceId}
       draggable={onDragStartExtra !== undefined || onRowDrop !== undefined}
       onClick={onToggle}
@@ -341,7 +353,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
 }
 
 /** One session leaf row. */
-export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy = false }: {
+export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy = false, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: SessionNode
   currentId: string | undefined
   now: number
@@ -351,6 +363,9 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
   onFork?: (id: SessionNode['id']) => void
   onArchive?: (id: SessionNode['id']) => void
   actionBusy?: boolean
+  'aria-level'?: number
+  'aria-posinset'?: number
+  'aria-setsize'?: number
 }) {
   const selected = node.id === currentId
   const [menuOpen, setMenuOpen] = useState(false)
@@ -374,6 +389,9 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
       aria-selected={selected}
       aria-current={selected ? 'true' : undefined}
       aria-label={node.title}
+      aria-level={ariaLevel}
+      aria-posinset={ariaPosinset}
+      aria-setsize={ariaSetsize}
       onClick={() => { onOpen(node.id) }}
       onKeyDown={handleKeyDown}
     >

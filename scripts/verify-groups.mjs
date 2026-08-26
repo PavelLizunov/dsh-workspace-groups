@@ -781,7 +781,7 @@ async function main() {
 
   const failed = results.filter(r => !r.ok)
   console.log(`\nResults: ${results.length - failed.length}/${results.length} passed`)
-  return failed.length === 0 ? 0 : 1
+  return results.length > 0 && failed.length === 0 ? 0 : 1
 }
 
 process.exit(await main())
