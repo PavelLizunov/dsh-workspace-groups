@@ -46,7 +46,7 @@ export interface RowDropProps {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory }: {
+export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown }: {
     node: CategoryNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -56,9 +56,15 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     onDelete?: () => void;
     /** Group reorder source; the row becomes draggable only when provided. */
     onDragStartCategory?: (event: DragEvent) => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    isFirst?: boolean;
+    isLast?: boolean;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
     node: WorkspaceGroupNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -72,6 +78,14 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     /** All group/top-level destinations for the Move to group submenu. */
     moveTargets?: readonly WorkspaceMoveTarget[];
     onMoveTo?: (categoryKey: string) => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    onOpenFolder?: () => void;
+    onCopyPath?: () => void;
+    isFirst?: boolean;
+    isLast?: boolean;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
     /** Render as a top-level row (no folder indentation). */
     flat?: boolean;
     /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */

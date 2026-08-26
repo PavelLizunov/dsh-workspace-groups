@@ -100,7 +100,7 @@ export interface RowDropProps {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory }: {
+export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown }: {
   node: CategoryNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -110,6 +110,12 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
   onDelete?: () => void
   /** Group reorder source; the row becomes draggable only when provided. */
   onDragStartCategory?: (event: DragEvent) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  isFirst?: boolean
+  isLast?: boolean
+  canMoveUp?: boolean
+  canMoveDown?: boolean
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const count = node.workspaces.length
@@ -166,13 +172,17 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
               open={menuOpen}
               onClose={() => { setMenuOpen(false) }}
               items={[
+                ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
+                ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
                 { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
                 { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
               ]}
               onSelect={(id) => {
                 setMenuOpen(false)
-                if (id === 'rename') onRename()
-                if (id === 'delete') onDelete()
+                if (id === 'moveUp') onMoveUp?.()
+                if (id === 'moveDown') onMoveDown?.()
+                if (id === 'rename') onRename?.()
+                if (id === 'delete') onDelete?.()
               }}
               portal
               closeOnPointerLeave
@@ -197,7 +207,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
   node: WorkspaceGroupNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -211,6 +221,14 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   /** All group/top-level destinations for the Move to group submenu. */
   moveTargets?: readonly WorkspaceMoveTarget[]
   onMoveTo?: (categoryKey: string) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  onOpenFolder?: () => void
+  onCopyPath?: () => void
+  isFirst?: boolean
+  isLast?: boolean
+  canMoveUp?: boolean
+  canMoveDown?: boolean
   /** Render as a top-level row (no folder indentation). */
   flat?: boolean
   /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
@@ -219,6 +237,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   const [menuOpen, setMenuOpen] = useState(false)
   const manageable = onRename !== undefined && onDelete !== undefined
   const menuItems = [
+    ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('workspace.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
+    ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('workspace.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
     ...(moveTargets !== undefined && onMoveTo !== undefined
       ? [{
           id: 'moveToGroup',
@@ -233,6 +253,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       : canMoveOut && onMoveOut !== undefined
         ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
         : []),
+    ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
+    ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
   ]
@@ -279,6 +301,10 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
           items={menuItems}
           onSelect={(id) => {
             setMenuOpen(false)
+            if (id === 'moveUp') onMoveUp?.()
+            if (id === 'moveDown') onMoveDown?.()
+            if (id === 'openFolder') onOpenFolder?.()
+            if (id === 'copyPath') onCopyPath?.()
             if (id === 'moveOut') onMoveOut?.()
             if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
             if (id === 'rename') onRename?.()

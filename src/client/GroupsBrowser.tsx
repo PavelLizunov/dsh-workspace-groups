@@ -29,6 +29,7 @@ import {
   displayCategoryKeys,
   moveAfter,
   moveBefore,
+  orderedWorkspaceIds,
   originalRuleNameForDisplay,
   resolveCategory,
   takenCategoryNames,
@@ -89,21 +90,49 @@ function isManualGroups(value: unknown): value is ManualGroups {
 }
 
 /** Minimal fetch of the grouping config + runtime overlay (no-cache revalidation). */
-async function fetchGroupsConfig(): Promise<{ config: GroupsConfig; manual: NormalizedManual }> {
+async function fetchGroupsConfig(): Promise<{ config: GroupsConfig; manual: NormalizedManual; revision: string }> {
   const response = await fetch('/workspace-groups/config', { cache: 'no-cache' })
   if (!response.ok) throw new Error(`config request failed: ${response.status}`)
-  const body = (await response.json()) as GroupsConfig
+  const body = (await response.json()) as GroupsConfig & { revision?: string }
   const config: GroupsConfig = Array.isArray(body.categories) ? body : { categories: [] }
-  return { config, manual: isManualGroups(body.manual) ? normalizeManual(body.manual) : EMPTY_MANUAL }
+  const etag = response.headers.get('etag') || response.headers.get('ETag') || ''
+  const revision = typeof body.revision === 'string' && body.revision !== ''
+    ? body.revision
+    : etag.replace(/^W\/"|"$/g, '')
+  return {
+    config,
+    manual: isManualGroups(body.manual) ? normalizeManual(body.manual) : EMPTY_MANUAL,
+    revision,
+  }
+}
+
+class SaveConflictError extends Error {
+  constructor(message = 'conflict') {
+    super(message)
+    this.name = 'SaveConflictError'
+  }
+}
+
+function isConflictError(reason: unknown): boolean {
+  return (
+    reason instanceof SaveConflictError ||
+    (reason instanceof Error &&
+      (reason.name === 'SaveConflictError' ||
+        reason.message === 'conflict' ||
+        (reason as unknown as { status?: number }).status === 409))
+  )
 }
 
 /** Persist the whole runtime overlay (idempotent; the host validates + writes). */
-async function saveManualOverlay(manual: ManualGroups): Promise<void> {
+async function saveManualOverlay(manual: ManualGroups, expectedRevision: string): Promise<{ revision: string }> {
   const response = await fetch('/workspace-groups/manual', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(manual),
+    body: JSON.stringify({ expectedRevision, manual }),
   })
+  if (response.status === 409) {
+    throw new SaveConflictError()
+  }
   if (!response.ok) {
     let message = `manual save failed: ${response.status}`
     try {
@@ -112,6 +141,12 @@ async function saveManualOverlay(manual: ManualGroups): Promise<void> {
     } catch { /* keep the fallback message */ }
     throw new Error(message)
   }
+  const body = (await response.json()) as { ok?: boolean; revision?: string }
+  const etag = response.headers.get('etag') || response.headers.get('ETag') || ''
+  const revision = typeof body.revision === 'string' && body.revision !== ''
+    ? body.revision
+    : etag.replace(/^W\/"|"$/g, '')
+  return { revision }
 }
 
 /** One group-management dialog state: create, or rename an existing group. */
@@ -179,12 +214,16 @@ export function GroupsBrowser({
   // Grouping config from the host route + the runtime manual overlay.
   const [config, setConfig] = useState<GroupsConfig>({ categories: [] })
   const [manual, setManual] = useState<NormalizedManual>(EMPTY_MANUAL)
+  const [revision, setRevision] = useState<string>('')
   const [configError, setConfigError] = useState<string | null>(null)
+  const [conflictError, setConflictError] = useState<boolean>(false)
   const reloadConfig = () => {
     setConfigError(null)
-    fetchGroupsConfig().then(({ config: nextConfig, manual: nextManual }) => {
+    return fetchGroupsConfig().then(({ config: nextConfig, manual: nextManual, revision: nextRevision }) => {
       setConfig(nextConfig)
       setManual(nextManual)
+      setRevision(nextRevision)
+      return { config: nextConfig, manual: nextManual, revision: nextRevision }
     }).catch((reason: unknown) => {
       setConfigError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -387,16 +426,24 @@ export function GroupsBrowser({
     deleteWorkspace(targetId).then(async () => {
       if (generation !== deleteGeneration.current) return
       const nextManual = normalizeManual(removeWorkspace(manual, targetId))
-      await saveManualOverlay(nextManual)
+      const res = await saveManualOverlay(nextManual, revision)
       if (generation !== deleteGeneration.current) return
       setManual(nextManual)
+      setRevision(res.revision)
       setManualError(null)
+      setConflictError(false)
       setDeleting(false)
       setDeleteTarget(null)
     }).catch((reason: unknown) => {
       if (generation !== deleteGeneration.current) return
       setDeleting(false)
-      setDeleteError(reason instanceof Error ? reason.message : String(reason))
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        setDeleteTarget(null)
+        void reloadConfig()
+      } else {
+        setDeleteError(reason instanceof Error ? reason.message : String(reason))
+      }
     })
   }
 
@@ -491,10 +538,12 @@ export function GroupsBrowser({
     const generation = ++groupGeneration.current
     setGroupBusy(true)
     setGroupError(null)
-    saveManualOverlay(next).then(() => {
+    saveManualOverlay(next, revision).then(({ revision: nextRevision }) => {
       if (generation !== groupGeneration.current) return
       setManual(next)
+      setRevision(nextRevision)
       setManualError(null)
+      setConflictError(false)
       setGroupBusy(false)
       setGroupDialog(null)
       setGroupDraft('')
@@ -503,7 +552,13 @@ export function GroupsBrowser({
     }).catch((reason: unknown) => {
       if (generation !== groupGeneration.current) return
       setGroupBusy(false)
-      setGroupError(reason instanceof Error ? reason.message : String(reason))
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        setGroupDialog(null)
+        void reloadConfig()
+      } else {
+        setGroupError(reason instanceof Error ? reason.message : String(reason))
+      }
     })
   }
 
@@ -517,16 +572,24 @@ export function GroupsBrowser({
     const generation = ++groupDeleteGeneration.current
     setGroupDeleting(true)
     setGroupDeleteError(null)
-    saveManualOverlay(next).then(() => {
+    saveManualOverlay(next, revision).then(({ revision: nextRevision }) => {
       if (generation !== groupDeleteGeneration.current) return
       setManual(next)
+      setRevision(nextRevision)
       setManualError(null)
+      setConflictError(false)
       setGroupDeleting(false)
       setGroupDeleteTarget(null)
     }).catch((reason: unknown) => {
       if (generation !== groupDeleteGeneration.current) return
       setGroupDeleting(false)
-      setGroupDeleteError(reason instanceof Error ? reason.message : String(reason))
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        setGroupDeleteTarget(null)
+        void reloadConfig()
+      } else {
+        setGroupDeleteError(reason instanceof Error ? reason.message : String(reason))
+      }
     })
   }
 
@@ -585,12 +648,19 @@ export function GroupsBrowser({
         afterId: afterWorkspaceId,
         targetMembers,
       }))
-      await saveManualOverlay(next)
+      const { revision: nextRevision } = await saveManualOverlay(next, revision)
       setManual(next)
+      setRevision(nextRevision)
       setManualError(null)
+      setConflictError(false)
       if (categoryKey !== UNCATEGORIZED_KEY) actions.setCategoryExpanded(categoryKey, true)
     } catch (reason) {
-      setManualError(reason instanceof Error ? reason.message : String(reason))
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        void reloadConfig()
+      } else {
+        setManualError(reason instanceof Error ? reason.message : String(reason))
+      }
     } finally {
       setManualSaving(false)
     }
@@ -606,11 +676,18 @@ export function GroupsBrowser({
         ? moveAfter(order, draggedKey, afterKey)
         : moveBefore(order, draggedKey, beforeKey)
       const next: NormalizedManual = { ...manual, categoryOrder }
-      await saveManualOverlay(next)
+      const { revision: nextRevision } = await saveManualOverlay(next, revision)
       setManual(next)
+      setRevision(nextRevision)
       setManualError(null)
+      setConflictError(false)
     } catch (reason) {
-      setManualError(reason instanceof Error ? reason.message : String(reason))
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        void reloadConfig()
+      } else {
+        setManualError(reason instanceof Error ? reason.message : String(reason))
+      }
     } finally {
       setManualSaving(false)
     }
@@ -778,6 +855,68 @@ export function GroupsBrowser({
 
   const now = Date.now()
 
+  const moveCategoryUp = (key: string): void => {
+    const keys = displayCategoryKeys(config, manual)
+    const index = keys.indexOf(key)
+    if (index <= 0) return
+    const beforeKey = keys[index - 1]
+    void moveCategory(key, beforeKey, undefined)
+  }
+
+  const moveCategoryDown = (key: string): void => {
+    const keys = displayCategoryKeys(config, manual)
+    const index = keys.indexOf(key)
+    if (index === -1 || index >= keys.length - 1) return
+    const afterKey = keys[index + 1]
+    void moveCategory(key, undefined, afterKey)
+  }
+
+  const moveWorkspaceUp = (workspaceId: string): void => {
+    const workspace = workspaces.find(w => w.workspaceId === workspaceId)
+    if (workspace === undefined) return
+    const currentKey = resolveCategory(config, manual, workspaceId, workspace.path, workspace.title)
+    const targetKey = currentKey ?? UNCATEGORIZED_KEY
+    const members = workspaces
+      .filter(w => (currentKey === undefined ? resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined : resolveCategory(config, manual, w.workspaceId, w.path, w.title) === currentKey))
+      .map(w => w.workspaceId as string)
+    const ordered = orderedWorkspaceIds(manual, currentKey ?? TOP_LEVEL_ORDER_KEY, members)
+    const index = ordered.indexOf(workspaceId)
+    if (index <= 0) return
+    const beforeId = ordered[index - 1]
+    void moveWorkspaceTo(workspaceId, targetKey, beforeId, undefined)
+  }
+
+  const moveWorkspaceDown = (workspaceId: string): void => {
+    const workspace = workspaces.find(w => w.workspaceId === workspaceId)
+    if (workspace === undefined) return
+    const currentKey = resolveCategory(config, manual, workspaceId, workspace.path, workspace.title)
+    const targetKey = currentKey ?? UNCATEGORIZED_KEY
+    const members = workspaces
+      .filter(w => (currentKey === undefined ? resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined : resolveCategory(config, manual, w.workspaceId, w.path, w.title) === currentKey))
+      .map(w => w.workspaceId as string)
+    const ordered = orderedWorkspaceIds(manual, currentKey ?? TOP_LEVEL_ORDER_KEY, members)
+    const index = ordered.indexOf(workspaceId)
+    if (index === -1 || index >= ordered.length - 1) return
+    const afterId = ordered[index + 1]
+    void moveWorkspaceTo(workspaceId, targetKey, undefined, afterId)
+  }
+
+  const onOpenPath = (path: string): void => {
+    setManualError('Open folder natively is not supported by the current connection')
+  }
+
+  const [pathCopiedToast, setPathCopiedToast] = useState<string | null>(null)
+  const onCopyPath = (pathText: string): void => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(pathText).then(() => {
+        setPathCopiedToast(t('workspace.pathCopied'))
+        setTimeout(() => { setPathCopiedToast(null) }, 2000)
+      }).catch((reason: unknown) => {
+        setManualError(reason instanceof Error ? reason.message : String(reason))
+      })
+    }
+  }
+
   return (
     <div className={`wgRoot${wide ? '' : ' wgRail'}`}>
       <div className="wgSectionHeader">
@@ -881,7 +1020,16 @@ export function GroupsBrowser({
           {configError !== null && (
             <div className="wgSearchStatus" role="status">{t('configUnavailable')}</div>
           )}
-          {manualError !== null && (
+          {pathCopiedToast !== null && (
+            <div className="wgSearchStatus" role="status">{pathCopiedToast}</div>
+          )}
+          {conflictError && (
+            <div className="wgSearchStatus wgManualError" role="alert">
+              <span>{t('manual.conflictError')}</span>
+              <Button variant="outline" onClick={() => { void reloadConfig(); setConflictError(false) }}>{t('retry')}</Button>
+            </div>
+          )}
+          {manualError !== null && !conflictError && (
             <div className="wgSearchStatus wgManualError" role="alert">{t('manual.saveError')}: {manualError}</div>
           )}
           {normalizedQuery !== '' ? (
@@ -918,7 +1066,7 @@ export function GroupsBrowser({
               {groups.length === 0 && (
                 <div className="wgEmpty">{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
               )}
-              {groups.map((category) => (
+              {groups.map((category, idx) => (
                 <CategorySection
                   key={category.key}
                   category={category}
@@ -965,15 +1113,19 @@ export function GroupsBrowser({
                   }}
                   onMoveOut={(workspaceId) => { void moveWorkspaceTo(workspaceId, UNCATEGORIZED_KEY) }}
                   onMoveTo={(workspaceId, categoryKey) => { void moveWorkspaceTo(workspaceId, categoryKey) }}
+                  onMoveGroupUp={moveCategoryUp}
+                  onMoveGroupDown={moveCategoryDown}
+                  onMoveWorkspaceUp={moveWorkspaceUp}
+                  onMoveWorkspaceDown={moveWorkspaceDown}
+                  onOpenFolder={onOpenPath}
+                  onCopyPath={onCopyPath}
+                  isFirstGroup={idx === 0}
+                  isLastGroup={idx === groups.length - 1}
                   moveTargetsFor={(workspaceId) => {
                     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
                     return workspace === undefined ? [] : moveTargetsFor(workspace)
                   }}
                   canMoveOut={(workspaceId) => {
-                    // The menu "Move out of group" is offered for any project that
-                    // currently sits inside a group (rule-classified or manual) —
-                    // not just overridden ones. Top-level projects
-                    // (resolveCategory === undefined) don't need it.
                     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
                     return workspace !== undefined
                       && resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) !== undefined
@@ -1031,6 +1183,10 @@ export function GroupsBrowser({
                     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
                     return workspace === undefined ? [] : moveTargetsFor(workspace)
                   }}
+                  onMoveWorkspaceUp={moveWorkspaceUp}
+                  onMoveWorkspaceDown={moveWorkspaceDown}
+                  onOpenFolder={onOpenPath}
+                  onCopyPath={onCopyPath}
                 />
               )}
             </div>
@@ -1216,7 +1372,7 @@ function categoriesForCurrent(
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut }: {
+function CategorySection({ category, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup }: {
   category: CategoryNode
   current: SessionId | undefined
   now: number
@@ -1244,6 +1400,14 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
   onMoveTo: (workspaceId: WorkspaceId, categoryKey: string) => void
   moveTargetsFor: (workspaceId: WorkspaceId) => readonly WorkspaceMoveTarget[]
   canMoveOut: (workspaceId: WorkspaceId) => boolean
+  onMoveGroupUp: (key: string) => void
+  onMoveGroupDown: (key: string) => void
+  onMoveWorkspaceUp: (workspaceId: string) => void
+  onMoveWorkspaceDown: (workspaceId: string) => void
+  onOpenFolder: (path: string) => void
+  onCopyPath: (path: string) => void
+  isFirstGroup: boolean
+  isLastGroup: boolean
 }) {
   const categoryLine = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'category' && dragIndicator.row.key === category.key
     ? (dragIndicator.before ? 'before' : 'after')
@@ -1258,6 +1422,12 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
         onRename={onGroupRename}
         onDelete={onGroupDelete}
         onDragStartCategory={onDragStartCategory}
+        onMoveUp={() => { onMoveGroupUp(category.key) }}
+        onMoveDown={() => { onMoveGroupDown(category.key) }}
+        isFirst={isFirstGroup}
+        isLast={isLastGroup}
+        canMoveUp={!isFirstGroup}
+        canMoveDown={!isLastGroup}
         dropActive={categoryInto}
         {...(categoryLine !== undefined ? { insertLine: categoryLine } : {})}
         onRowDragOver={onDragOverRow({ kind: 'category', key: category.key })}
@@ -1266,7 +1436,7 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
       />
       {category.expanded && (
         <div role="group">
-          {category.workspaces.map((workspace) => (
+          {category.workspaces.map((workspace, idx) => (
             <div key={workspace.workspaceId} role="group">
               <WorkspaceRow
                 node={workspace}
@@ -1279,6 +1449,14 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
                 onMoveOut={() => { onMoveOut(workspace.workspaceId) }}
                 moveTargets={moveTargetsFor(workspace.workspaceId)}
                 onMoveTo={(categoryKey) => { onMoveTo(workspace.workspaceId, categoryKey) }}
+                onMoveUp={() => { onMoveWorkspaceUp(workspace.workspaceId as string) }}
+                onMoveDown={() => { onMoveWorkspaceDown(workspace.workspaceId as string) }}
+                onOpenFolder={() => { onOpenFolder(workspace.path) }}
+                onCopyPath={() => { onCopyPath(workspace.path) }}
+                isFirst={idx === 0}
+                isLast={idx === category.workspaces.length - 1}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < category.workspaces.length - 1}
                 dropActive={false}
                 {...(dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'workspace' && dragIndicator.row.key === workspace.workspaceId
                   ? { insertLine: dragIndicator.before ? 'before' : 'after' }
@@ -1319,7 +1497,7 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor }: {
+function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath }: {
   topLevel: readonly WorkspaceGroupNode[]
   current: SessionId | undefined
   now: number
@@ -1344,6 +1522,10 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
   sessionActionBusy: boolean
   onMoveTo: (workspaceId: WorkspaceId, categoryKey: string) => void
   moveTargetsFor: (workspaceId: WorkspaceId) => readonly WorkspaceMoveTarget[]
+  onMoveWorkspaceUp: (workspaceId: string) => void
+  onMoveWorkspaceDown: (workspaceId: string) => void
+  onOpenFolder: (path: string) => void
+  onCopyPath: (path: string) => void
 }) {
   const emptyLineActive = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === topLevelRef.key
   return (
