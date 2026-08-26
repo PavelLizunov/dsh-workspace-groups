@@ -2,15 +2,20 @@
 
 **Fork:** `PavelLizunov/dsh-workspace-groups`
 **Upstream:** `z-col/dsh-workspace-groups`
-**Audited commit:** `fcaf221` (`feat(v0.7)`)
-**Audit date:** 2026-08-24
+**Original audited commit:** `fcaf221` (`feat(v0.7)`)
+**Current repair baseline:** `8424134` (`fix: stabilize rail mode and sidebar dragging`)
+**Audit date:** 2026-08-24; repair status updated 2026-08-26
 **Local runtime:** DSH `0.1.0-rc.8`, Node `22.23.2`, pnpm `11.22.0`
 
 ## Verdict
 
-**Do not install this fork into the active Web profile yet.** The plugin has a compact, understandable architecture and good storage isolation, but the audit confirmed correctness defects in path classification and drag ordering, broken actions in search mode, a false-positive browser verification gate, and incomplete accessibility. The source-level unit/type/build checks pass; live plugin activation on DSH `0.1.0-rc.8` remains unverified because the package targets `0.1.1-rc.2` peers.
+**The fork is installed and active in the Web profile, but it is not yet release-complete.** Live activation and the main Group/Workspace flows have been exercised on DSH `0.1.0-rc.8`; core path/order defects, Add Workspace, rail rendering, collapse restoration, move submenus, and Group drag reliability have repair commits. Remaining blockers are visible no-op Search actions, last-write-wins overlay concurrency, fail-open verifier setup, incomplete accessibility, and mixed `rc.8`/`rc.2` peer compatibility.
 
 No finding indicates deletion of project directories or modification of DSH core workspace/session persistence. Workspace deletion uses the official registration API; the plugin-owned writes are limited to `$DSH_HOME/workspace-groups.manual.json`.
+
+## Architecture rules
+
+The normative entity ownership, core mechanics, dependency direction, abstraction budget, worker constraints, and amendment process are defined in [`CORE_ARCHITECTURE_RULES.md`](./CORE_ARCHITECTURE_RULES.md). Audit and review recommendations must prefer deletion/reuse and may not introduce speculative managers, repositories, services, factories, event buses, or duplicate DSH entities without an approved amendment.
 
 ## Architecture map
 
@@ -46,8 +51,8 @@ The first core-correctness batch is fixed on `main`: cross-platform separator/ro
 4. **Fixed by critical sidebar patch: initial grouped reorder started from `[]`** — both group and top-level reorder now start from `orderedWorkspaceIds`, preserving effective fallback/manual order and the drop target.
 5. **Fixed by critical sidebar patch: repeated top-level reorder reset untouched items** — current manual top-level order is retained before applying before/after movement.
 6. **Fixed on `fix/core-english-first`: dropping a workspace on itself moves it to the end** — `moveBefore`/`moveAfter` now return the unchanged order for self-targets.
-7. **Search result action menus are no-ops** — visible New Session/Rename/Delete/Fork/Archive controls call empty handlers (`src/client/GroupsBrowser.tsx:1315-1372`). Opening a session is the only functional search-row action.
-8. **Browser verification can report success without running tests** — early Chrome failure produces `0/0 passed`, exit code `0` (`scripts/verify-groups.mjs:75-104,691-733`). Reproduced with `/bin/false`.
+7. **Search result action menus are no-ops** — visible New Session/Rename/Delete/Fork/Archive controls call empty handlers in `SearchBody`. Opening a session is the only functional search-row action. Status: current baseline debt.
+8. **Browser verification can report success without running tests** — early Chrome/setup failure can produce `0/0 passed` with exit code 0. Reproduced with `/bin/false`; status: current baseline debt.
 9. **Partially fixed by DSH-native redesign: tree rows are not fully keyboard operable** — rows now have focus and Enter/Space activation, but roving focus, Arrow navigation, and keyboard move/reorder actions remain open.
 
 ### Medium
@@ -56,14 +61,14 @@ The first core-correctness batch is fixed on `main`: cross-platform separator/ro
 2. **Fixed on `fix/core-english-first`: reserved `__topLevel__` name is accepted** — YAML/manual parsing, rename validation, assignment validation, and Client taken-name checks now reserve it; only `workspaceOrder` accepts the key.
 3. **Fixed on `fix/core-english-first`: assignments to hidden categories can disappear from both group and top-level trees** — unavailable overrides now resolve safely to top level.
 4. **Search order differs from normal tree** — search grouping does not apply `manual.workspaceOrder` (`src/client/tree.ts:371-436`).
-5. **Fixed by critical sidebar patch: target/user expansion could be overwritten after drag** — restoration is now revision-guarded, so a later user toggle or target expansion wins over a stale drag snapshot.
-6. **Async dialogs can affect a newly opened target** — rename/delete dialogs remain dismissible while mutations are pending; old promise settlement can close or populate a new dialog (`src/client/GroupsBrowser.tsx:345-393,962-1069`).
+5. **Fixed by critical sidebar patch: target/user expansion could be overwritten after drag** — restoration now tracks per-key user touches, so later user toggles are not overwritten by a stale drag snapshot.
+6. **Async dialogs can affect a newly opened target** — rename/delete dialogs remain dismissible while mutations are pending; old promise settlement can close or populate a new dialog. Status: current baseline debt.
 7. **Package Client manifest omits required `connection` dependency ordering** — runtime inject requires it, but `dsh.client.inject` does not list it (`package.json:48-55`; `src/client/index.ts:36,81`).
-8. **Hardcoded root-relative config endpoints** — `/workspace-groups/*` bypass the DSH API carrier/base-path abstraction (`src/client/GroupsBrowser.tsx:89-113`). The active profile currently returns the app shell for these routes because this plugin is not mounted.
+8. **Hardcoded root-relative config endpoints** — `/workspace-groups/*` bypass the DSH API carrier/base-path abstraction (`src/client/GroupsBrowser.tsx:89-113`). They work in the active root deployment, but non-root/base-path compatibility remains unverified.
 9. **Published declarations retain `.ts` import extensions** — 13 emitted imports reference source-style `.ts` paths (`tsconfig.json:16`; `lib/types/**/*.d.ts`). Consumer compatibility needs an external-package fixture test.
 10. **Committed client bundle is machine-path dependent** — CSS virtual module comments embed the absolute builder path, making builds dirty across machines (`tsdown.config.ts:120-130`). Reproduced by build and reverted.
-11. **No unit coverage for HTTP routes, search derivation, or DnD reducer behavior** — current tests cover core parsing/tree basics/store only.
-12. **Search input has no explicit accessible name; drag sorting has no keyboard/touch alternative** (`src/client/GroupsBrowser.tsx:771-786,625-752`; `src/client/rows.tsx:190-207`).
+11. **Coverage remains incomplete** — current tests cover core, tree/store semantics and source contracts, but HTTP routes and rendered Search/dialog/DnD interactions still lack runnable component coverage.
+12. **Partially fixed accessibility controls** — Search now has an explicit accessible name and Workspace move has a menu alternative; Group Move Up/Down, full tree navigation, and live announcements remain open.
 
 ### Low / maintenance
 
@@ -88,44 +93,53 @@ Primary hot paths: `src/client/tree.ts:176-190,235-247`, `src/client/GroupsBrows
 |---|---|
 | Host `webServer.register` shape | Source-compatible by inspection |
 | Workspace/session actions used by Client | Present in installed runtime types |
-| Sidebar single-slot priority behavior | Likely compatible; requires live mount |
-| UI primitive exports | Build verified against project peers `0.1.1-rc.2`; active runtime is older |
-| Peer dependency resolution | **Mismatch:** plugin requires `^0.1.1-rc.2`, runtime is `0.1.0-rc.8` |
-| End-to-end Web activation | **Not verified**; active profile was intentionally not modified/restarted |
+| Sidebar single-slot priority behavior | Live mount verified; plugin shadows the official browser at priority -1 |
+| UI primitive exports | Build and live render verified; mixed peer versions remain a compatibility risk |
+| Peer dependency resolution | **Mismatch:** plugin requires `^0.1.1-rc.2`, parts of runtime/profile remain `0.1.0-rc.8` |
+| End-to-end Web activation | **Verified for activation and manual smoke; full disposable-profile suite remains open** |
 
-The fork is registered as a separate DSH Workspace (`ac1c7237-f82c-48ad-8727-f91e05995ce2`) at `/var/lib/dsh/dsh-workspace-groups`.
+The active profile links the package checkout at `/var/lib/dsh/Project/dsh-workspace-groups`. A previously audited separate Workspace registration used id `ac1c7237-f82c-48ad-8727-f91e05995ce2`; its old path evidence is historical and not the active package link.
 
 ## Verification evidence
 
+Current repair baseline `8424134`, verified 2026-08-25/26:
+
+```text
+pnpm typecheck                 PASS
+pnpm test                      PASS — 5 files, 120 tests
+pnpm build                     PASS — host/client artifacts built
+node --check verify script     PASS
+live Web activation            PASS — active linked package and JSON endpoint
+```
+
+Historical original audit at `fcaf221`, 2026-08-24:
+
 ```text
 pnpm install --frozen-lockfile  PASS
-pnpm typecheck                 PASS
-pnpm test                      PASS — 4 files, 83 tests on fix/core-english-first
-pnpm build                     PASS — host/client artifacts built
 pnpm pack --dry-run --json     PASS — publication contents inspected
 ```
 
-Additional reproductions:
+Historical original-audit reproductions at `fcaf221`:
 
 ```text
-pathPrefix sibling match       confirmed true
-mixed Windows/POSIX separator  confirmed no match
-root pathPrefix '/'            confirmed matches every path
-moveBefore/After self target   confirmed moves item to end
-verify-groups + /bin/false     confirmed exit 0 with 0/0 passed
+pathPrefix sibling match       reproduced before fix
+mixed Windows/POSIX separator  reproduced before fix
+root normalization defect      reproduced before fix
+moveBefore/After self target   reproduced before fix
+verify-groups + /bin/false     still open: exit 0 with 0/0 passed
 ```
 
-A rebuild changed only the absolute CSS virtual-module path comment in `lib/client.js`; the generated change was reverted so this audit branch contains documentation only.
+The first four reproductions are fixed in current `main`; the verifier setup failure remains baseline debt. The original audit branch was documentation-only, while current repair evidence is represented by the current baseline commit and verification block above.
 
 ## Recommended repair order
 
-1. Fix rule path normalization/boundaries and hidden-rule fallback; add cross-platform tests.
-2. Extract/test ordering mutations; preserve current effective order and make self-drop a no-op.
-3. Replace no-op search actions with real handlers or hide unsupported controls.
-4. Serialize/version manual-overlay writes and reject stale updates.
-5. Make `verify-groups.mjs` fail closed; add Host route/search/DnD tests.
-6. Add keyboard/touch move actions and proper tree focus semantics.
-7. Widen and test DSH peer compatibility, then install this fork in a disposable profile before touching the active `web` profile.
+1. Replace no-op Search actions with real handlers or hide unsupported controls.
+2. Guard pending dialogs and surface Fork/Archive errors.
+3. Serialize/version manual-overlay writes and reject stale updates.
+4. Make `verify-groups.mjs` fail closed; add Host route/rendered Search/DnD tests.
+5. Add Group Move Up/Down, valid tree ownership, roving focus and live announcements.
+6. Run the disposable-profile GUI/compatibility gate and record the early active-profile installation as closed debt only after it passes.
+7. Align supported peer versions and package/consumer gates.
 8. Optimize only after correctness: maps/sets, memoized descendant index, fine-grained subscriptions, then virtualization when measured at ≥500 workspaces.
 
 ## Audit method

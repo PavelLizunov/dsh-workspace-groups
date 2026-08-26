@@ -4,10 +4,11 @@
 
 Довести форк до состояния, в котором его можно безопасно установить в основной DSH Web profile и ежедневно использовать при большом количестве Workspace. Сначала исправляем подтверждённые ошибки и защищаем данные, затем восстанавливаем полноценный UX, проверяем совместимость и только после этого оптимизируем масштабирование.
 
-Исходная точка и доказательства: [`AUDIT.md`](./AUDIT.md). Работа ведётся в форке `PavelLizunov/dsh-workspace-groups`; upstream `z-col/dsh-workspace-groups` сохраняется отдельным remote.
+Исходная точка и доказательства: [`AUDIT.md`](./AUDIT.md). Нормативная модель сущностей, механик и пределов абстракций: [`CORE_ARCHITECTURE_RULES.md`](./CORE_ARCHITECTURE_RULES.md). Работа ведётся в форке `PavelLizunov/dsh-workspace-groups`; upstream `z-col/dsh-workspace-groups` сохраняется отдельным remote.
 
 ## Неподвижные требования
 
+- Каждая spec, Gemini assignment и review обязаны соответствовать `CORE_ARCHITECTURE_RULES.md`; отклонение требует отдельной утверждённой Micro-Spec amendment.
 - Плагин не удаляет и не перемещает каталоги проектов.
 - Плагин не изменяет официальные workspace/session storage DSH.
 - Все ручные группы и порядок хранятся только в plugin-owned overlay.
@@ -17,6 +18,7 @@
 - Поддерживаемая версия DSH подтверждается живым тестом, а не только peerDependencies.
 - Исправление считается завершённым только после тестов, сборки, проверки GUI, коммита и push.
 
+<a id="stage-1-correctness"></a>
 ## Этап 1 — Correctness и защита данных
 
 - [x] Исправить нормализацию путей для `/` и `\\`, корневых путей и Windows drive letter.
@@ -24,16 +26,17 @@
 - [x] Пропускать скрытые правила и корректно обрабатывать назначения в скрытые/удалённые группы.
 - [x] Зарезервировать `__topLevel__` на Host и Client boundaries.
 - [x] Сделать self-drop гарантированным no-op.
-- [ ] Исправить первый reorder внутри группы на основе текущего эффективного порядка.
-- [ ] Сохранять существующий пользовательский порядок при повторном top-level reorder.
-- [ ] Сериализовать изменения overlay и добавить revision/ETag conflict detection.
+- [x] Исправить первый reorder внутри группы на основе текущего эффективного порядка.
+- [x] Сохранять существующий пользовательский порядок при повторном top-level reorder.
+- [ ] `DEBT-OVERLAY-CONCURRENCY`: сериализовать изменения overlay и добавить revision/ETag conflict detection.
 - [ ] Добавить регрессионные тесты на каждый перечисленный случай.
 
 **Готово, когда:** правила одинаково работают на Linux/macOS/Windows fixtures; быстрые и параллельные операции не теряют данные; DnD tests фиксируют точный порядок.
 
+<a id="stage-2-functional-ui"></a>
 ## Этап 2 — Функциональный UI
 
-- [ ] Подключить реальные Workspace/Session actions в результатах поиска либо убрать недоступные кнопки.
+- [ ] `DEBT-SEARCH-ACTIONS`: подключить реальные Workspace/Session actions в результатах поиска либо убрать недоступные кнопки.
 - [ ] Показывать ошибки fork/archive и дать retry для config/manual failures.
 - [ ] Защитить модальные операции от stale promise settlement и повторного открытия другой сущности.
 - [x] Восстановить Add Workspace через browse APIs и локальный directory dialog; native-only `pickDirectory` запрещён.
@@ -43,13 +46,14 @@
 
 **Готово, когда:** каждый видимый action работает и ошибки видны пользователю; поиск не меняет семантику операций и порядка.
 
+<a id="stage-3-accessibility"></a>
 ## Этап 3 — Accessibility
 
 - [x] Добавить базовый keyboard focus и Enter/Space activation для Group, Workspace и Session rows в рамках DSH-native redesign.
-- [ ] Исправить ARIA tree ownership/level structure, затем реализовать roving focus и полную WAI-ARIA Tree keyboard navigation.
+- [ ] `DEBT-ARIA-TREE`: исправить ARIA tree ownership/level structure, затем реализовать roving focus и полную WAI-ARIA Tree keyboard navigation.
 - [x] Исправить accessible names категорий и search input.
 - [x] Добавить Workspace submenu «Переместить в группу» как альтернативу drag-and-drop.
-- [ ] Добавить keyboard actions «Выше» и «Ниже» для полной альтернативы drag-and-drop.
+- [ ] `DEBT-GROUP-KEYBOARD`: добавить Group keyboard/touch actions «Выше» и «Ниже» для полной альтернативы drag-and-drop.
 - [x] Сделать row actions доступными без hover и на touch-устройствах.
 - [ ] Добавить live announcements для перемещения и ошибок.
 
@@ -57,17 +61,19 @@
 
 **Готово, когда:** основной сценарий группировки и сортировки полностью выполняется только клавиатурой; axe/manual screen-reader smoke не показывает blocker-ошибок.
 
+<a id="stage-4-build-compatibility"></a>
 ## Этап 4 — Build, тестовый gate и совместимость DSH
 
-- [ ] Исправить `verify-groups.mjs`: setup failure и 0/0 всегда дают exit 1.
+- [ ] `DEBT-VERIFIER-SETUP`: исправить `verify-groups.mjs`: setup failure и 0/0 всегда дают exit 1.
 - [ ] Сделать поиск Chrome переносимым между Linux/macOS/Windows.
 - [ ] Убрать абсолютный builder path из `lib/client.js`.
 - [ ] Проверить и исправить public `.d.ts` imports с расширениями `.ts` через consumer fixture.
 - [ ] Включить tests в TypeScript typecheck.
 - [ ] Добавить `README_ZH.md` и config example в package tarball.
 - [ ] Выбрать минимальную поддерживаемую DSH-версию и выровнять peers.
-- [ ] Установить fork в отдельный disposable profile и выполнить живой GUI suite.
-- [ ] Только после успешного disposable-profile gate устанавливать в основной `web` profile.
+- [ ] Установить fork в отдельный disposable profile и выполнить полный живой GUI suite.
+- [x] `DEBT-ACTIVE-BEFORE-GATE`: Fork уже установлен в основной `web` profile до disposable-profile gate — grandfathered baseline deployment debt; retroactive amendment не требуется.
+- [ ] Не заявлять release/production readiness и не расширять rollout, пока disposable-profile suite не пройдёт; owner: lead, removal condition: documented successful disposable smoke + compatibility evidence.
 
 **Готово, когда:** чистый checkout воспроизводимо собирается без diff; fail-closed test gate зелёный; tarball проходит consumer install; заявленные DSH-версии подтверждены.
 
@@ -84,7 +90,7 @@
 
 ## Порядок работы в новой сессии
 
-1. Прочитать `AUDIT.md` и этот файл.
+1. Прочитать `CORE_ARCHITECTURE_RULES.md`, `AUDIT.md` и этот файл.
 2. Проверить `git status`, `origin`, `upstream` и актуальность upstream.
 3. Создать рабочую ветку от `main`; ветку `audit/full-plugin-review` оставить как доказательную.
 4. Брать по одному связанному набору проблем из этапа 1.
