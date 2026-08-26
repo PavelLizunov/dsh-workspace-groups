@@ -49,7 +49,8 @@ export interface RowDropProps {
 export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory }: {
     node: CategoryNode;
     t: T;
-    onToggle: () => void;
+    /** Omit for fixed-expanded, non-toggleable search branches. */
+    onToggle?: () => void;
     /** Rename/delete actions; the hover menu renders only when both provided. */
     onRename?: () => void;
     onDelete?: () => void;
@@ -60,10 +61,11 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
 export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
     node: WorkspaceGroupNode;
     t: T;
-    onToggle: () => void;
-    onNewSession: () => void;
-    onRename: () => void;
-    onDelete: () => void;
+    /** Omit for fixed-expanded, non-toggleable search branches. */
+    onToggle?: () => void;
+    onNewSession?: () => void;
+    onRename?: () => void;
+    onDelete?: () => void;
     /** Project currently sits inside a group — offer "move out of group". */
     canMoveOut?: boolean;
     onMoveOut?: () => void;
@@ -76,14 +78,15 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     onDragStartExtra?: () => void;
 } & RowDropProps): import("react").JSX.Element;
 /** One session leaf row. */
-export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive }: {
+export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy }: {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
     t: T;
     onOpen: (id: SessionNode['id']) => void;
-    onRename: (id: SessionNode['id'], currentTitle: string) => void;
-    onFork: (id: SessionNode['id']) => void;
-    onArchive: (id: SessionNode['id']) => void;
+    onRename?: (id: SessionNode['id'], currentTitle: string) => void;
+    onFork?: (id: SessionNode['id']) => void;
+    onArchive?: (id: SessionNode['id']) => void;
+    actionBusy?: boolean;
 }): import("react").JSX.Element;
 export type { T };

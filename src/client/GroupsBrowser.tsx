@@ -350,6 +350,7 @@ export function GroupsBrowser({
   const [renameDraft, setRenameDraft] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [renameError, setRenameError] = useState<string | null>(null)
+  const renameGeneration = useRef(0)
   const renameTrimmed = renameDraft.trim()
   const renameDuplicate = renameTarget !== null && renameTrimmed !== '' && renameTrimmed !== renameTarget.currentTitle
     && workspaces.some(w => w.title === renameTrimmed)
@@ -357,12 +358,16 @@ export function GroupsBrowser({
     || renameTrimmed === renameTarget.currentTitle || renameDuplicate
   const confirmRename = () => {
     if (renameBlocked || renameTarget === null) return
+    const generation = ++renameGeneration.current
+    const targetId = renameTarget.workspaceId
     setRenaming(true)
     setRenameError(null)
-    renameWorkspace(renameTarget.workspaceId, renameTrimmed).then(() => {
+    renameWorkspace(targetId, renameTrimmed).then(() => {
+      if (generation !== renameGeneration.current) return
       setRenaming(false)
       setRenameTarget(null)
     }).catch((reason: unknown) => {
+      if (generation !== renameGeneration.current) return
       setRenaming(false)
       setRenameError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -372,14 +377,19 @@ export function GroupsBrowser({
   const [deleteTarget, setDeleteTarget] = useState<{ workspaceId: WorkspaceId; title: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const deleteGeneration = useRef(0)
   const confirmDelete = () => {
     if (deleting || deleteTarget === null) return
+    const generation = ++deleteGeneration.current
+    const targetId = deleteTarget.workspaceId
     setDeleting(true)
     setDeleteError(null)
-    deleteWorkspace(deleteTarget.workspaceId).then(() => {
+    deleteWorkspace(targetId).then(() => {
+      if (generation !== deleteGeneration.current) return
       setDeleting(false)
       setDeleteTarget(null)
     }).catch((reason: unknown) => {
+      if (generation !== deleteGeneration.current) return
       setDeleting(false)
       setDeleteError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -390,16 +400,23 @@ export function GroupsBrowser({
   const [sessionRenameDraft, setSessionRenameDraft] = useState('')
   const [sessionRenaming, setSessionRenaming] = useState(false)
   const [sessionRenameError, setSessionRenameError] = useState<string | null>(null)
+  const sessionRenameGeneration = useRef(0)
+  const [sessionActionError, setSessionActionError] = useState<string | null>(null)
+  const [sessionActionBusy, setSessionActionBusy] = useState(false)
   const sessionRenameTrimmed = sessionRenameDraft.trim()
   const sessionRenameBlocked = sessionRenaming || sessionRenameTrimmed === '' || sessionRenameTarget === null
   const confirmSessionRename = () => {
     if (sessionRenameBlocked || sessionRenameTarget === null) return
+    const generation = ++sessionRenameGeneration.current
+    const targetId = sessionRenameTarget.sessionId
     setSessionRenaming(true)
     setSessionRenameError(null)
-    renameSession(sessionRenameTarget.sessionId, sessionRenameTrimmed).then(() => {
+    renameSession(targetId, sessionRenameTrimmed).then(() => {
+      if (generation !== sessionRenameGeneration.current) return
       setSessionRenaming(false)
       setSessionRenameTarget(null)
     }).catch((reason: unknown) => {
+      if (generation !== sessionRenameGeneration.current) return
       setSessionRenaming(false)
       setSessionRenameError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -410,10 +427,21 @@ export function GroupsBrowser({
     setSessionRenameError(null)
   }
 
+  const onSessionFork = (sessionId: SessionId) => {
+    if (sessionActionBusy) return
+    setSessionActionBusy(true)
+    setSessionActionError(null)
+    forkSession(sessionId).catch((reason: unknown) => {
+      setSessionActionError(`${t('session.forkError')}: ${reason instanceof Error ? reason.message : String(reason)}`)
+    }).finally(() => { setSessionActionBusy(false) })
+  }
   const onSessionArchive = (sessionId: SessionId) => {
+    if (sessionActionBusy) return
+    setSessionActionBusy(true)
+    setSessionActionError(null)
     archiveSession(sessionId).catch((reason: unknown) => {
-      console.warn('session archive rejected:', reason)
-    })
+      setSessionActionError(`${t('session.archiveError')}: ${reason instanceof Error ? reason.message : String(reason)}`)
+    }).finally(() => { setSessionActionBusy(false) })
   }
 
   // ---- Runtime group management ----------------------------------------------
@@ -425,6 +453,8 @@ export function GroupsBrowser({
   const [groupDeleteTarget, setGroupDeleteTarget] = useState<string | null>(null)
   const [groupDeleting, setGroupDeleting] = useState(false)
   const [groupDeleteError, setGroupDeleteError] = useState<string | null>(null)
+  const groupGeneration = useRef(0)
+  const groupDeleteGeneration = useRef(0)
 
   const takenNames = useMemo(() => takenCategoryNames(config, manual), [config, manual])
 
@@ -467,9 +497,11 @@ export function GroupsBrowser({
       }
     }
 
+    const generation = ++groupGeneration.current
     setGroupBusy(true)
     setGroupError(null)
     saveManualOverlay(next).then(() => {
+      if (generation !== groupGeneration.current) return
       setManual(next)
       setManualError(null)
       setGroupBusy(false)
@@ -478,6 +510,7 @@ export function GroupsBrowser({
       // Keep the renamed group open (its old expansion key is dropped by retainKeys).
       if (renaming) actions.setCategoryExpanded(name, true)
     }).catch((reason: unknown) => {
+      if (generation !== groupGeneration.current) return
       setGroupBusy(false)
       setGroupError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -512,14 +545,17 @@ export function GroupsBrowser({
         : { categories: manual.categories.filter(c => c !== name) }),
     }
 
+    const generation = ++groupDeleteGeneration.current
     setGroupDeleting(true)
     setGroupDeleteError(null)
     saveManualOverlay(next).then(() => {
+      if (generation !== groupDeleteGeneration.current) return
       setManual(next)
       setManualError(null)
       setGroupDeleting(false)
       setGroupDeleteTarget(null)
     }).catch((reason: unknown) => {
+      if (generation !== groupDeleteGeneration.current) return
       setGroupDeleting(false)
       setGroupDeleteError(reason instanceof Error ? reason.message : String(reason))
     })
@@ -925,6 +961,20 @@ export function GroupsBrowser({
               open={open}
               manual={manual}
               t={t}
+              startSession={startSession}
+              onWorkspaceRename={(workspaceId, title) => {
+                setRenameTarget({ workspaceId, currentTitle: title })
+                setRenameDraft(title)
+                setRenameError(null)
+              }}
+              onWorkspaceDelete={(workspaceId, title) => {
+                setDeleteTarget({ workspaceId, title })
+                setDeleteError(null)
+              }}
+              onSessionRename={onSessionRename}
+              onSessionFork={onSessionFork}
+              onSessionArchive={onSessionArchive}
+              sessionActionBusy={sessionActionBusy}
             />
           ) : (
             <div className="wgList" role="tree" aria-label={t('section.workspaces')}>
@@ -965,7 +1015,8 @@ export function GroupsBrowser({
                   }}
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
-                  onFork={forkSession}
+                  onFork={onSessionFork}
+                  sessionActionBusy={sessionActionBusy}
                   onGroupRename={() => {
                     setGroupDraft(category.key)
                     setGroupError(null)
@@ -1036,7 +1087,8 @@ export function GroupsBrowser({
                   }}
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
-                  onFork={forkSession}
+                  onFork={onSessionFork}
+                  sessionActionBusy={sessionActionBusy}
                   onMoveTo={(workspaceId, categoryKey) => { void moveWorkspaceTo(workspaceId, categoryKey) }}
                   moveTargetsFor={(workspaceId) => {
                     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
@@ -1049,17 +1101,24 @@ export function GroupsBrowser({
         </div>
       )}
 
+      {wide && sessionActionError !== null && (
+        <div className="wgSearchStatus wgManualError" role="alert">
+          {sessionActionError}
+          <Button variant="outline" onClick={() => { setSessionActionError(null) }}>{t('close')}</Button>
+        </div>
+      )}
+
       {/* Group create / rename dialog */}
       <Modal
         open={groupDialog !== null}
-        onClose={() => { setGroupDialog(null) }}
+        onClose={() => { if (!groupBusy) { groupGeneration.current += 1; setGroupDialog(null); setGroupError(null) } }}
         closeLabel={t('close')}
         title={groupDialog?.mode === 'rename' ? t('group.renameTitle') : t('group.createTitle')}
         footer={(
           <>
-            <Button variant="outline" onClick={() => { setGroupDialog(null) }}>{t('group.createCancel')}</Button>
+            <Button variant="outline" disabled={groupBusy} onClick={() => { groupGeneration.current += 1; setGroupDialog(null); setGroupError(null) }}>{t('group.createCancel')}</Button>
             <Button variant="primary" disabled={groupBlocked} onClick={confirmGroupDialog}>
-              {groupDialog?.mode === 'rename' ? t('group.renameConfirm') : t('group.createConfirm')}
+              {groupBusy ? (groupDialog?.mode === 'rename' ? t('group.renaming') : t('group.creating')) : groupDialog?.mode === 'rename' ? t('group.renameConfirm') : t('group.createConfirm')}
             </Button>
           </>
         )}
@@ -1070,6 +1129,7 @@ export function GroupsBrowser({
           aria-label={t('group.createPlaceholder')}
           placeholder={t('group.createPlaceholder')}
           autoFocus
+          disabled={groupBusy}
           onChange={(e) => { setGroupDraft(e.target.value); setGroupError(null) }}
           onKeyDown={(e) => { if (e.key === 'Enter') confirmGroupDialog() }}
         />
@@ -1080,13 +1140,13 @@ export function GroupsBrowser({
       {/* Group delete dialog */}
       <Modal
         open={groupDeleteTarget !== null}
-        onClose={() => { setGroupDeleteTarget(null) }}
+        onClose={() => { if (!groupDeleting) { groupDeleteGeneration.current += 1; setGroupDeleteTarget(null); setGroupDeleteError(null) } }}
         closeLabel={t('close')}
         title={t('group.deleteTitle')}
         footer={(
           <>
-            <Button variant="outline" onClick={() => { setGroupDeleteTarget(null) }}>{t('group.deleteCancel')}</Button>
-            <Button variant="outline" disabled={groupDeleting} onClick={confirmGroupDelete}>{t('group.delete')}</Button>
+            <Button variant="outline" disabled={groupDeleting} onClick={() => { groupDeleteGeneration.current += 1; setGroupDeleteTarget(null); setGroupDeleteError(null) }}>{t('group.deleteCancel')}</Button>
+            <Button variant="outline" disabled={groupDeleting} onClick={confirmGroupDelete}>{groupDeleting ? t('group.deleting') : t('group.delete')}</Button>
           </>
         )}
       >
@@ -1097,13 +1157,13 @@ export function GroupsBrowser({
       {/* Workspace rename dialog */}
       <Modal
         open={renameTarget !== null}
-        onClose={() => { setRenameTarget(null) }}
+        onClose={() => { if (!renaming) { renameGeneration.current += 1; setRenameTarget(null); setRenameError(null) } }}
         closeLabel={t('close')}
         title={t('workspace.renameTitle')}
         footer={(
           <>
-            <Button variant="outline" onClick={() => { setRenameTarget(null) }}>{t('cancel')}</Button>
-            <Button variant="primary" disabled={renameBlocked} onClick={confirmRename}>{t('workspace.renameConfirm')}</Button>
+            <Button variant="outline" disabled={renaming} onClick={() => { renameGeneration.current += 1; setRenameTarget(null); setRenameError(null) }}>{t('workspace.renameCancel')}</Button>
+            <Button variant="primary" disabled={renameBlocked} onClick={confirmRename}>{renaming ? t('workspace.renaming') : t('workspace.renameConfirm')}</Button>
           </>
         )}
       >
@@ -1112,22 +1172,24 @@ export function GroupsBrowser({
           value={renameDraft}
           aria-label={t("workspace.renamePlaceholder")}
           autoFocus
+          disabled={renaming}
           onChange={(e) => { setRenameDraft(e.target.value) }}
           onKeyDown={(e) => { if (e.key === "Enter") confirmRename() }}
         />
+        {renameDuplicate && <div className="wgAddError" role="alert">{t('workspace.nameDuplicate')}</div>}
         {renameError !== null && <div className="wgAddError" role="alert">{renameError}</div>}
       </Modal>
 
       {/* Workspace delete dialog */}
       <Modal
         open={deleteTarget !== null}
-        onClose={() => { setDeleteTarget(null) }}
+        onClose={() => { if (!deleting) { deleteGeneration.current += 1; setDeleteTarget(null); setDeleteError(null) } }}
         closeLabel={t('close')}
         title={t('workspace.deleteTitle')}
         footer={(
           <>
-            <Button variant="outline" onClick={() => { setDeleteTarget(null) }}>{t('workspace.deleteCancel')}</Button>
-            <Button variant="outline" disabled={deleting} onClick={confirmDelete}>{t('workspace.delete')}</Button>
+            <Button variant="outline" disabled={deleting} onClick={() => { deleteGeneration.current += 1; setDeleteTarget(null); setDeleteError(null) }}>{t('workspace.deleteCancel')}</Button>
+            <Button variant="outline" disabled={deleting} onClick={confirmDelete}>{deleting ? t('workspace.deleting') : t('workspace.delete')}</Button>
           </>
         )}
       >
@@ -1138,13 +1200,13 @@ export function GroupsBrowser({
       {/* Session rename dialog */}
       <Modal
         open={sessionRenameTarget !== null}
-        onClose={() => { setSessionRenameTarget(null) }}
+        onClose={() => { if (!sessionRenaming) { sessionRenameGeneration.current += 1; setSessionRenameTarget(null); setSessionRenameError(null) } }}
         closeLabel={t('close')}
         title={t('session.renameTitle')}
         footer={(
           <>
-            <Button variant="outline" onClick={() => { setSessionRenameTarget(null) }}>{t('session.renameCancel')}</Button>
-            <Button variant="primary" disabled={sessionRenameBlocked} onClick={confirmSessionRename}>{t('session.renameConfirm')}</Button>
+            <Button variant="outline" disabled={sessionRenaming} onClick={() => { sessionRenameGeneration.current += 1; setSessionRenameTarget(null); setSessionRenameError(null) }}>{t('session.renameCancel')}</Button>
+            <Button variant="primary" disabled={sessionRenameBlocked} onClick={confirmSessionRename}>{sessionRenaming ? t('session.renaming') : t('session.renameConfirm')}</Button>
           </>
         )}
       >
@@ -1153,6 +1215,7 @@ export function GroupsBrowser({
           value={sessionRenameDraft}
           aria-label={t("session.renamePlaceholder")}
           autoFocus
+          disabled={sessionRenaming}
           onChange={(e) => { setSessionRenameDraft(e.target.value) }}
           onKeyDown={(e) => { if (e.key === "Enter") confirmSessionRename() }}
         />
@@ -1211,7 +1274,7 @@ function categoriesForCurrent(
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut }: {
+function CategorySection({ category, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut }: {
   category: CategoryNode
   current: SessionId | undefined
   now: number
@@ -1232,6 +1295,7 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
+  sessionActionBusy: boolean
   onGroupRename: () => void
   onGroupDelete: () => void
   onMoveOut: (workspaceId: WorkspaceId) => void
@@ -1293,6 +1357,7 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
                   onRename={onSessionRename}
                   onFork={onFork}
                   onArchive={onSessionArchive}
+                  actionBusy={sessionActionBusy}
                 />
               ))}
             </div>
@@ -1312,7 +1377,7 @@ function CategorySection({ category, current, now, t, dragIndicator, onDragOverR
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, onMoveTo, moveTargetsFor }: {
+function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor }: {
   topLevel: readonly WorkspaceGroupNode[]
   current: SessionId | undefined
   now: number
@@ -1334,6 +1399,7 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
+  sessionActionBusy: boolean
   onMoveTo: (workspaceId: WorkspaceId, categoryKey: string) => void
   moveTargetsFor: (workspaceId: WorkspaceId) => readonly WorkspaceMoveTarget[]
 }) {
@@ -1389,6 +1455,7 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
               onRename={onSessionRename}
               onFork={onFork}
               onArchive={onSessionArchive}
+              actionBusy={sessionActionBusy}
             />
           ))}
         </div>
@@ -1402,7 +1469,7 @@ function TopLevelSection({ topLevel, current, now, t, dragging, dragIndicator, t
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t }: {
+function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, onWorkspaceRename, onWorkspaceDelete, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -1415,6 +1482,13 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
   open: (sessionId: SessionId) => void
   manual: ManualGroups
   t: GroupsBrowserProps['t']
+  startSession: (workspaceId?: WorkspaceId) => void
+  onWorkspaceRename: (workspaceId: WorkspaceId, title: string) => void
+  onWorkspaceDelete: (workspaceId: WorkspaceId, title: string) => void
+  onSessionRename: (sessionId: SessionId, title: string) => void
+  onSessionFork: (sessionId: SessionId) => void
+  onSessionArchive: (sessionId: SessionId) => void
+  sessionActionBusy: boolean
 }) {
   const currentRemote = remote.query === query ? remote : { query, status: 'loading' as const, items: [], hasMore: false }
   const matches = useMemo(
@@ -1433,17 +1507,16 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
     <div className="wgList" role="tree" aria-label={t('search.results.aria')}>
       {groups.map((category) => (
         <div key={category.key} role="group">
-          <CategoryRow node={category} t={t} onToggle={() => {}} />
+          <CategoryRow node={category} t={t} />
           <div role="group">
             {category.workspaces.map((workspace) => (
               <div key={workspace.workspaceId} role="group">
                 <WorkspaceRow
                   node={workspace}
                   t={t}
-                  onToggle={() => {}}
-                  onNewSession={() => {}}
-                  onRename={() => {}}
-                  onDelete={() => {}}
+                  onNewSession={() => { startSession(workspace.workspaceId) }}
+                  onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
+                  onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
                 />
                 <div role="group">
                   {workspace.sessions.map((session) => (
@@ -1454,9 +1527,10 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                       now={now}
                       t={t}
                       onOpen={open}
-                      onRename={() => {}}
-                      onFork={() => {}}
-                      onArchive={() => {}}
+                      onRename={onSessionRename}
+                      onFork={onSessionFork}
+                      onArchive={onSessionArchive}
+                      actionBusy={sessionActionBusy}
                     />
                   ))}
                 </div>
@@ -1471,10 +1545,9 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             node={workspace}
             t={t}
             flat
-            onToggle={() => {}}
-            onNewSession={() => {}}
-            onRename={() => {}}
-            onDelete={() => {}}
+            onNewSession={() => { startSession(workspace.workspaceId) }}
+            onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
+            onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
           />
           <div role="group">
             {workspace.sessions.map((session) => (
@@ -1485,9 +1558,10 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                 now={now}
                 t={t}
                 onOpen={open}
-                onRename={() => {}}
-                onFork={() => {}}
-                onArchive={() => {}}
+                onRename={onSessionRename}
+                onFork={onSessionFork}
+                onArchive={onSessionArchive}
+                actionBusy={sessionActionBusy}
               />
             ))}
           </div>

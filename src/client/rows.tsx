@@ -103,7 +103,8 @@ export interface RowDropProps {
 export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory }: {
   node: CategoryNode
   t: T
-  onToggle: () => void
+  /** Omit for fixed-expanded, non-toggleable search branches. */
+  onToggle?: () => void
   /** Rename/delete actions; the hover menu renders only when both provided. */
   onRename?: () => void
   onDelete?: () => void
@@ -114,7 +115,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
   const count = node.workspaces.length
   const manageable = onRename !== undefined && onDelete !== undefined
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.target !== event.currentTarget) return
+    if (onToggle === undefined || event.target !== event.currentTarget) return
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
     onToggle()
@@ -128,7 +129,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       aria-label={`${node.label} (${count})`}
       data-wg-category={node.key}
       onClick={onToggle}
-      onKeyDown={handleKeyDown}
+      onKeyDown={onToggle === undefined ? undefined : handleKeyDown}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
       onDrop={onRowDrop}
@@ -199,10 +200,11 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra }: {
   node: WorkspaceGroupNode
   t: T
-  onToggle: () => void
-  onNewSession: () => void
-  onRename: () => void
-  onDelete: () => void
+  /** Omit for fixed-expanded, non-toggleable search branches. */
+  onToggle?: () => void
+  onNewSession?: () => void
+  onRename?: () => void
+  onDelete?: () => void
   /** Project currently sits inside a group — offer "move out of group". */
   canMoveOut?: boolean
   onMoveOut?: () => void
@@ -215,6 +217,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   onDragStartExtra?: () => void
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const manageable = onRename !== undefined && onDelete !== undefined
   const menuItems = [
     ...(moveTargets !== undefined && onMoveTo !== undefined
       ? [{
@@ -230,8 +233,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       : canMoveOut && onMoveOut !== undefined
         ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
         : []),
-    { id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> },
-    { id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true },
+    ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
+    ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
   ]
   const onDragStart = (event: DragEvent): void => {
     event.dataTransfer.setData(DND_WORKSPACE_TYPE, node.workspaceId)
@@ -242,7 +245,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
     if (event.target !== event.currentTarget) return
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
-    onToggle()
+    onToggle?.()
   }
   return (
     <div
@@ -252,10 +255,10 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       aria-expanded={node.expanded}
       aria-label={node.label}
       data-wsid={node.workspaceId}
-      draggable
+      draggable={onDragStartExtra !== undefined || onRowDrop !== undefined}
       onClick={onToggle}
-      onKeyDown={handleKeyDown}
-      onDragStart={onDragStart}
+      onKeyDown={onToggle === undefined ? undefined : handleKeyDown}
+      onDragStart={onDragStartExtra !== undefined || onRowDrop !== undefined ? onDragStart : undefined}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
       onDrop={onRowDrop}
@@ -269,8 +272,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         <IconProjectAddOutline16 />
       </span>
       <span className="wgProjectLabel" title={node.path}>{node.label}</span>
-      <span className="wgRowActions">
-        <Menu
+      {(menuItems.length > 0 || onNewSession !== undefined) && <span className="wgRowActions">
+        {menuItems.length > 0 && <Menu
           open={menuOpen}
           onClose={() => { setMenuOpen(false) }}
           items={menuItems}
@@ -278,8 +281,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
             setMenuOpen(false)
             if (id === 'moveOut') onMoveOut?.()
             if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
-            if (id === 'rename') onRename()
-            if (id === 'delete') onDelete()
+            if (id === 'rename') onRename?.()
+            if (id === 'delete') onDelete?.()
           }}
           portal
           closeOnPointerLeave
@@ -295,8 +298,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
               <IconEllipsisOutline16 />
             </button>
           )}
-        />
-        <button
+        />}
+        {onNewSession !== undefined && <button
           type="button"
           className="wgIconButton"
           draggable={false}
@@ -305,30 +308,31 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
           onKeyDown={(e) => { e.stopPropagation() }}
         >
           <IconPlusOutline16 />
-        </button>
-      </span>
+        </button>}
+      </span>}
     </div>
   )
 }
 
 /** One session leaf row. */
-export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive }: {
+export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy = false }: {
   node: SessionNode
   currentId: string | undefined
   now: number
   t: T
   onOpen: (id: SessionNode['id']) => void
-  onRename: (id: SessionNode['id'], currentTitle: string) => void
-  onFork: (id: SessionNode['id']) => void
-  onArchive: (id: SessionNode['id']) => void
+  onRename?: (id: SessionNode['id'], currentTitle: string) => void
+  onFork?: (id: SessionNode['id']) => void
+  onArchive?: (id: SessionNode['id']) => void
+  actionBusy?: boolean
 }) {
   const selected = node.id === currentId
   const [menuOpen, setMenuOpen] = useState(false)
   const showStatus = true
   const menuItems = [
-    { id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> },
-    { id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 /> },
-    { id: 'archive', label: t('session.archive'), icon: <IconArchiveOutline20 size={16} /> },
+    ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> }] : []),
+    ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 />, disabled: actionBusy }] : []),
+    ...(onArchive !== undefined ? [{ id: 'archive', label: t('session.archive'), icon: <IconArchiveOutline20 size={16} />, disabled: actionBusy }] : []),
   ]
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.target !== event.currentTarget) return
@@ -355,7 +359,7 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
       {node.snippet !== undefined && (
         <span className="wgSessionSnippet" title={node.snippet}>{node.snippet}</span>
       )}
-      {!node.blank && (
+      {!node.blank && menuItems.length > 0 && (
         <span className="wgRowActions">
           <Menu
             open={menuOpen}
@@ -363,9 +367,9 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
             items={menuItems}
             onSelect={(id) => {
               setMenuOpen(false)
-              if (id === 'rename') onRename(node.id, node.title)
-              if (id === 'fork') onFork(node.id)
-              if (id === 'archive') onArchive(node.id)
+              if (id === 'rename') onRename?.(node.id, node.title)
+              if (id === 'fork') onFork?.(node.id)
+              if (id === 'archive') onArchive?.(node.id)
             }}
             portal
             closeOnPointerLeave

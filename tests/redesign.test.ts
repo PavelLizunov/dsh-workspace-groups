@@ -38,6 +38,11 @@ describe('redesign source contracts: contract.ts and index.ts', () => {
     expect(clientIndexSource).not.toMatch(/\bpickDirectory\b/)
   })
 
+  it('propagates fork errors instead of swallowing them', () => {
+    expect(contractSource).toMatch(/forkSession:\s*\(sessionId: SessionId\) => Promise<void>/)
+    expect(clientIndexSource).not.toMatch(/\.catch\(\(\) => \{\}\)/)
+  })
+
   it('exposes listDirectory and createDirectory callbacks', () => {
     expect(contractSource).toMatch(/\blistDirectory\s*:/)
     expect(contractSource).toMatch(/\bcreateDirectory\s*:/)
@@ -179,6 +184,26 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
 
   it('provides append target with data-wg-category-drop-end attribute', () => {
     expect(browserSource).toMatch(/data-wg-category-drop-end/)
+  })
+
+  it('wires real actions into SearchBody instead of empty callbacks', () => {
+    const searchBody = browserSource.slice(browserSource.indexOf('function SearchBody'))
+    expect(searchBody).not.toMatch(/on(?:NewSession|Rename|Delete|Fork|Archive)=\{\(\) => \{\}\}/)
+    expect(searchBody).toContain('onWorkspaceRename')
+    expect(searchBody).toContain('onWorkspaceDelete')
+    expect(searchBody).toContain('onSessionFork')
+    expect(searchBody).toContain('onSessionArchive')
+  })
+
+  it('guards pending dialogs and async settlements', () => {
+    expect(browserSource).toContain('renameGeneration')
+    expect(browserSource).toContain('deleteGeneration')
+    expect(browserSource).toContain('sessionRenameGeneration')
+    expect(browserSource).toContain('groupGeneration')
+    expect(browserSource).toContain('groupDeleteGeneration')
+    expect(browserSource).toMatch(/onClose=\{\(\) => \{ if \(!renaming\)/)
+    expect(browserSource).toMatch(/disabled=\{renaming\}/)
+    expect(browserSource).toMatch(/disabled=\{sessionRenaming\}/)
   })
 
   it('filters TOP_LEVEL_ORDER_KEY when moving top-level workspace into a group', () => {
