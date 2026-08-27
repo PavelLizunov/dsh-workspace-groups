@@ -80,6 +80,11 @@ export interface ManualGroups {
      * inert: workspaces matching them become top-level (ungrouped).
      */
     hidden?: string[];
+    /**
+     * Optional color tags/badges keyed by category name or workspace id.
+     * Value is a color preset identifier or CSS color string (or null/absent to clear).
+     */
+    colors?: Record<string, string | null>;
 }
 /**
  * Legacy persisted label of the former fallback bucket. It is accepted only

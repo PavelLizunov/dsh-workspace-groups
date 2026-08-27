@@ -19,8 +19,13 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
   StateDot: () => <span data-state-dot />,
-  Menu: ({ anchor, items, onSelect }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean }>; onSelect: (id: string) => void }) => (
-    <div>{anchor}{items.map(item => <button key={item.id} disabled={item.disabled} onClick={() => onSelect(item.id)}>{item.label}</button>)}</div>
+  Menu: ({ anchor, items, onSelect }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void }) => (
+    <div>
+      {anchor}
+      {items.flatMap(item => [item, ...(item.submenu ?? [])]).map(item => (
+        <button key={item.id} disabled={item.disabled} onClick={() => onSelect(item.id)}>{item.label}</button>
+      ))}
+    </div>
   ),
 }))
 
@@ -71,5 +76,17 @@ describe('row interaction contracts', () => {
     const archive = buttons.find(button => button.textContent === 'session.archive')
     expect(fork?.disabled).toBe(true)
     expect(archive?.disabled).toBe(true)
+  })
+
+  it('renders color dot badge and invokes onSetColor on menu selection', () => {
+    const onSetColor = vi.fn()
+    act(() => { root.render(<CategoryRow node={{ key: 'g', label: 'Group', expanded: true, containsCurrent: false, workspaces: [] }} t={t} color="red" onSetColor={onSetColor} onRename={() => {}} onDelete={() => {}} />) })
+    const dot = host.querySelector('.wgColorDot')
+    expect(dot?.getAttribute('data-color')).toBe('red')
+
+    const buttons = Array.from(host.querySelectorAll('button'))
+    const colorOption = buttons.find(button => button.textContent === 'color.red')
+    act(() => { colorOption?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    expect(onSetColor).toHaveBeenCalledWith('red')
   })
 })

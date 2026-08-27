@@ -95,12 +95,14 @@ export interface RowDropProps {
   onRowDrop?: (event: DragEvent) => void
 }
 
+export const COLOR_PRESETS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'] as const
+
 /**
  * One category folder row: toggle, rename/delete menu (every group — rule
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSetColor, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: CategoryNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -108,6 +110,8 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
   /** Rename/delete actions; the hover menu renders only when both provided. */
   onRename?: () => void
   onDelete?: () => void
+  color?: string | null | undefined
+  onSetColor?: ((color: string | null) => void) | undefined
   /** Group reorder source; the row becomes draggable only when provided. */
   onDragStartCategory?: (event: DragEvent) => void
   onMoveUp?: () => void
@@ -151,6 +155,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
       </span>
       <span className="wgCategoryIcon" data-wg-row-icon="group">
         {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+        {color && <span className="wgColorDot" data-color={color} />}
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
@@ -180,6 +185,17 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
               items={[
                 ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
                 ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
+                ...(onSetColor !== undefined
+                  ? [{
+                      id: 'color',
+                      label: t('color.title'),
+                      icon: <IconEditOutline16 />,
+                      submenu: [
+                        { id: 'color:none', label: t('color.reset') },
+                        ...COLOR_PRESETS.map(c => ({ id: `color:${c}`, label: t(`color.${c}` as keyof T) })),
+                      ],
+                    }]
+                  : []),
                 { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
                 { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
               ]}
@@ -187,6 +203,10 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
                 setMenuOpen(false)
                 if (id === 'moveUp') onMoveUp?.()
                 if (id === 'moveDown') onMoveDown?.()
+                if (id.startsWith('color:')) {
+                  const selectedColor = id.slice('color:'.length)
+                  onSetColor?.(selectedColor === 'none' ? null : selectedColor)
+                }
                 if (id === 'rename') onRename?.()
                 if (id === 'delete') onDelete?.()
               }}
@@ -213,7 +233,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive 
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: WorkspaceGroupNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -221,6 +241,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   onNewSession?: () => void
   onRename?: () => void
   onDelete?: () => void
+  color?: string | null | undefined
+  onSetColor?: ((color: string | null) => void) | undefined
   /** Project currently sits inside a group — offer "move out of group". */
   canMoveOut?: boolean
   onMoveOut?: () => void
@@ -264,6 +286,17 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         : []),
     ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
     ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
+    ...(onSetColor !== undefined
+      ? [{
+          id: 'color',
+          label: t('color.title'),
+          icon: <IconEditOutline16 />,
+          submenu: [
+            { id: 'color:none', label: t('color.reset') },
+            ...COLOR_PRESETS.map(c => ({ id: `color:${c}`, label: t(`color.${c}` as keyof T) })),
+          ],
+        }]
+      : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
   ]
@@ -304,6 +337,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         {/* Project rows use the project glyph (same as the official workspace
             browser) so groups (folder glyph) and projects stay distinguishable. */}
         <IconProjectAddOutline16 />
+        {color && <span className="wgColorDot" data-color={color} />}
       </span>
       <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       {(menuItems.length > 0 || onNewSession !== undefined) && <span className="wgRowActions">
@@ -317,6 +351,10 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
             if (id === 'moveDown') onMoveDown?.()
             if (id === 'openFolder') onOpenFolder?.()
             if (id === 'copyPath') onCopyPath?.()
+            if (id.startsWith('color:')) {
+              const selectedColor = id.slice('color:'.length)
+              onSetColor?.(selectedColor === 'none' ? null : selectedColor)
+            }
             if (id === 'moveOut') onMoveOut?.()
             if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
             if (id === 'rename') onRename?.()

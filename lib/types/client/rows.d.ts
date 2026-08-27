@@ -41,12 +41,13 @@ export interface RowDropProps {
     /** Drop a workspace onto this row. */
     onRowDrop?: (event: DragEvent) => void;
 }
+export declare const COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
 /**
  * One category folder row: toggle, rename/delete menu (every group — rule
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: CategoryNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -54,6 +55,8 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     /** Rename/delete actions; the hover menu renders only when both provided. */
     onRename?: () => void;
     onDelete?: () => void;
+    color?: string | null | undefined;
+    onSetColor?: ((color: string | null) => void) | undefined;
     /** Group reorder source; the row becomes draggable only when provided. */
     onDragStartCategory?: (event: DragEvent) => void;
     onMoveUp?: () => void;
@@ -67,7 +70,7 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, dro
     'aria-setsize'?: number;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: WorkspaceGroupNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -75,6 +78,8 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     onNewSession?: () => void;
     onRename?: () => void;
     onDelete?: () => void;
+    color?: string | null | undefined;
+    onSetColor?: ((color: string | null) => void) | undefined;
     /** Project currently sits inside a group — offer "move out of group". */
     canMoveOut?: boolean;
     onMoveOut?: () => void;

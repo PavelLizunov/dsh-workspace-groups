@@ -38,3 +38,7 @@ export declare function moveWorkspace(manual: ManualGroups, params: MoveWorkspac
  * Rename group references consistently across categories, categoryOrder, assignments, workspaceOrder, and renamed.
  */
 export declare function renameGroup(manual: ManualGroups, oldName: string, newName: string, options?: RenameGroupOptions): ManualGroups;
+/**
+ * Set or clear the visual color tag for a group or workspace in the overlay.
+ */
+export declare function setItemColor(manual: ManualGroups, itemKey: string, color: string | null): ManualGroups;

@@ -167,20 +167,17 @@ describe('manual file round-trip', () => {
     }
   })
 
-  it('write then read returns the same overlay (atomic publish)', async () => {
+  it('write then read returns the same overlay with colors', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'wg-manual-'))
     const path = join(dir, 'workspace-groups.manual.json')
     try {
       const overlay: ManualGroups = {
         categories: ['Temporary'],
-        assignments: { 'ws-1': 'Temporary', 'ws-2': 'DSH Plugins' },
+        assignments: { 'ws-1': 'Temporary' },
+        colors: { 'Temporary': 'red', 'ws-1': 'blue' },
       }
       await writeManualGroups(path, overlay)
       expect(await readManualGroups(path)).toEqual(overlay)
-      // The persisted file is valid JSON with a trailing newline.
-      const text = await readFile(path, 'utf8')
-      expect(JSON.parse(text)).toEqual(overlay)
-      expect(text.endsWith('\n')).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

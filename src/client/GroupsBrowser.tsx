@@ -37,7 +37,7 @@ import {
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
-import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup } from './overlay-core.ts'
+import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
 import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type WorkspaceGroupNode } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
@@ -49,7 +49,7 @@ const SEARCH_QUERY_MAX_CODE_UNITS = 500
 type NormalizedManual = Required<ManualGroups>
 
 const EMPTY_MANUAL: NormalizedManual = {
-  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [],
+  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [], colors: {},
 }
 
 /** Materialize optional overlay fields so every update is a plain object edit. */
@@ -61,6 +61,7 @@ function normalizeManual(manual: ManualGroups): NormalizedManual {
     workspaceOrder: manual.workspaceOrder ?? {},
     renamed: manual.renamed ?? {},
     hidden: manual.hidden ?? [],
+    colors: manual.colors ?? {},
   }
 }
 
@@ -917,6 +918,28 @@ export function GroupsBrowser({
     }
   }
 
+  const onSetItemColor = async (itemKey: string, color: string | null): Promise<void> => {
+    if (manualSaving) return
+    setManualSaving(true)
+    try {
+      const next = normalizeManual(setItemColor(manual, itemKey, color))
+      const { revision: nextRevision } = await saveManualOverlay(next, revision)
+      setManual(next)
+      setRevision(nextRevision)
+      setManualError(null)
+      setConflictError(false)
+    } catch (reason) {
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        void reloadConfig()
+      } else {
+        setManualError(reason instanceof Error ? reason.message : String(reason))
+      }
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   return (
     <div className={`wgRoot${wide ? '' : ' wgRail'}`}>
       <div className="wgSectionHeader">
@@ -1132,6 +1155,8 @@ export function GroupsBrowser({
                     return workspace !== undefined
                       && resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) !== undefined
                   }}
+                  manual={manual}
+                  onSetItemColor={onSetItemColor}
                 />
               ))}
               <div
@@ -1191,6 +1216,8 @@ export function GroupsBrowser({
                   onMoveWorkspaceDown={moveWorkspaceDown}
                   onOpenFolder={onOpenPath}
                   onCopyPath={onCopyPath}
+                  manual={manual}
+                  onSetItemColor={onSetItemColor}
                 />
               )}
             </div>
@@ -1472,7 +1499,7 @@ function handleTreeFocus(event: React.FocusEvent<HTMLElement>): void {
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
   category: CategoryNode
   categoryIndex: number
   totalRootItems: number
@@ -1510,6 +1537,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onCopyPath: (path: string) => void
   isFirstGroup: boolean
   isLastGroup: boolean
+  manual: ManualGroups
+  onSetItemColor: (itemKey: string, color: string | null) => void
 }) {
   const categoryLine = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'category' && dragIndicator.row.key === category.key
     ? (dragIndicator.before ? 'before' : 'after')
@@ -1526,6 +1555,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         onToggle={onToggleCategory}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
+        color={manual.colors?.[category.key]}
+        onSetColor={(color) => { void onSetItemColor(category.key, color) }}
         onDragStartCategory={onDragStartCategory}
         onMoveUp={() => { onMoveGroupUp(category.key) }}
         onMoveDown={() => { onMoveGroupDown(category.key) }}
@@ -1553,6 +1584,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
+                color={manual.colors?.[workspace.workspaceId]}
+                onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 canMoveOut={canMoveOut(workspace.workspaceId)}
                 onMoveOut={() => { onMoveOut(workspace.workspaceId) }}
                 moveTargets={moveTargetsFor(workspace.workspaceId)}
@@ -1608,7 +1641,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath }: {
+function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
   topLevel: readonly WorkspaceGroupNode[]
   totalGroups: number
   totalRootItems: number
@@ -1639,6 +1672,8 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onMoveWorkspaceDown: (workspaceId: string) => void
   onOpenFolder: (path: string) => void
   onCopyPath: (path: string) => void
+  manual: ManualGroups
+  onSetItemColor: (itemKey: string, color: string | null) => void
 }) {
   const emptyLineActive = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === topLevelRef.key
   return (
@@ -1674,6 +1709,8 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
+            color={manual.colors?.[workspace.workspaceId]}
+            onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
             moveTargets={moveTargetsFor(workspace.workspaceId)}
             onMoveTo={(categoryKey) => { onMoveTo(workspace.workspaceId, categoryKey) }}
             {...(dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === workspace.workspaceId

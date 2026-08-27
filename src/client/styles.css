@@ -670,6 +670,35 @@
   }
 }
 
+/* Visual color badge indicator for categories and projects */
+.wgCategoryIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wgColorDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: -1px;
+  right: -2px;
+  box-shadow: 0 0 0 1.5px var(--dsw-bg-1, #1e1e1e);
+  flex: none;
+}
+
+.wgColorDot[data-color="red"] { background-color: #ef4444; }
+.wgColorDot[data-color="orange"] { background-color: #f97316; }
+.wgColorDot[data-color="yellow"] { background-color: #eab308; }
+.wgColorDot[data-color="green"] { background-color: #22c55e; }
+.wgColorDot[data-color="cyan"] { background-color: #06b6d4; }
+.wgColorDot[data-color="blue"] { background-color: #3b82f6; }
+.wgColorDot[data-color="purple"] { background-color: #a855f7; }
+.wgColorDot[data-color="pink"] { background-color: #ec4899; }
+
 /* Reduced-motion handling */
 @media (prefers-reduced-motion: reduce) {
   .wgSectionLabel,

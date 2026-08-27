@@ -4,6 +4,12 @@
  */
 import type { LocaleDictOf } from '@deepseek-ai/dsh-client-ui-slots'
 
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    workspaceGroups: WorkspaceGroupsKey
+  }
+}
+
 /** Dictionary keys of the workspaceGroups namespace (single source of truth). */
 export type WorkspaceGroupsKey =
   | 'section.workspaces'
@@ -76,6 +82,16 @@ export type WorkspaceGroupsKey =
   | 'group.nameReserved'
   | 'group.moveUp'
   | 'group.moveDown'
+  | 'color.title'
+  | 'color.reset'
+  | 'color.red'
+  | 'color.orange'
+  | 'color.yellow'
+  | 'color.green'
+  | 'color.cyan'
+  | 'color.blue'
+  | 'color.purple'
+  | 'color.pink'
   | 'section.topLevel'
   | 'manual.saveError'
   | 'manual.conflictError'

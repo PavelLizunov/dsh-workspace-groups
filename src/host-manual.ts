@@ -121,6 +121,23 @@ export function parseManualGroups(raw: unknown): ManualGroups {
     }
     manual.workspaceOrder = workspaceOrder
   }
+  if (source.colors !== undefined) {
+    if (typeof source.colors !== 'object' || source.colors === null || Array.isArray(source.colors)) {
+      throw new Error('workspace-groups.manual.json: colors must be a mapping')
+    }
+    const colors: Record<string, string | null> = {}
+    for (const [key, color] of Object.entries(source.colors)) {
+      if (key.trim() === '') throw new Error('workspace-groups.manual.json: colors keys must be non-empty')
+      if (color === null || color === undefined) {
+        colors[key] = null
+      } else if (typeof color === 'string') {
+        colors[key] = color.trim() || null
+      } else {
+        throw new Error(`workspace-groups.manual.json: colors["${key}"] must be a string or null`)
+      }
+    }
+    manual.colors = colors
+  }
 
   return manual
 }

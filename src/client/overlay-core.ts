@@ -74,6 +74,14 @@ export function removeGroup(
     hidden = Array.from(hiddenSet)
   }
 
+  let colors: Record<string, string | null> | undefined = manual.colors ? { ...manual.colors } : undefined
+  if (colors) {
+    delete colors[groupName]
+    if (originalRuleName !== undefined) {
+      delete colors[originalRuleName]
+    }
+  }
+
   return {
     ...manual,
     categories,
@@ -82,6 +90,7 @@ export function removeGroup(
     ...(categoryOrder !== undefined ? { categoryOrder } : {}),
     ...(renamed !== undefined ? { renamed } : {}),
     ...(hidden !== undefined ? { hidden } : {}),
+    ...(colors !== undefined ? { colors } : {}),
   }
 }
 
@@ -104,10 +113,16 @@ export function removeWorkspace(
     workspaceOrder[key] = ids.filter(id => id !== workspaceId)
   }
 
+  let colors: Record<string, string | null> | undefined = manual.colors ? { ...manual.colors } : undefined
+  if (colors) {
+    delete colors[workspaceId]
+  }
+
   return {
     ...manual,
     assignments,
     workspaceOrder,
+    ...(colors !== undefined ? { colors } : {}),
   }
 }
 
@@ -210,6 +225,12 @@ export function renameGroup(
     }
   }
 
+  let colors: Record<string, string | null> | undefined = manual.colors ? { ...manual.colors } : undefined
+  if (colors && colors[oldName] !== undefined) {
+    colors = { ...colors, [newName]: colors[oldName]! }
+    delete colors[oldName]
+  }
+
   return {
     ...manual,
     categories,
@@ -217,5 +238,26 @@ export function renameGroup(
     workspaceOrder,
     ...(categoryOrder !== undefined ? { categoryOrder } : {}),
     ...(renamed !== undefined ? { renamed } : {}),
+    ...(colors !== undefined ? { colors } : {}),
+  }
+}
+
+/**
+ * Set or clear the visual color tag for a group or workspace in the overlay.
+ */
+export function setItemColor(
+  manual: ManualGroups,
+  itemKey: string,
+  color: string | null,
+): ManualGroups {
+  const colors: Record<string, string | null> = { ...(manual.colors ?? {}) }
+  if (color === null || color === '') {
+    delete colors[itemKey]
+  } else {
+    colors[itemKey] = color
+  }
+  return {
+    ...manual,
+    colors,
   }
 }
