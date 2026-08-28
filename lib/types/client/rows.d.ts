@@ -70,7 +70,7 @@ export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, col
     'aria-setsize'?: number;
 } & RowDropProps): import("react").JSX.Element;
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, draggable, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: WorkspaceGroupNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -96,8 +96,10 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     canMoveDown?: boolean;
     /** Render as a top-level row (no folder indentation). */
     flat?: boolean;
-    /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
-    onDragStartExtra?: () => void;
+    /** Explicitly enable this Workspace row as a drag source. */
+    draggable?: boolean;
+    /** Notify the browser after this row has populated the Workspace drag payload. */
+    onWorkspaceDragStart?: (workspaceId: WorkspaceGroupNode['workspaceId'], event: DragEvent) => void;
     'aria-level'?: number;
     'aria-posinset'?: number;
     'aria-setsize'?: number;

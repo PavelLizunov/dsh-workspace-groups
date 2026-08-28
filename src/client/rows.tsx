@@ -233,7 +233,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartExtra, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, draggable = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: WorkspaceGroupNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -259,8 +259,10 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   canMoveDown?: boolean
   /** Render as a top-level row (no folder indentation). */
   flat?: boolean
-  /** Extra dragstart hook (e.g. collapse all expanded projects while dragging). */
-  onDragStartExtra?: () => void
+  /** Explicitly enable this Workspace row as a drag source. */
+  draggable?: boolean
+  /** Notify the browser after this row has populated the Workspace drag payload. */
+  onWorkspaceDragStart?: (workspaceId: WorkspaceGroupNode['workspaceId'], event: DragEvent) => void
   'aria-level'?: number
   'aria-posinset'?: number
   'aria-setsize'?: number
@@ -303,7 +305,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   const onDragStart = (event: DragEvent): void => {
     event.dataTransfer.setData(DND_WORKSPACE_TYPE, node.workspaceId)
     event.dataTransfer.effectAllowed = 'move'
-    onDragStartExtra?.()
+    onWorkspaceDragStart?.(node.workspaceId, event)
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.target !== event.currentTarget) return
@@ -322,24 +324,29 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
       aria-posinset={ariaPosinset}
       aria-setsize={ariaSetsize}
       data-wsid={node.workspaceId}
-      draggable={onDragStartExtra !== undefined || onRowDrop !== undefined}
       onClick={onToggle}
       onKeyDown={onToggle === undefined ? undefined : handleKeyDown}
-      onDragStart={onDragStartExtra !== undefined || onRowDrop !== undefined ? onDragStart : undefined}
       onDragOver={onRowDragOver}
       onDragLeave={onRowDragLeave}
       onDrop={onRowDrop}
     >
-      <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
-        <IconTriangleRightFill14 />
+      <span
+        className="wgWorkspaceDragSource"
+        data-wg-drag-source="workspace"
+        draggable={draggable}
+        onDragStart={draggable ? onDragStart : undefined}
+      >
+        <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
+          <IconTriangleRightFill14 />
+        </span>
+        <span className="wgCategoryIcon" data-wg-row-icon="project">
+          {/* Project rows use the project glyph (same as the official workspace
+              browser) so groups (folder glyph) and projects stay distinguishable. */}
+          <IconProjectAddOutline16 />
+          {color && <span className="wgColorDot" data-color={color} />}
+        </span>
+        <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       </span>
-      <span className="wgCategoryIcon" data-wg-row-icon="project">
-        {/* Project rows use the project glyph (same as the official workspace
-            browser) so groups (folder glyph) and projects stay distinguishable. */}
-        <IconProjectAddOutline16 />
-        {color && <span className="wgColorDot" data-color={color} />}
-      </span>
-      <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       {(menuItems.length > 0 || onNewSession !== undefined) && <span className="wgRowActions">
         {menuItems.length > 0 && <Menu
           open={menuOpen}

@@ -802,7 +802,7 @@ export function GroupsBrowser({
   // workspace collapses (inside groups AND top-level); group rows keep their
   // expansion so the user still sees where groups are. dragend restores the
   // snapshot taken here.
-  const onDragStartWorkspace = (_workspaceId: string) => (): void => {
+  const onDragStartWorkspace = (_workspaceId: WorkspaceId, _event: DragEvent): void => {
     setDragging('workspace')
     const temporaryWorkspaces = Object.fromEntries(
       Object.entries(workspaceExpansion).map(([key, value]) => [key, value ? false : value]),
@@ -1512,7 +1512,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   /** Drop factory: bind the target category and the row kind (before/after re-derived at drop time). */
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartCategory: (event: DragEvent) => void
-  onDragStartWorkspace: (workspaceId: WorkspaceId) => () => void
+  onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
   onToggleCategory: () => void
   onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
@@ -1605,7 +1605,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 onRowDragOver={onDragOverRow({ kind: 'workspace', key: workspace.workspaceId })}
                 onRowDragLeave={onDragLeaveRow}
                 onRowDrop={onDropRow(category.key, { kind: 'workspace', key: workspace.workspaceId })}
-                onDragStartExtra={onDragStartWorkspace(workspace.workspaceId)}
+                draggable
+                onWorkspaceDragStart={onDragStartWorkspace}
               />
               {workspace.expanded && workspace.sessions.map((session, sIdx) => (
                 <SessionRow
@@ -1656,7 +1657,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onDragOverTopLevelArea: (event: DragEvent) => void
   onDragLeaveRow: (event: DragEvent) => void
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
-  onDragStartWorkspace: (workspaceId: WorkspaceId) => () => void
+  onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
   onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
@@ -1719,7 +1720,8 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             onRowDragOver={onDragOverRow({ kind: 'topLevel', key: workspace.workspaceId })}
             onRowDragLeave={onDragLeaveRow}
             onRowDrop={onDropRow(UNCATEGORIZED_KEY, { kind: 'topLevel', key: workspace.workspaceId })}
-            onDragStartExtra={onDragStartWorkspace(workspace.workspaceId)}
+            draggable
+            onWorkspaceDragStart={onDragStartWorkspace}
           />
           {workspace.expanded && workspace.sessions.map((session, sIdx) => (
             <SessionRow

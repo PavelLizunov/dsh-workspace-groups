@@ -408,6 +408,25 @@
   font-weight: 600;
 }
 
+.wgWorkspaceDragSource {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wgWorkspaceDragSource[draggable="true"] {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: element;
+}
+
+.wgWorkspaceDragSource[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .wgProjectLabel {
   flex: 1;
   min-width: 0;

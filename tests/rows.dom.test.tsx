@@ -29,7 +29,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   ),
 }))
 
-import { CategoryRow, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
+import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 
 const t = ((key: string) => key) as never
 let host: HTMLDivElement
@@ -54,6 +54,35 @@ describe('row interaction contracts', () => {
     expect(sessionDotState({ ...idle, running: true })).toBe('ongoing')
     expect(sessionDotState({ ...idle, runningSubagentCount: 1 })).toBe('ongoing')
     expect(sessionDotState({ ...idle, running: true, pendingInteraction: 'approval' })).toBe('warning')
+  })
+
+  it('starts a Workspace drag from the selected row, not only the first row', () => {
+    const onWorkspaceDragStart = vi.fn()
+    const workspace = (id: string, flat = false) => (
+      <WorkspaceRow
+        key={id}
+        node={{ workspaceId: id as never, path: `/${id}`, label: id, createdAt: 0, sessionCount: 0, expanded: false, containsCurrent: false, sessions: [] }}
+        t={t}
+        flat={flat}
+        draggable
+        onWorkspaceDragStart={onWorkspaceDragStart}
+        onNewSession={() => {}}
+      />
+    )
+    act(() => { root.render(<>{workspace('first')}{workspace('middle')}{workspace('last', true)}</>) })
+    const sources = Array.from(host.querySelectorAll<HTMLElement>('[data-wg-drag-source="workspace"]'))
+    expect(sources.map(source => source.draggable)).toEqual([true, true, true])
+
+    const setData = vi.fn()
+    const dataTransfer = { setData, effectAllowed: 'none' }
+    const event = new Event('dragstart', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', { value: dataTransfer })
+    act(() => { sources[1]!.dispatchEvent(event) })
+
+    expect(setData).toHaveBeenCalledWith(DND_WORKSPACE_TYPE, 'middle')
+    expect(dataTransfer.effectAllowed).toBe('move')
+    expect(onWorkspaceDragStart).toHaveBeenCalledWith('middle', expect.anything())
+    expect(Array.from(host.querySelectorAll<HTMLButtonElement>('button')).every(button => !button.draggable)).toBe(true)
   })
 
   it('fixed-expanded Search category remains focusable but does not toggle', () => {
