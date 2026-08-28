@@ -33,3 +33,29 @@ export declare function readManualGroups(path: string): Promise<ManualGroups>;
  * @param manual - overlay to persist.
  */
 export declare function writeManualGroups(path: string, manual: ManualGroups): Promise<void>;
+/**
+ * Compute a stable SHA-256 hash revision over canonical JSON representation of a ManualGroups overlay.
+ */
+export declare function manualRevision(manual: ManualGroups): string;
+export interface ManualEnvelope {
+    manual: ManualGroups;
+    revision: string;
+}
+/** Read overlay envelope containing parsed ManualGroups and its stable revision. Missing file uses empty overlay revision. */
+export declare function readManualEnvelope(path: string): Promise<ManualEnvelope>;
+export type WriteManualResult = {
+    ok: true;
+    conflict: false;
+    revision: string;
+} | {
+    ok: false;
+    conflict: true;
+    currentRevision: string;
+    manual: ManualGroups;
+};
+/**
+ * Write overlay if expectedRevision matches current envelope revision immediately before write.
+ * On conflict, returns { ok: false, conflict: true, currentRevision, manual } preserving file.
+ * On success, writes atomically and returns { ok: true, conflict: false, revision: newRevision }.
+ */
+export declare function writeManualGroupsIfRevision(path: string, manual: ManualGroups, expectedRevision: string): Promise<WriteManualResult>;

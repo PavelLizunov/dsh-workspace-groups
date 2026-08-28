@@ -9,6 +9,7 @@
  * wins); reads tolerate hand-edited content (parse-only) while the write
  * boundary cross-validates against the current rule categories.
  */
+import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { homedir } from 'node:os'
@@ -38,7 +39,10 @@ export function parseManualGroups(raw: unknown): ManualGroups {
   if (typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('workspace-groups.manual.json: top-level value must be a mapping')
   }
-  const source = raw as Record<string, unknown>
+  let source = raw as Record<string, unknown>
+  if (source.categories === undefined && source.assignments === undefined && typeof source.manual === 'object' && source.manual !== null && !Array.isArray(source.manual)) {
+    source = source.manual as Record<string, unknown>
+  }
 
   const categories: string[] = []
   if (source.categories !== undefined) {
@@ -247,5 +251,77 @@ export async function writeManualGroups(path: string, manual: ManualGroups): Pro
   } catch (error) {
     await unlink(tmp).catch(() => {})
     throw error
+  }
+}
+
+/** Recursively produce a canonical data structure with object keys sorted. */
+function canonicalize(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') {
+    return value
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalize)
+  }
+  const record = value as Record<string, unknown>
+  const sortedKeys = Object.keys(record).sort()
+  const result: Record<string, unknown> = {}
+  for (const key of sortedKeys) {
+    const val = record[key]
+    if (val !== undefined) {
+      result[key] = canonicalize(val)
+    }
+  }
+  return result
+}
+
+/**
+ * Compute a stable SHA-256 hash revision over canonical JSON representation of a ManualGroups overlay.
+ */
+export function manualRevision(manual: ManualGroups): string {
+  const canonicalJson = JSON.stringify(canonicalize(manual))
+  return createHash('sha256').update(canonicalJson).digest('hex')
+}
+
+export interface ManualEnvelope {
+  manual: ManualGroups
+  revision: string
+}
+
+/** Read overlay envelope containing parsed ManualGroups and its stable revision. Missing file uses empty overlay revision. */
+export async function readManualEnvelope(path: string): Promise<ManualEnvelope> {
+  const manual = await readManualGroups(path)
+  const revision = manualRevision(manual)
+  return { manual, revision }
+}
+
+export type WriteManualResult =
+  | { ok: true; conflict: false; revision: string }
+  | { ok: false; conflict: true; currentRevision: string; manual: ManualGroups }
+
+/**
+ * Write overlay if expectedRevision matches current envelope revision immediately before write.
+ * On conflict, returns { ok: false, conflict: true, currentRevision, manual } preserving file.
+ * On success, writes atomically and returns { ok: true, conflict: false, revision: newRevision }.
+ */
+export async function writeManualGroupsIfRevision(
+  path: string,
+  manual: ManualGroups,
+  expectedRevision: string,
+): Promise<WriteManualResult> {
+  const currentEnvelope = await readManualEnvelope(path)
+  if (currentEnvelope.revision !== expectedRevision) {
+    return {
+      ok: false,
+      conflict: true,
+      currentRevision: currentEnvelope.revision,
+      manual: currentEnvelope.manual,
+    }
+  }
+  await writeManualGroups(path, manual)
+  const newRevision = manualRevision(manual)
+  return {
+    ok: true,
+    conflict: false,
+    revision: newRevision,
   }
 }

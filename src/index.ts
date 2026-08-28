@@ -18,9 +18,10 @@ import { defaultConfigPath, readGroupsConfig } from './host-config.ts'
 import {
   defaultManualPath,
   parseManualGroups,
+  readManualEnvelope,
   readManualGroups,
   validateManualGroups,
-  writeManualGroups,
+  writeManualGroupsIfRevision,
 } from './host-manual.ts'
 
 /** Plugin identity for cordis.yml rows. */
@@ -64,6 +65,8 @@ export function apply(ctx: GroupsContext): void {
   const configPath = defaultConfigPath()
   const manualPath = defaultManualPath()
 
+  let writeQueue = Promise.resolve()
+
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/workspace-groups/config',
@@ -73,20 +76,21 @@ export function apply(ctx: GroupsContext): void {
         return
       }
       let config
-      let manual
+      let envelope
       try {
-        ;[config, manual] = await Promise.all([
+        ;[config, envelope] = await Promise.all([
           readGroupsConfig(configPath),
-          readManualGroups(manualPath),
+          readManualEnvelope(manualPath),
         ])
       } catch (error) {
         writeError(res, 500, `workspace-groups: failed to read config: ${error instanceof Error ? error.message : String(error)}`)
         return
       }
-      const body = JSON.stringify({ ...config, manual })
+      const body = JSON.stringify({ ...config, manual: envelope.manual, revision: envelope.revision })
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-cache',
+        'ETag': `W/"${envelope.revision}"`,
         'Content-Length': Buffer.byteLength(body),
       })
       res.end(req.method === 'HEAD' ? undefined : body)
@@ -110,7 +114,14 @@ export function apply(ctx: GroupsContext): void {
         return
       }
       let manual
+      let expectedRevision: string | undefined
       try {
+        if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+          const obj = raw as Record<string, unknown>
+          if (typeof obj.expectedRevision === 'string') {
+            expectedRevision = obj.expectedRevision
+          }
+        }
         manual = parseManualGroups(raw)
         // The write boundary knows the current rule set; reject assignments
         // into categories that exist nowhere (catches stale client state).
@@ -120,16 +131,43 @@ export function apply(ctx: GroupsContext): void {
         writeError(res, 400, `workspace-groups: ${error instanceof Error ? error.message : String(error)}`)
         return
       }
+
+      let result
       try {
-        await writeManualGroups(manualPath, manual)
+        const perform = async () => {
+          if (expectedRevision !== undefined && expectedRevision !== '') {
+            return writeManualGroupsIfRevision(manualPath, manual, expectedRevision)
+          }
+          // Legacy mode: unwrapped write without expectedRevision check
+          const currentEnvelope = await readManualEnvelope(manualPath)
+          const writeRes = await writeManualGroupsIfRevision(manualPath, manual, currentEnvelope.revision)
+          return writeRes
+        }
+        const queued = writeQueue.then(perform, perform)
+        writeQueue = queued.then(() => undefined, () => undefined)
+        result = await queued
       } catch (error) {
         writeError(res, 500, `workspace-groups: failed to write manual overlay: ${error instanceof Error ? error.message : String(error)}`)
         return
       }
-      const body = JSON.stringify({ ok: true })
+
+      if (!result.ok) {
+        const body = JSON.stringify({ reason: 'conflict', currentRevision: result.currentRevision })
+        res.writeHead(409, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'ETag': `W/"${result.currentRevision}"`,
+          'Content-Length': Buffer.byteLength(body),
+        })
+        res.end(body)
+        return
+      }
+
+      const body = JSON.stringify({ ok: true, revision: result.revision })
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
+        'ETag': `W/"${result.revision}"`,
         'Content-Length': Buffer.byteLength(body),
       })
       res.end(body)
