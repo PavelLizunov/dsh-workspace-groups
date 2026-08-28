@@ -14,6 +14,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { GroupsContext } from './context-types.ts'
+import type { ManualGroups } from './core/types.ts'
 import { defaultConfigPath, readGroupsConfig } from './host-config.ts'
 import {
   defaultManualPath,
@@ -58,6 +59,55 @@ async function readBody(req: IncomingMessage, limit: number): Promise<string> {
   }
   if (chunks.length === 0) throw new HttpError(400, 'empty request body')
   return Buffer.concat(chunks).toString('utf8')
+}
+
+const MIXED_TOP_LEVEL_MANUAL_FIELDS = [
+  'categories',
+  'assignments',
+  'categoryOrder',
+  'workspaceOrder',
+  'renamed',
+  'hidden',
+  'colors',
+] as const
+
+/** Strict fail-closed decoder for PUT /workspace-groups/manual payload. */
+function decodeManualPutBody(raw: unknown): { manual: ManualGroups; expectedRevision?: string } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new Error('raw payload must be a non-array object mapping')
+  }
+
+  const obj = raw as Record<string, unknown>
+  const hasManual = Object.hasOwn(obj, 'manual')
+  const hasExpectedRevision = Object.hasOwn(obj, 'expectedRevision')
+
+  if (hasManual || hasExpectedRevision) {
+    if (!hasManual || !hasExpectedRevision) {
+      throw new Error('wrapped mode requires both own "manual" and "expectedRevision" properties')
+    }
+    if (typeof obj.manual !== 'object' || obj.manual === null || Array.isArray(obj.manual)) {
+      throw new Error('own property "manual" must be a non-null non-array object')
+    }
+    if (typeof obj.expectedRevision !== 'string' || obj.expectedRevision.trim() === '') {
+      throw new Error('own property "expectedRevision" must be a non-empty string')
+    }
+    for (const field of MIXED_TOP_LEVEL_MANUAL_FIELDS) {
+      if (Object.hasOwn(obj, field)) {
+        throw new Error(`mixed top-level manual field "${field}" is rejected in wrapped mode`)
+      }
+    }
+    const manual = obj.manual as Record<string, unknown>
+    if (!Object.hasOwn(manual, 'categories') || !Object.hasOwn(manual, 'assignments')) {
+      throw new Error('wrapped manual requires both own "categories" and "assignments" properties')
+    }
+    return { manual: parseManualGroups(manual), expectedRevision: obj.expectedRevision }
+  }
+
+  if (!Object.hasOwn(obj, 'categories') || !Object.hasOwn(obj, 'assignments')) {
+    throw new Error('legacy flat mode requires both own "categories" and "assignments" properties')
+  }
+
+  return { manual: parseManualGroups(obj) }
 }
 
 /** Plugin body: mount the config snapshot route and the overlay write route. */
@@ -113,16 +163,12 @@ export function apply(ctx: GroupsContext): void {
         writeError(res, status, `workspace-groups: ${error instanceof Error ? error.message : String(error)}`)
         return
       }
-      let manual
+      let manual: ManualGroups
       let expectedRevision: string | undefined
       try {
-        if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
-          const obj = raw as Record<string, unknown>
-          if (typeof obj.expectedRevision === 'string') {
-            expectedRevision = obj.expectedRevision
-          }
-        }
-        manual = parseManualGroups(raw)
+        const decoded = decodeManualPutBody(raw)
+        manual = decoded.manual
+        expectedRevision = decoded.expectedRevision
         // The write boundary knows the current rule set; reject assignments
         // into categories that exist nowhere (catches stale client state).
         const ruleConfig = (await readGroupsConfig(configPath)).categories

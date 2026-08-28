@@ -204,6 +204,9 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 - The file is written in full by the browser UI (`PUT /workspace-groups/manual`, atomic
   replace); manual edits also take effect on next load. A malformed write returns 400 and
   keeps the previous file — the rule YAML is never at risk.
+- The PUT contract is fail-closed: wrapped writes require both a non-empty `expectedRevision`
+  and a complete `manual` object; legacy flat writes require explicit `categories` and
+  `assignments`. Missing, incomplete, or mixed formats are rejected before validation or I/O.
 
 | Action | How |
 |---|---|

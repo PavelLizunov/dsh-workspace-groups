@@ -161,4 +161,80 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
       currentRevision: configData.revision,
     })
   })
+
+  it('rejects malformed or ambiguous PUT bodies without changing the overlay', async () => {
+    const initial = await fetch(`${baseUrl}/workspace-groups/config`).then(res => res.json())
+    const seedRes = await fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedRevision: initial.revision,
+        manual: {
+          categories: ['SeededCategory'],
+          assignments: { 'ws-seed': 'SeededCategory' },
+        },
+      }),
+    })
+    const seeded = await seedRes.json()
+    const explicitManual = { categories: ['BadGroup'], assignments: {} }
+    const invalidBodies = [
+      { expectedRevision: seeded.revision, manual: null },
+      { expectedRevision: seeded.revision },
+      { manual: explicitManual },
+      { expectedRevision: 12345, manual: explicitManual },
+      { expectedRevision: '', manual: explicitManual },
+      { expectedRevision: '   ', manual: explicitManual },
+      { expectedRevision: seeded.revision, manual: {} },
+      {},
+      { expectedRevision: seeded.revision, manual: explicitManual, categories: ['MixedGroup'] },
+    ]
+
+    for (const body of invalidBodies) {
+      const res = await fetch(`${baseUrl}/workspace-groups/manual`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      expect(res.status).toBe(400)
+    }
+
+    const current = await fetch(`${baseUrl}/workspace-groups/config`).then(res => res.json())
+    expect(current.manual.categories).toEqual(['SeededCategory'])
+    expect(current.manual.assignments).toEqual({ 'ws-seed': 'SeededCategory' })
+    expect(current.revision).toBe(seeded.revision)
+  })
+
+  it('yields exactly one 200 and one 409 for two simultaneous wrapped PUTs with same valid revision', async () => {
+    const configRes = await fetch(`${baseUrl}/workspace-groups/config`)
+    const configData = await configRes.json()
+    const rev = configData.revision
+
+    const req1 = fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedRevision: rev,
+        manual: {
+          categories: ['ConcurrentGroupA'],
+          assignments: { 'ws-concurrent-1': 'ConcurrentGroupA' },
+        },
+      }),
+    })
+
+    const req2 = fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedRevision: rev,
+        manual: {
+          categories: ['ConcurrentGroupB'],
+          assignments: { 'ws-concurrent-2': 'ConcurrentGroupB' },
+        },
+      }),
+    })
+
+    const [res1, res2] = await Promise.all([req1, req2])
+    const statuses = [res1.status, res2.status].sort()
+    expect(statuses).toEqual([200, 409])
+  })
 })
