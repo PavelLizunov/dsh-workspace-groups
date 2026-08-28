@@ -29,7 +29,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   ),
 }))
 
-import { CategoryRow, SessionRow, WorkspaceRow } from '../src/client/rows.tsx'
+import { CategoryRow, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 
 const t = ((key: string) => key) as never
 let host: HTMLDivElement
@@ -47,6 +47,15 @@ afterEach(() => {
 })
 
 describe('row interaction contracts', () => {
+  it('shows a session dot only for pending, running, or unviewed completion states', () => {
+    const idle = { running: false, runningSubagentCount: 0, completed: false }
+    expect(sessionDotState(idle)).toBeUndefined()
+    expect(sessionDotState({ ...idle, completed: true })).toBe('done')
+    expect(sessionDotState({ ...idle, running: true })).toBe('ongoing')
+    expect(sessionDotState({ ...idle, runningSubagentCount: 1 })).toBe('ongoing')
+    expect(sessionDotState({ ...idle, running: true, pendingInteraction: 'approval' })).toBe('warning')
+  })
+
   it('fixed-expanded Search category remains focusable but does not toggle', () => {
     act(() => { root.render(<CategoryRow node={{ key: 'g', label: 'Group', expanded: true, containsCurrent: false, workspaces: [] }} t={t} />) })
     const row = host.querySelector('[role="treeitem"]') as HTMLElement

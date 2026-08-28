@@ -29,6 +29,8 @@
 - **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
   or returned by a group delete) render as plain rows right after the group folders, at the
   same level — **there is no "Uncategorized" bucket**
+- **Session status dots**: warning for pending interaction, animated for live activity, green
+  for an unviewed completion, and hidden after that completed session is opened
 
 ### Group management (full lifecycle)
 - **Create groups manually**: the "New group" button in the section header shows the group

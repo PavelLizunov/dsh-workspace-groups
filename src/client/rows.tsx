@@ -60,11 +60,11 @@ function pendingState(status: SessionNode['pendingInteraction']): StateDotState 
   }
 }
 
-/** Primary status dot state for a session row. */
-export function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState {
+/** Primary status dot state for a session row; idle viewed sessions have no dot. */
+export function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState | undefined {
   if (pendingState(node.pendingInteraction) !== undefined) return 'warning'
   if (node.running || node.runningSubagentCount > 0) return 'ongoing'
-  return node.completed ? 'done' : 'done'
+  return node.completed ? 'done' : undefined
 }
 
 /** Compact relative time ("now"/"5min"/"3h"/"2d"/"4mo"/"1y"). */
@@ -407,7 +407,7 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
 }) {
   const selected = node.id === currentId
   const [menuOpen, setMenuOpen] = useState(false)
-  const showStatus = true
+  const dotState = sessionDotState(node)
   const menuItems = [
     ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 />, disabled: actionBusy }] : []),
@@ -434,7 +434,7 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
       onKeyDown={handleKeyDown}
     >
       <span className="wgStatusSlot">
-        {showStatus && <StateDot state={sessionDotState(node)} />}
+        {dotState !== undefined && <StateDot state={dotState} />}
       </span>
       <span className="wgSessionTitle">{node.title}</span>
       {!node.blank && <span className="wgSessionTime">{relativeTimeLabel(node.updatedAt, now)}</span>}
