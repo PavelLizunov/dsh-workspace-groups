@@ -20,6 +20,8 @@ import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type Manua
 
 const UNKNOWN_WORKSPACE_LABEL = 'Unknown workspace'
 
+export type AttentionState = 'warning' | 'ongoing' | 'done'
+
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
   id: SessionId
@@ -56,6 +58,8 @@ export interface WorkspaceGroupNode {
   containsCurrent: boolean
   /** Visible session rows (empty while the folder is folded). */
   sessions: readonly SessionNode[]
+  /** Aggregated child-session attention state for collapsed workspace rows. */
+  attention?: AttentionState
 }
 
 /** One category folder at the top of the tree. */
@@ -69,6 +73,8 @@ export interface CategoryNode {
   containsCurrent: boolean
   /** Workspace folders in host order. */
   workspaces: readonly WorkspaceGroupNode[]
+  /** Aggregated child-session attention state for collapsed category rows. */
+  attention?: AttentionState
 }
 
 /** Viewing state consumed by the derivation. */
@@ -113,6 +119,50 @@ function sessionNode(
     updatedAt: s.updatedAt,
     ...(s.pendingInteraction === undefined ? {} : { pendingInteraction: s.pendingInteraction }),
   }
+}
+
+/** Derive the attention state for a single session node. */
+export function sessionAttention(
+  node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>,
+): AttentionState | undefined {
+  if (
+    node.pendingInteraction === 'approval' ||
+    node.pendingInteraction === 'plan-review' ||
+    node.pendingInteraction === 'question'
+  ) {
+    return 'warning'
+  }
+  if (node.running || node.runningSubagentCount > 0) return 'ongoing'
+  return node.completed ? 'done' : undefined
+}
+
+/** Aggregate attention state across session nodes with priority warning > ongoing > done. */
+function aggregateAttention(nodes: readonly SessionNode[]): AttentionState | undefined {
+  let hasOngoing = false
+  let hasDone = false
+  for (const node of nodes) {
+    const state = sessionAttention(node)
+    if (state === 'warning') return 'warning'
+    if (state === 'ongoing') hasOngoing = true
+    else if (state === 'done') hasDone = true
+  }
+  if (hasOngoing) return 'ongoing'
+  if (hasDone) return 'done'
+  return undefined
+}
+
+/** Aggregate category attention across member workspace nodes with priority warning > ongoing > done. */
+function aggregateCategoryAttention(workspaces: readonly WorkspaceGroupNode[]): AttentionState | undefined {
+  let hasOngoing = false
+  let hasDone = false
+  for (const ws of workspaces) {
+    if (ws.attention === 'warning') return 'warning'
+    if (ws.attention === 'ongoing') hasOngoing = true
+    else if (ws.attention === 'done') hasDone = true
+  }
+  if (hasOngoing) return 'ongoing'
+  if (hasDone) return 'done'
+  return undefined
 }
 
 /** Visible sessions of one workspace in its stored account order. */
@@ -194,6 +244,7 @@ export function deriveGroups(
       const wsExpanded = expandedWorkspaces.has(workspace.workspaceId as string)
       const wsContainsCurrent = workspace.workspaceId === currentWorkspaceId
       if (wsContainsCurrent) containsCurrent = true
+      const attention = aggregateAttention(sessions)
       workspaceNodes.push({
         workspaceId: workspace.workspaceId,
         path: workspace.path,
@@ -203,14 +254,17 @@ export function deriveGroups(
         expanded: wsExpanded,
         containsCurrent: wsContainsCurrent,
         sessions: wsExpanded ? sessions : [],
+        ...(attention === undefined ? {} : { attention }),
       })
     }
+    const catAttention = aggregateCategoryAttention(workspaceNodes)
     nodes.push({
       key,
       label: key,
       expanded,
       containsCurrent,
       workspaces: workspaceNodes,
+      ...(catAttention === undefined ? {} : { attention: catAttention }),
     })
   }
   return nodes
@@ -249,6 +303,7 @@ export function deriveTopLevel(
     if (workspace === undefined) continue
     const sessions = workspaceSessions(list, workspace, archived, descendants)
     const wsExpanded = expandedWorkspaces.has(workspaceId)
+    const attention = aggregateAttention(sessions)
     nodes.push({
       workspaceId: workspace.workspaceId,
       path: workspace.path,
@@ -258,6 +313,7 @@ export function deriveTopLevel(
       expanded: wsExpanded,
       containsCurrent: workspace.workspaceId === currentWorkspaceId,
       sessions: wsExpanded ? sessions : [],
+      ...(attention === undefined ? {} : { attention }),
     })
   }
   return nodes

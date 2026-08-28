@@ -6,6 +6,7 @@
  */
 import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
 import { type GroupsConfig, type ManualGroups } from '../core/types.js';
+export type AttentionState = 'warning' | 'ongoing' | 'done';
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
     id: SessionId;
@@ -41,6 +42,8 @@ export interface WorkspaceGroupNode {
     containsCurrent: boolean;
     /** Visible session rows (empty while the folder is folded). */
     sessions: readonly SessionNode[];
+    /** Aggregated child-session attention state for collapsed workspace rows. */
+    attention?: AttentionState;
 }
 /** One category folder at the top of the tree. */
 export interface CategoryNode {
@@ -53,6 +56,8 @@ export interface CategoryNode {
     containsCurrent: boolean;
     /** Workspace folders in host order. */
     workspaces: readonly WorkspaceGroupNode[];
+    /** Aggregated child-session attention state for collapsed category rows. */
+    attention?: AttentionState;
 }
 /** Viewing state consumed by the derivation. */
 export interface GroupsTreeView {
@@ -63,6 +68,8 @@ export interface GroupsTreeView {
 export declare const UNCATEGORIZED_KEY = "\u672A\u5206\u7C7B";
 /** Directory display label: basename of the path (both separators accepted). */
 export declare function workspaceLabel(cwd: string | undefined): string;
+/** Derive the attention state for a single session node. */
+export declare function sessionAttention(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): AttentionState | undefined;
 /**
  * Derive the three-level tree.
  * @param list - sessions list snapshot (`current` feeds containsCurrent).

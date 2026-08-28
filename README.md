@@ -30,7 +30,10 @@
   or returned by a group delete) render as plain rows right after the group folders, at the
   same level — **there is no "Uncategorized" bucket**
 - **Session status dots**: warning for pending interaction, animated for live activity, green
-  for an unviewed completion, and hidden after that completed session is opened
+  for an unviewed completion, and hidden after that completed session is opened; collapsed
+  project and group rows bubble up the highest-priority child status
+- **Bounded session lists**: expanded projects show five session rows by default (plus the
+  selected session when needed), with transient **Show all / Collapse** controls
 
 ### Group management (full lifecycle)
 - **Create groups manually**: the "New group" button in the section header shows the group

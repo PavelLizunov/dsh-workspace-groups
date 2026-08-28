@@ -38,7 +38,8 @@ import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type Manua
 import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
-import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type WorkspaceGroupNode } from './tree.ts'
+import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
+import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
@@ -1459,6 +1460,68 @@ function handleTreeFocus(event: React.FocusEvent<HTMLElement>): void {
   })
 }
 
+/** Shared limited session list for grouped and top-level workspaces. */
+function WorkspaceSessions({
+  sessions,
+  current,
+  now,
+  t,
+  ariaLevel,
+  onOpen,
+  onSessionRename,
+  onSessionArchive,
+  onFork,
+  sessionActionBusy,
+}: {
+  sessions: readonly SessionNode[]
+  current: SessionId | undefined
+  now: number
+  t: GroupsBrowserProps['t']
+  ariaLevel: number
+  onOpen: (sessionId: SessionId) => void
+  onSessionRename: (sessionId: SessionId, currentTitle: string) => void
+  onSessionArchive: (sessionId: SessionId) => void
+  onFork: (sessionId: SessionId) => void
+  sessionActionBusy: boolean
+}) {
+  const [showAll, setShowAll] = useState(false)
+  const visible = visibleWorkspaceSessions(sessions, current, showAll)
+  const hasToggle = sessions.length > SESSION_ROW_LIMIT
+
+  return (
+    <>
+      {visible.map((session) => (
+        <SessionRow
+          key={session.id}
+          node={session}
+          currentId={current}
+          now={now}
+          t={t}
+          aria-level={ariaLevel}
+          aria-posinset={sessions.indexOf(session) + 1}
+          aria-setsize={sessions.length}
+          onOpen={onOpen}
+          onRename={onSessionRename}
+          onFork={onFork}
+          onArchive={onSessionArchive}
+          actionBusy={sessionActionBusy}
+        />
+      ))}
+      {hasToggle && (
+        <div className="wgSessionToggle">
+          <button
+            type="button"
+            className="wgSessionToggleBtn"
+            onClick={() => { setShowAll(prev => !prev) }}
+          >
+            {showAll ? t('collapse') : t('expandMore')}
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
+
 /** One category section: header row + expanded workspace folders. */
 function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
   category: CategoryNode
@@ -1569,23 +1632,20 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 draggable
                 onWorkspaceDragStart={onDragStartWorkspace}
               />
-              {workspace.expanded && workspace.sessions.map((session, sIdx) => (
-                <SessionRow
-                  key={session.id}
-                  node={session}
-                  currentId={current}
+              {workspace.expanded && (
+                <WorkspaceSessions
+                  sessions={workspace.sessions}
+                  current={current}
                   now={now}
                   t={t}
-                  aria-level={3}
-                  aria-posinset={sIdx + 1}
-                  aria-setsize={workspace.sessions.length}
+                  ariaLevel={3}
                   onOpen={onOpen}
-                  onRename={onSessionRename}
+                  onSessionRename={onSessionRename}
+                  onSessionArchive={onSessionArchive}
                   onFork={onFork}
-                  onArchive={onSessionArchive}
-                  actionBusy={sessionActionBusy}
+                  sessionActionBusy={sessionActionBusy}
                 />
-              ))}
+              )}
             </div>
           ))}
         </div>
@@ -1684,23 +1744,20 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             draggable
             onWorkspaceDragStart={onDragStartWorkspace}
           />
-          {workspace.expanded && workspace.sessions.map((session, sIdx) => (
-            <SessionRow
-              key={session.id}
-              node={session}
-              currentId={current}
+          {workspace.expanded && (
+            <WorkspaceSessions
+              sessions={workspace.sessions}
+              current={current}
               now={now}
               t={t}
-              aria-level={2}
-              aria-posinset={sIdx + 1}
-              aria-setsize={workspace.sessions.length}
+              ariaLevel={2}
               onOpen={onOpen}
-              onRename={onSessionRename}
+              onSessionRename={onSessionRename}
+              onSessionArchive={onSessionArchive}
               onFork={onFork}
-              onArchive={onSessionArchive}
-              actionBusy={sessionActionBusy}
+              sessionActionBusy={sessionActionBusy}
             />
-          ))}
+          )}
         </div>
       ))}
     </div>

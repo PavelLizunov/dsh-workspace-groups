@@ -6,6 +6,10 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
+  indexSubagentDescendants: () => new Map(),
+}))
+
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconArchiveOutline20: () => <span />,
   IconBranchOutline16: () => <span />,
@@ -18,7 +22,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconProjectAddOutline16: () => <span />,
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
-  StateDot: () => <span data-state-dot />,
+  StateDot: ({ state }: { state?: string }) => <span data-state-dot={state ?? ''} />,
   Menu: ({ anchor, items, onSelect, portal, compact }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void; portal?: boolean; compact?: boolean }) => (
     <div data-menu-portal={portal || undefined} data-menu-compact={compact || undefined} data-has-submenu={items.some(item => (item.submenu?.length ?? 0) > 0) || undefined}>
       {anchor}
@@ -131,5 +135,77 @@ describe('row interaction contracts', () => {
     const colorOption = buttons.find(button => button.textContent === 'color.red')
     act(() => { colorOption?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSetColor).toHaveBeenCalledWith('red')
+  })
+
+  it('renders aggregate attention dot only when CategoryRow is collapsed', () => {
+    // Collapsed with attention -> renders StateDot
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [], attention: 'warning' }}
+          t={t}
+        />,
+      )
+    })
+    let dot = host.querySelector('[data-state-dot]')
+    expect(dot).not.toBeNull()
+    expect(dot?.getAttribute('data-state-dot')).toBe('warning')
+
+    // Expanded with attention -> dot not rendered
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat', label: 'Group', expanded: true, containsCurrent: false, workspaces: [], attention: 'warning' }}
+          t={t}
+        />,
+      )
+    })
+    dot = host.querySelector('[data-state-dot]')
+    expect(dot).toBeNull()
+
+    // Collapsed without attention -> dot not rendered
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [] }}
+          t={t}
+        />,
+      )
+    })
+    dot = host.querySelector('[data-state-dot]')
+    expect(dot).toBeNull()
+  })
+
+  it('renders aggregate attention dot only when WorkspaceRow is collapsed and preserves color dot', () => {
+    // Collapsed with attention and color -> renders both color dot and attention StateDot
+    act(() => {
+      root.render(
+        <WorkspaceRow
+          node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: false, containsCurrent: false, sessions: [], attention: 'ongoing' }}
+          t={t}
+          color="blue"
+        />,
+      )
+    })
+    const colorDot = host.querySelector('.wgColorDot')
+    expect(colorDot?.getAttribute('data-color')).toBe('blue')
+
+    let stateDot = host.querySelector('[data-state-dot]')
+    expect(stateDot).not.toBeNull()
+    expect(stateDot?.getAttribute('data-state-dot')).toBe('ongoing')
+
+    // Expanded with attention -> attention StateDot not rendered, color dot remains
+    act(() => {
+      root.render(
+        <WorkspaceRow
+          node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: true, containsCurrent: false, sessions: [], attention: 'ongoing' }}
+          t={t}
+          color="blue"
+        />,
+      )
+    })
+    expect(host.querySelector('.wgColorDot')?.getAttribute('data-color')).toBe('blue')
+    stateDot = host.querySelector('[data-state-dot]')
+    expect(stateDot).toBeNull()
   })
 })

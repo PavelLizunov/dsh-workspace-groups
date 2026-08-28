@@ -197,3 +197,89 @@ describe('deriveTopLevel', () => {
     expect(top.map(w => w.workspaceId)).toEqual(['ws-c', 'ws-a', 'ws-b'])
   })
 })
+
+describe('aggregated attention state derivation', () => {
+  function sessionWithState(
+    id: string,
+    opts: { running?: boolean; completed?: boolean; pendingInteraction?: 'approval' | 'plan-review' | 'question' },
+  ): SessionSummary {
+    return {
+      id,
+      origin: 'user',
+      blank: false,
+      displayTitle: `session-${id}`,
+      running: opts.running ?? false,
+      completed: opts.completed ?? false,
+      updatedAt: 1_700_000_000_000,
+      cwd: '/Users/zcol/Project/x',
+      ...(opts.pendingInteraction ? { pendingInteraction: opts.pendingInteraction } : {}),
+    } as unknown as SessionSummary
+  }
+
+  function customListState(byId: Record<string, SessionSummary>): SessionListState {
+    return {
+      ids: Object.keys(byId),
+      byId,
+      current: undefined,
+      phase: 'ready',
+      subagentsByParent: {},
+    } as unknown as SessionListState
+  }
+
+  it('computes workspace and category attention respecting priority warning > ongoing > done', () => {
+    const ws1 = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2'])
+    const ws2 = workspace('ws-2', '/Users/zcol/Project/SomePlugin2', 'Other Plugin', ['s3'])
+    const sessions = {
+      s1: sessionWithState('s1', { completed: true }),
+      s2: sessionWithState('s2', { running: true }),
+      s3: sessionWithState('s3', { pendingInteraction: 'approval' }),
+    }
+    const list = customListState(sessions)
+    const groups = deriveGroups(list, [ws1, ws2], [], CONFIG, VIEW, { categories: [], assignments: {} })
+    const cat = groups.find(g => g.label === 'DSH Plugins')!
+    expect(cat.attention).toBe('warning')
+    expect(cat.workspaces.find(w => w.workspaceId === 'ws-1')?.attention).toBe('ongoing')
+    expect(cat.workspaces.find(w => w.workspaceId === 'ws-2')?.attention).toBe('warning')
+  })
+
+  it('computes attention from all visible sessions even when Workspace and Category are collapsed', () => {
+    const ws1 = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1'])
+    const sessions = {
+      s1: sessionWithState('s1', { completed: true }),
+    }
+    const list = customListState(sessions)
+    const collapsedView = { expandedCategories: [], expandedWorkspaces: [] }
+    const groups = deriveGroups(list, [ws1], [], CONFIG, collapsedView, { categories: [], assignments: {} })
+    const cat = groups.find(g => g.label === 'DSH Plugins')!
+    const wsNode = cat.workspaces[0]!
+
+    expect(cat.expanded).toBe(false)
+    expect(wsNode.expanded).toBe(false)
+    expect(wsNode.sessions).toEqual([])
+    expect(wsNode.sessionCount).toBe(1)
+    expect(wsNode.attention).toBe('done')
+    expect(cat.attention).toBe('done')
+  })
+
+  it('returns undefined attention when no child sessions have attention state', () => {
+    const ws1 = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1'])
+    const sessions = {
+      s1: sessionWithState('s1', {}),
+    }
+    const list = customListState(sessions)
+    const groups = deriveGroups(list, [ws1], [], CONFIG, VIEW, { categories: [], assignments: {} })
+    const cat = groups.find(g => g.label === 'DSH Plugins')!
+    expect(cat.attention).toBeUndefined()
+    expect(cat.workspaces[0]?.attention).toBeUndefined()
+  })
+
+  it('computes attention for top-level workspaces', () => {
+    const ws = workspace('ws-top', '/tmp/random', 'Random', ['s1'])
+    const sessions = {
+      s1: sessionWithState('s1', { running: true }),
+    }
+    const list = customListState(sessions)
+    const top = deriveTopLevel(list, [ws], [], CONFIG, VIEW, { categories: [], assignments: {} })
+    expect(top[0]?.attention).toBe('ongoing')
+  })
+})

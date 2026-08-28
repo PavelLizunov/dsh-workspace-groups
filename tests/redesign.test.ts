@@ -219,6 +219,14 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
   it('cleans all order references in the production overlay helper', () => {
     expect(browserSource).toContain("from './overlay-core.ts'")
   })
+
+  it('implements transient five-session limit with shared WorkspaceSessions component', () => {
+    expect(browserSource).toContain('function WorkspaceSessions')
+    expect(browserSource).toContain('visibleWorkspaceSessions(sessions, current, showAll)')
+    expect(browserSource).toContain('<WorkspaceSessions')
+    expect(browserSource).toContain("showAll ? t('collapse') : t('expandMore')")
+    expect(browserSource).toContain('aria-setsize={sessions.length}')
+  })
 })
 
 describe('directory browser source contracts', () => {
@@ -275,6 +283,11 @@ describe('redesign source contracts: styles.css', () => {
     expect(stylesSource).toMatch(/\[data-wg-drag-handle=["']?category["']?\]|\.wgDragHandle\b/)
     expect(stylesSource).toMatch(/(?:\[data-wg-drag-handle|\.wgDragHandle).*?:focus-visible|:focus-visible.*?(?:\[data-wg-drag-handle|\.wgDragHandle)/s)
     expect(stylesSource).toMatch(/@media[^{]*(?:pointer:\s*coarse|hover:\s*none)[^{]*\{[^}]*(?:\[data-wg-drag-handle|\.wgDragHandle)/s)
+  })
+
+  it('defines transient session limit toggle styles', () => {
+    expect(stylesSource).toMatch(/\.wgSessionToggle\b/)
+    expect(stylesSource).toMatch(/\.wgSessionToggleBtn\b/)
   })
 })
 

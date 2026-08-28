@@ -590,6 +590,36 @@
   color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
+/* Five-session limit toggle button row */
+.wgSessionToggle {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px 0 40px;
+}
+
+.wgSessionToggleBtn {
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.12s ease;
+}
+
+.wgSessionToggleBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+}
+
+.wgSessionToggleBtn:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  outline-offset: 1px;
+}
+
 .wgVisuallyHidden {
   position: absolute;
   width: 1px;
@@ -731,7 +761,8 @@
   .wgSessionRow,
   .wgChevron,
   .wgRowActions,
-  .wgRenameInput {
+  .wgRenameInput,
+  .wgSessionToggleBtn {
     transition: none !important;
     animation: none !important;
   }

@@ -27,7 +27,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { WorkspaceGroupsKey } from './locales.ts'
-import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts'
+import { sessionAttention, type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.ts'
 
 export interface WorkspaceMoveTarget {
   key: string
@@ -48,23 +48,9 @@ export function hasPluginDragType(types: DOMStringList | readonly string[]): boo
   return list.includes(DND_WORKSPACE_TYPE) || list.includes(DND_CATEGORY_TYPE)
 }
 
-/** Pending interaction status → primitives StateDot state. */
-function pendingState(status: SessionNode['pendingInteraction']): StateDotState | undefined {
-  switch (status) {
-    case 'approval':
-    case 'plan-review':
-    case 'question':
-      return 'warning'
-    default:
-      return undefined
-  }
-}
-
 /** Primary status dot state for a session row; idle viewed sessions have no dot. */
 export function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState | undefined {
-  if (pendingState(node.pendingInteraction) !== undefined) return 'warning'
-  if (node.running || node.runningSubagentCount > 0) return 'ongoing'
-  return node.completed ? 'done' : undefined
+  return sessionAttention(node)
 }
 
 /** Compact relative time ("now"/"5min"/"3h"/"2d"/"4mo"/"1y"). */
@@ -205,6 +191,11 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
+      {!node.expanded && node.attention !== undefined && (
+        <span className="wgStatusSlot">
+          <StateDot state={node.attention} />
+        </span>
+      )}
       {(manageable || onSetColor !== undefined || onDragStartCategory !== undefined) && (
         <span className="wgRowActions">
           {onDragStartCategory !== undefined && (
@@ -368,6 +359,11 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         </span>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       </span>
+      {!node.expanded && node.attention !== undefined && (
+        <span className="wgStatusSlot">
+          <StateDot state={node.attention} />
+        </span>
+      )}
       {(menuItems.length > 0 || onSetColor !== undefined || onNewSession !== undefined) && <span className="wgRowActions">
         {onSetColor !== undefined && <ColorMenu t={t} color={color} onSelect={onSetColor} />}
         {menuItems.length > 0 && <Menu
