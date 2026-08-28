@@ -60,9 +60,8 @@
   bottom half = move after it
 - **Insertion position indicator**: a 2px line (above/below the row) shows the exact drop
   point while dragging — what you see is where it lands
-- **Level-aware folding, auto-restored**: dragging a project folds every project row
-  (grouped AND top-level; group rows stay expanded); dragging a group folds every group
-  (project rows keep their expansion) — dragend restores the pre-drag expansion snapshot
+- **Stable expansion while dragging**: project and group rows keep their current expansion
+  state throughout drag-and-drop, so rows never move under the pointer during native dragstart
 - **Distinct row icons**: group rows use a folder glyph, project rows a project glyph
   (same as the official workspace browser) — groups and projects are easy to tell apart
 
@@ -214,11 +213,12 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 |---|---|
 | Create group | "New group" button in the section header (folder icon), enter a name in the dialog |
 | Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to the top level |
+| Set group/project color | hover the row and use its color button; the compact portal menu stays inside the viewport |
 | Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
-| Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); all project rows fold while dragging and restore on dragend |
+| Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); expansion stays unchanged while dragging |
 | Reorder top-level projects | drag a top-level row onto another top-level row: **top half = insert before, bottom half = insert after**; order persists under `workspaceOrder["__topLevel__"]` |
 | Move out of a group | drop anywhere on the **top-level area** (an insertion line shows the spot — reorder before/after a top-level row, or append below the last row; when the top level is empty a line shows under the last group), or the project row's "Move out of group" menu (forced top-level) |
-| Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; all groups fold while dragging, restored on dragend) |
+| Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; expansion stays unchanged) |
 
 ## Topics
 

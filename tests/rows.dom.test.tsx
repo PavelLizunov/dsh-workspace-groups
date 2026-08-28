@@ -19,8 +19,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
   StateDot: () => <span data-state-dot />,
-  Menu: ({ anchor, items, onSelect }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void }) => (
-    <div>
+  Menu: ({ anchor, items, onSelect, portal, compact }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void; portal?: boolean; compact?: boolean }) => (
+    <div data-menu-portal={portal || undefined} data-menu-compact={compact || undefined} data-has-submenu={items.some(item => (item.submenu?.length ?? 0) > 0) || undefined}>
       {anchor}
       {items.flatMap(item => [item, ...(item.submenu ?? [])]).map(item => (
         <button key={item.id} disabled={item.disabled} onClick={() => onSelect(item.id)}>{item.label}</button>
@@ -123,6 +123,11 @@ describe('row interaction contracts', () => {
     expect(dot?.getAttribute('data-color')).toBe('red')
 
     const buttons = Array.from(host.querySelectorAll('button'))
+    const colorAnchor = buttons.find(button => button.getAttribute('aria-label') === 'color.title')
+    const colorMenu = colorAnchor?.closest('[data-menu-portal]')
+    expect(colorMenu?.getAttribute('data-menu-portal')).toBe('true')
+    expect(colorMenu?.getAttribute('data-menu-compact')).toBe('true')
+    expect(colorMenu?.getAttribute('data-has-submenu')).toBeNull()
     const colorOption = buttons.find(button => button.textContent === 'color.red')
     act(() => { colorOption?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSetColor).toHaveBeenCalledWith('red')

@@ -149,6 +149,15 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
     expect(browserSource).toMatch(/\bcreateDirectory\b/)
   })
 
+  it('keeps Workspace expansion stable during dragstart', () => {
+    const start = browserSource.indexOf('const onDragStartWorkspace')
+    const end = browserSource.indexOf('const onDragStartCategory', start)
+    const dragStartSource = browserSource.slice(start, end)
+    expect(dragStartSource).toContain("setDragging('workspace')")
+    expect(dragStartSource).not.toContain('setWorkspaceExpanded')
+    expect(dragStartSource).not.toContain('expansionSnapshot')
+  })
+
   it('uses one shared moveWorkspaceTo path for DnD and menu moves', () => {
     expect(browserSource).toContain('onMoveTo={(workspaceId, categoryKey) => { void moveWorkspaceTo(workspaceId, categoryKey) }}')
     expect(browserSource).toContain('moveWorkspaceTo(workspaceId, categoryKey, beforeWsid, afterWsid)')

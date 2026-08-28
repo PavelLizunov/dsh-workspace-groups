@@ -1,27 +1,27 @@
-# Spec: Every Workspace Is a Drag Source
+# Spec: Stable Workspace Drag and Viewport-Safe Colors
 
 ## 1. Intent & Invariants
-- Every grouped and top-level Workspace row exposes an explicit name-and-icon drag surface.
-- Dragging the name or icon uses that row's Workspace ID, regardless of position.
+- Every grouped and top-level Workspace exposes an explicit name-and-icon drag surface.
+- Native dragstart never mutates expansion or moves rows under the pointer.
+- Project and Group expansion stays unchanged throughout drag-and-drop.
+- Color choices use a flat portal menu that is clamped to the viewport and scrolls when needed.
 - Action buttons do not start a drag; Search rows remain non-draggable.
-- Existing reorder, move-to-group, move-out, click, and keyboard behavior remains intact.
-- Active Web is not restarted in this batch.
+- Active Web is not restarted without a separate explicit user confirmation.
 
 ## 2. Interface / Data Contract
-```ts
-interface WorkspaceRowDragProps {
-  draggable?: boolean
-  onWorkspaceDragStart?: (
-    workspaceId: WorkspaceId,
-    event: DragEvent
-  ) => void
+```tsx
+onWorkspaceDragStart(workspaceId, event) {
+  setDragging('workspace')
 }
+
+<ColorMenu value={color} onSelect={onSetColor} />
 ```
 
 ## 3. Verification Checklist
-- [x] Grouped and top-level production rows explicitly enable dragging.
-- [x] First, middle, and last Workspace rows expose independent drag sources.
-- [x] Dragging the middle row writes its own ID to `DND_WORKSPACE_TYPE`.
-- [x] Action buttons remain non-draggable.
+- [x] Grouped and top-level Workspace rows expose independent drag sources.
+- [x] Dragstart leaves Group and Workspace expansion unchanged.
+- [x] Browser verifier targets the actual Workspace drag surface.
+- [x] Color choices use a flat compact portal menu rather than a nested submenu.
+- [x] Browser verifier checks the color menu in a 320x320 viewport.
 - [x] `pnpm build && pnpm verify` passes.
-- [x] Commit and push to `origin/main`.
+- [x] Commit and push to `origin/main` without restarting Web.

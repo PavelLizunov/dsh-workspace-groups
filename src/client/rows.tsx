@@ -97,6 +97,52 @@ export interface RowDropProps {
 
 export const COLOR_PRESETS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'] as const
 
+/** Flat portal menu: unlike nested submenus, Menu clamps this list to the viewport. */
+function ColorMenu({ t, color, onSelect }: {
+  t: T
+  color?: string | null | undefined
+  onSelect: (color: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Menu
+      open={open}
+      onClose={() => { setOpen(false) }}
+      items={[
+        { id: 'color:none', label: t('color.reset') },
+        ...COLOR_PRESETS.map(preset => ({ id: `color:${preset}`, label: t(`color.${preset}` as keyof T) })),
+      ]}
+      selectedId={`color:${color ?? 'none'}`}
+      onSelect={(id) => {
+        setOpen(false)
+        const selected = id.slice('color:'.length)
+        onSelect(selected === 'none' ? null : selected)
+      }}
+      portal
+      compact
+      closeOnPointerLeave
+      align="end"
+      anchor={(
+        <button
+          type="button"
+          className="wgIconButton"
+          draggable={false}
+          data-wg-color-menu-trigger
+          aria-label={t('color.title')}
+          title={t('color.title')}
+          onClick={(event) => { event.stopPropagation(); setOpen(value => !value) }}
+          onKeyDown={(event) => { event.stopPropagation() }}
+        >
+          <span className="wgCategoryIcon">
+            <IconEditOutline16 />
+            {color && <span className="wgColorDot" data-color={color} />}
+          </span>
+        </button>
+      )}
+    />
+  )
+}
+
 /**
  * One category folder row: toggle, rename/delete menu (every group — rule
  * groups via overlay renames/hides), draggable source for group reorder and
@@ -159,7 +205,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
-      {(manageable || onDragStartCategory !== undefined) && (
+      {(manageable || onSetColor !== undefined || onDragStartCategory !== undefined) && (
         <span className="wgRowActions">
           {onDragStartCategory !== undefined && (
             <span
@@ -178,6 +224,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
               <span className="wgGripIcon" aria-hidden="true" />
             </span>
           )}
+          {onSetColor !== undefined && <ColorMenu t={t} color={color} onSelect={onSetColor} />}
           {manageable && (
             <Menu
               open={menuOpen}
@@ -185,17 +232,6 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
               items={[
                 ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
                 ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
-                ...(onSetColor !== undefined
-                  ? [{
-                      id: 'color',
-                      label: t('color.title'),
-                      icon: <IconEditOutline16 />,
-                      submenu: [
-                        { id: 'color:none', label: t('color.reset') },
-                        ...COLOR_PRESETS.map(c => ({ id: `color:${c}`, label: t(`color.${c}` as keyof T) })),
-                      ],
-                    }]
-                  : []),
                 { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
                 { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
               ]}
@@ -203,10 +239,6 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
                 setMenuOpen(false)
                 if (id === 'moveUp') onMoveUp?.()
                 if (id === 'moveDown') onMoveDown?.()
-                if (id.startsWith('color:')) {
-                  const selectedColor = id.slice('color:'.length)
-                  onSetColor?.(selectedColor === 'none' ? null : selectedColor)
-                }
                 if (id === 'rename') onRename?.()
                 if (id === 'delete') onDelete?.()
               }}
@@ -288,17 +320,6 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         : []),
     ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
     ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
-    ...(onSetColor !== undefined
-      ? [{
-          id: 'color',
-          label: t('color.title'),
-          icon: <IconEditOutline16 />,
-          submenu: [
-            { id: 'color:none', label: t('color.reset') },
-            ...COLOR_PRESETS.map(c => ({ id: `color:${c}`, label: t(`color.${c}` as keyof T) })),
-          ],
-        }]
-      : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
   ]
@@ -347,7 +368,8 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         </span>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       </span>
-      {(menuItems.length > 0 || onNewSession !== undefined) && <span className="wgRowActions">
+      {(menuItems.length > 0 || onSetColor !== undefined || onNewSession !== undefined) && <span className="wgRowActions">
+        {onSetColor !== undefined && <ColorMenu t={t} color={color} onSelect={onSetColor} />}
         {menuItems.length > 0 && <Menu
           open={menuOpen}
           onClose={() => { setMenuOpen(false) }}
@@ -358,10 +380,6 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
             if (id === 'moveDown') onMoveDown?.()
             if (id === 'openFolder') onOpenFolder?.()
             if (id === 'copyPath') onCopyPath?.()
-            if (id.startsWith('color:')) {
-              const selectedColor = id.slice('color:'.length)
-              onSetColor?.(selectedColor === 'none' ? null : selectedColor)
-            }
             if (id === 'moveOut') onMoveOut?.()
             if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
             if (id === 'rename') onRename?.()

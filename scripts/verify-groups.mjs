@@ -8,7 +8,7 @@
  *   - Launches headless Chrome (isolated user-data-dir), opens GUI at baseUrl;
  *   - v0.2: New group modal -> empty group render -> drag project into group -> PUT to disk ->
  *     reload persistence -> invalid PUT 400;
- *   - v0.3: In-group project reordering + collapse other group projects during drag, rule category
+ *   - v0.3: In-group project reordering + stable expansion during drag, rule category
  *     "⋯" menu -> rename (persisted to renamed) -> delete (members return to top level + hidden persisted),
  *     no "Uncategorized" bucket in tree;
  *   - v0.4: Drag insertion indicator line (top half = before / bottom half = after): drag project
@@ -16,8 +16,8 @@
  *     drag group up -> move before target group;
  *   - v0.4.1: Drag out of group to top level (top-level drop area shown during drag, drag-out persists null,
  *     top-level row render, in-group project menu "Move out of group");
- *   - v0.6: Level-based collapse + post-drag restore -- dragging project only folds project rows (in-group + top-level),
- *     group rows stay open; group expansion stays stable during reorder; dragend restores pre-drag snapshot;
+ *   - v0.6: Stable expansion during drag -- native dragstart never moves rows under the pointer,
+ *     and all group/project expansion stays unchanged through dragend;
  *   - v0.7: Top-level area uses insertion line indicator (no full-block highlight) -- top-level row reordering,
  *     blank space below last row appends to end; empty top-level shows indicator line below last group row;
  *     top-level order persisted in `workspaceOrder[__topLevel__]`;
@@ -152,6 +152,27 @@ async function main() {
       return g !== '' && p !== '' && g !== p
     })()`))
 
+    // A flat portal menu must stay reachable even in a narrow, short viewport.
+    await page.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 320, deviceScaleFactor: 1, mobile: false })
+    const colorOpened = await evaluate(`(() => {
+      const trigger = document.querySelector('[data-wg-color-menu-trigger]')
+      if (!trigger) return false
+      trigger.click()
+      return true
+    })()`)
+    report('Color menu stays inside a 320x320 viewport', colorOpened && await waitFor(`(() => {
+      const menus = [...document.querySelectorAll('[role="menu"]')].filter(menu => {
+        const rect = menu.getBoundingClientRect()
+        return rect.width > 0 && rect.height > 0
+      })
+      const menu = menus[menus.length - 1]
+      if (!menu) return false
+      const rect = menu.getBoundingClientRect()
+      return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight
+    })()`, 5000))
+    await evaluate(`document.querySelector('[data-wg-color-menu-trigger]')?.click()`)
+    await page.send('Emulation.clearDeviceMetricsOverride')
+
     // ---- 2. Create new group ----
     // Pick a group name that doesn't collide with the live environment (the
     // user may already have a "Verify Group" from their own use or a prior run).
@@ -184,8 +205,10 @@ async function main() {
       const source = document.querySelector('.wgProjectRow[data-wsid="${wsid}"]')
       const target = document.querySelector('.wgCategoryRow[data-wg-category="${groupName}"]')
       if (!source || !target) return { error: 'missing source/target' }
+      const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+      if (!dragSource) return { error: 'missing workspace drag source' }
       const dt = new DataTransfer()
-      source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
       const types = Array.prototype.slice.call(dt.types || [])
       target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
       target.__wgDt = dt // reuse the same DataTransfer for the drop step
@@ -285,8 +308,7 @@ async function main() {
       report('v0.3/0.7 requires >=1 non-empty group (skipping reorder/collapse assertions)', false, `categories=${JSON.stringify(ruleKeys)} diag=${diag}`)
     } else {
       // Expand both working categories so their project rows are visible, then
-      // expand every project row (the v0.6 fold/restore assertions need them
-      // expanded before the drag starts).
+      // expand every project row so v0.6 can assert dragstart leaves layout stable.
       await expandCat(cat1)
       await expandCat(cat2)
       const rowsVisible = await waitFor(`(() => {
@@ -297,7 +319,7 @@ async function main() {
       report('Both groups expanded and project rows visible', rowsVisible)
       await expandProject(cat1)
       await expandProject(cat2)
-      report('Project rows expanded (sessions visible for fold assertions)', await waitFor(`(() => {
+      report('Project rows expanded for drag layout-stability assertions', await waitFor(`(() => {
         const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
         const rows1 = s1 ? [...s1.querySelectorAll('.wgProjectRow')] : []
@@ -312,11 +334,13 @@ async function main() {
         const source = document.querySelector('.wgProjectRow.wgProjectFlat')
         const target = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
         if (!source || !target) return { error: 'no top-level row or cat2' }
+        const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+        if (!dragSource) return { error: 'workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
         window.__wgDt = dt
-        window.__wgSource = source
+        window.__wgSource = dragSource
         return { wsid: source.getAttribute('data-wsid') }
       })()`)
       await evaluate(`(() => {
@@ -456,30 +480,32 @@ async function main() {
         const source = rows[1] // drag the second project
         const target = rows[0] // drop before the first
         if (!source || !target) return { error: 'rows missing' }
+        const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+        if (!dragSource) return { error: 'workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         window.__wgDt = dt // stash for the drop step (React re-renders may recreate rows)
-        window.__wgSource = source // dragend fires on the dragged source
+        window.__wgSource = dragSource // dragend fires on the dragged source
         return { wsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
       })()`)
-      // v0.6: dragging a PROJECT folds every project row (grouped AND
-      // top-level) but leaves group rows expanded.
+      // Expansion must stay stable: changing rows above the source during
+      // dragstart moves it under the pointer and cancels native dragging.
       report('Group rows remain expanded when dragging project', await waitFor(`(() => {
         const r1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')
         const r2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')
         return !!r1 && !!r2 && r1.getAttribute('aria-expanded') === 'true' && r2.getAttribute('aria-expanded') === 'true'
       })()`, 5000))
-      report('Project rows in same group collapse when dragging project', await waitFor(`(() => {
+      report('Project rows in same group stay expanded during project drag', await waitFor(`(() => {
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
         if (!s2) return false
         const rows = [...s2.querySelectorAll('.wgProjectRow')]
-        return rows.length >= 2 && rows.every(r => r.getAttribute('aria-expanded') === 'false')
+        return rows.length >= 2 && rows.every(r => r.getAttribute('aria-expanded') === 'true')
       })()`, 5000))
-      report('Project rows in other groups also collapse when dragging project', await waitFor(`(() => {
+      report('Project rows in other groups stay expanded during project drag', await waitFor(`(() => {
         const s1 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat1)}]')?.parentElement
         if (!s1) return false
         const rows = [...s1.querySelectorAll('.wgProjectRow')]
-        return rows.length >= 1 && rows.every(r => r.getAttribute('aria-expanded') === 'false')
+        return rows.length >= 1 && rows.every(r => r.getAttribute('aria-expanded') === 'true')
       })()`, 5000))
       await evaluate(`(() => {
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
@@ -491,7 +517,7 @@ async function main() {
         window.__wgSource?.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
         return true
       })()`)
-      report('Project rows restore expansion after dragend (snapshot restored)', await waitFor(`(() => {
+      report('Project rows remain expanded after dragend', await waitFor(`(() => {
         const s2 = document.querySelector('.wgCategoryRow[data-wg-category=${JSON.stringify(cat2)}]')?.parentElement
         if (!s2) return false
         const rows = [...s2.querySelectorAll('.wgProjectRow')]
@@ -513,12 +539,14 @@ async function main() {
         const source = rows[0] // currently the first project
         const target = rows[1] // drop on the BOTTOM half of the second
         if (!source || !target) return { error: 'rows missing' }
+        const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+        if (!dragSource) return { error: 'workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
         window.__wgDt = dt // stash for the drop step
-        window.__wgSource = source // dragend fires on the dragged source
+        window.__wgSource = dragSource // dragend fires on the dragged source
         return { sourceWsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
       })()`)
       report('Drag project hovering row bottom half -> bottom insertion indicator line', await waitFor(`(() => {
@@ -547,10 +575,12 @@ async function main() {
         if (!s2) return { error: 'no section' }
         const source = s2.querySelector('.wgProjectRow')
         if (!source) return { error: 'no project row' }
+        const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+        if (!dragSource) return { error: 'workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         window.__wgDt = dt // stash for the drop step
-        window.__wgSource = source // dragend fires on the dragged source
+        window.__wgSource = dragSource // dragend fires on the dragged source
         return { wsid: source.getAttribute('data-wsid') }
       })()`)
       report('Top-level move-out drop zone visible during drag (top-level row or empty drop zone)', !!dragOut.wsid && await waitFor(`!!(document.querySelector('.wgProjectRow.wgProjectFlat') || document.querySelector('.wgTopLevelEmpty'))`, 5000))
@@ -587,12 +617,14 @@ async function main() {
         const source = flat[1]
         const target = flat[0]
         if (!source || !target) return { error: 'rows missing' }
+        const dragSource = source.querySelector('[data-wg-drag-source="workspace"]')
+        if (!dragSource) return { error: 'workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + 1, dataTransfer: dt }))
         window.__wgDt = dt
-        window.__wgSource = source
+        window.__wgSource = dragSource
         return { wsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
       })()`)
       report('Top-level row drag hovering top half -> top insertion line', topReorder.wsid && await waitFor(`!!document.querySelector('.wgProjectRow.wgProjectFlat.wgInsertBefore')`, 5000))
@@ -615,12 +647,14 @@ async function main() {
         if (flat.length < 2) return { error: 'need >=2 top-level rows' }
         const source = flat[0]
         const target = flat[1]
+        const dragSource = source?.querySelector('[data-wg-drag-source="workspace"]')
+        if (!source || !target || !dragSource) return { error: 'rows or workspace drag source missing' }
         const dt = new DataTransfer()
-        source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+        dragSource.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
         const rect = target.getBoundingClientRect()
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientY: rect.top + rect.height - 1, dataTransfer: dt }))
         window.__wgDt = dt
-        window.__wgSource = source
+        window.__wgSource = dragSource
         return { wsid: source.getAttribute('data-wsid'), targetWsid: target.getAttribute('data-wsid') }
       })()`)
       report('Drag to bottom half of top-level row -> bottom insertion line (after indicator)', topAfter.wsid && await waitFor(`!!document.querySelector('.wgProjectRow.wgProjectFlat.wgInsertAfter')`, 5000))

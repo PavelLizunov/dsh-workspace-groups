@@ -156,11 +156,7 @@ type GroupDialogState = { mode: 'create' } | { mode: 'rename'; from: string } | 
 /** Row reference used by drop targets: which kind of row, which key. */
 export type DropRowRef = { kind: 'category' | 'workspace' | 'topLevel'; key: string }
 
-/**
- * Which level's rows fold while a drag is in progress: dragging a project
- * folds every project row (grouped AND top-level), dragging a group folds
- * every group row. The other level keeps its expansion untouched.
- */
+/** Which payload level is currently dragging; expansion remains unchanged. */
 export type DragLevel = 'workspace' | 'category' | null
 
 /**
@@ -598,32 +594,13 @@ export function GroupsBrowser({
 
   const [dragIndicator, setDragIndicator] = useState<DragIndicator>(null)
 
-  // Expansion state taken at dragstart; dragend restores it so the folding
-  // caused by a drag is always undone afterwards (restored on drag end).
-  const expansionSnapshot = useRef<{
-    original: { categories: Record<string, boolean>; workspaces: Record<string, boolean> }
-    touchedCategories: Set<string>
-    touchedWorkspaces: Set<string>
-  } | null>(null)
-  // Live expansion state for the dragend restore (the document-level listener
-  // is registered once, so it must read current values through a ref).
-  const liveExpansionRef = useRef({ categoryExpansion, workspaceExpansion, actions })
-  liveExpansionRef.current = { categoryExpansion, workspaceExpansion, actions }
-
-  // Cancel any stale indicator when a drag ends outside a row (or is aborted),
-  // and restore the expansion snapshot taken at dragstart.
+  // Cancel any stale indicator when a drag ends outside a row (or is aborted).
+  // Dragstart must not mutate expansion: collapsing rows above the source moves
+  // it under the pointer and makes browsers cancel native dragging.
   useEffect(() => {
     const clear = () => {
       setDragIndicator(null)
       setDragging(null)
-      const snapshot = expansionSnapshot.current
-      if (snapshot === null) return
-      expansionSnapshot.current = null
-      liveExpansionRef.current.actions.restoreExpansionSnapshot(
-        snapshot.original,
-        [...snapshot.touchedCategories],
-        [...snapshot.touchedWorkspaces],
-      )
     }
     document.addEventListener('dragend', clear)
     return () => { document.removeEventListener('dragend', clear) }
@@ -798,23 +775,10 @@ export function GroupsBrowser({
     }
   }
 
-  // While dragging a project, only PROJECT rows fold — every expanded
-  // workspace collapses (inside groups AND top-level); group rows keep their
-  // expansion so the user still sees where groups are. dragend restores the
-  // snapshot taken here.
+  // Keep the tree stable while native dragging starts. Synchronously folding
+  // rows here moves lower sources under the pointer and cancels their drag.
   const onDragStartWorkspace = (_workspaceId: WorkspaceId, _event: DragEvent): void => {
     setDragging('workspace')
-    const temporaryWorkspaces = Object.fromEntries(
-      Object.entries(workspaceExpansion).map(([key, value]) => [key, value ? false : value]),
-    )
-    expansionSnapshot.current = {
-      original: { categories: { ...categoryExpansion }, workspaces: { ...workspaceExpansion } },
-      touchedCategories: new Set(),
-      touchedWorkspaces: new Set(),
-    }
-    for (const [key, value] of Object.entries(temporaryWorkspaces)) {
-      if (workspaceExpansion[key] !== value) actions.setWorkspaceExpanded(key, value)
-    }
   }
 
   // While dragging a group, retain payload and dragging state only.
@@ -1105,11 +1069,9 @@ export function GroupsBrowser({
                   onDragStartCategory={onDragStartCategory(category.key)}
                   onDragStartWorkspace={onDragStartWorkspace}
                   onToggleCategory={() => {
-                    expansionSnapshot.current?.touchedCategories.add(category.key)
                     actions.setCategoryExpanded(category.key, !category.expanded)
                   }}
                   onToggleWorkspace={(key) => {
-                    expansionSnapshot.current?.touchedWorkspaces.add(key)
                     actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
                   }}
                   onNewSession={startSession}
@@ -1189,7 +1151,6 @@ export function GroupsBrowser({
                   onDropRow={onDropRow}
                   onDragStartWorkspace={onDragStartWorkspace}
                   onToggleWorkspace={(key) => {
-                    expansionSnapshot.current?.touchedWorkspaces.add(key)
                     actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
                   }}
                   onNewSession={startSession}
