@@ -308,8 +308,7 @@ scripts/
 - `pnpm build`: reproducible Host/client bundles and declaration artifacts in `lib/`.
 - `node scripts/verify-groups.mjs`: optional real-browser CDP suite with scene restoration;
   it requires a compatible local browser and an already activated plugin build.
-- The current `main` build is fully automation-verified but has not yet received a live-GUI
-  smoke test.
+- The current `main` build is automation-verified and confirmed in a live-GUI smoke test.
 
 ## Upstream & credits
 

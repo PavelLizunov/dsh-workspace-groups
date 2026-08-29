@@ -282,7 +282,7 @@ scripts/
 - `pnpm build`：可复现生成 Host/client bundle 与 `lib/` 声明文件。
 - `node scripts/verify-groups.mjs`：可选的真实浏览器 CDP 测试并自动恢复现场；需要兼容的
   本地浏览器和已激活的插件构建。
-- 当前 `main` 构建已通过完整自动化验证，但尚未执行实时 GUI 冒烟测试。
+- 当前 `main` 构建已通过完整自动化验证，并已完成实时 GUI 冒烟测试。
 
 ## 上游与致谢 (Upstream & credits)
 
