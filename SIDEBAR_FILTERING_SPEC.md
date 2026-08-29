@@ -5,8 +5,9 @@
 - Status is exactly one of **All / Needs attention / Running / New**.
 - A selected Group color includes that Group's workspaces; a selected Workspace color includes that Workspace.
 - Text search, status, color, and recency combine with logical AND.
-- Empty Group/Workspace branches are hidden and matching paths are temporarily expanded.
-- Filtering never writes persistent expansion state, changes the current chat, or changes Host/overlay data.
+- Empty Group/Workspace branches are hidden; filtered branches keep the current expansion and remain controllable.
+- Expansion changes made while filtering are transient and never write persistent expansion state.
+- Filtering never changes the current chat or Host/overlay data.
 - Active criteria remain visible and have one Reset action.
 - Filter state is transient; the existing five-session preview and Show all/Collapse remain in force.
 - DSH Web is not restarted without separate explicit approval.
@@ -38,7 +39,7 @@ interface FilterCounts {
 - [x] Status, color, recency, priority, cutoff, pruning, and immutability unit tests pass.
 - [x] Status scope, filter menu, active summary, Reset, and empty state are keyboard accessible.
 - [x] Full-text search and filtered idle trees use identical filter semantics.
-- [x] Filtered paths expand without writing the persisted expansion store.
+- [x] Filtered paths keep normal collapse controls without writing the persisted expansion store.
 - [x] Search and idle results retain the five-session preview behavior.
 - [x] README and README_ZH describe current behavior.
 - [x] Typecheck, tests, build, and diff checks pass.

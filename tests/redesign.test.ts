@@ -236,6 +236,8 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
     expect(browserSource).toContain('wgCountBadge')
     expect(browserSource).toContain('wgFilterSummary')
     expect(browserSource).toContain('wgFilterResetBtn')
+    expect(browserSource).toContain('filterCategoryExpansion')
+    expect(browserSource).toContain('filterWorkspaceExpansion')
   })
 })
 

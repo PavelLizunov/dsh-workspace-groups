@@ -184,9 +184,10 @@ export type DragIndicator =
   | { mode: 'into'; categoryKey: string }
   | null
 
-function SidebarFilterMenu({ filter, onChange, t }: {
+function SidebarFilterMenu({ filter, onChange, onReset, t }: {
   filter: SidebarFilter
   onChange: (filter: SidebarFilter) => void
+  onReset: () => void
   t: GroupsBrowserProps['t']
 }) {
   const [open, setOpen] = useState(false)
@@ -213,7 +214,7 @@ function SidebarFilterMenu({ filter, onChange, t }: {
       selectedIds={[`color:${filter.color ?? 'none'}`, `recency:${filter.recency}`]}
       onSelect={(id) => {
         if (id === 'filter:reset') {
-          onChange(DEFAULT_SIDEBAR_FILTER)
+          onReset()
         } else if (id.startsWith('color:')) {
           const color = id.slice('color:'.length)
           onChange({ ...filter, color: color === 'none' ? null : color as ColorPreset })
@@ -346,6 +347,8 @@ export function GroupsBrowser({
   })
   const [filter, setFilter] = useState<SidebarFilter>(DEFAULT_SIDEBAR_FILTER)
   const isFilterActive = sidebarFilterActive(filter)
+  const [filterCategoryExpansion, setFilterCategoryExpansion] = useState<Record<string, boolean>>({})
+  const [filterWorkspaceExpansion, setFilterWorkspaceExpansion] = useState<Record<string, boolean>>({})
   const [searchCounts, setSearchCounts] = useState<FilterCounts | null>(null)
   const reportSearchCounts = useCallback((next: FilterCounts) => {
     setSearchCounts(previous => previous !== null
@@ -355,6 +358,11 @@ export function GroupsBrowser({
       && previous.done === next.done
       ? previous
       : next)
+  }, [])
+  const resetFilter = useCallback(() => {
+    setFilter(DEFAULT_SIDEBAR_FILTER)
+    setFilterCategoryExpansion({})
+    setFilterWorkspaceExpansion({})
   }, [])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
@@ -449,8 +457,26 @@ export function GroupsBrowser({
     [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
   )
 
-  const displayGroups = isFilterActive ? filterResult.categories : groups
-  const displayTopLevel = isFilterActive ? filterResult.topLevel : topLevel
+  const filteredGroups = useMemo(
+    () => filterResult.categories.map(category => ({
+      ...category,
+      expanded: filterCategoryExpansion[category.key] ?? categoryExpansion[category.key] ?? false,
+      workspaces: category.workspaces.map(workspace => ({
+        ...workspace,
+        expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? workspaceExpansion[workspace.workspaceId] ?? false,
+      })),
+    })),
+    [filterResult.categories, filterCategoryExpansion, filterWorkspaceExpansion, categoryExpansion, workspaceExpansion],
+  )
+  const filteredTopLevel = useMemo(
+    () => filterResult.topLevel.map(workspace => ({
+      ...workspace,
+      expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? workspaceExpansion[workspace.workspaceId] ?? false,
+    })),
+    [filterResult.topLevel, filterWorkspaceExpansion, workspaceExpansion],
+  )
+  const displayGroups = isFilterActive ? filteredGroups : groups
+  const displayTopLevel = isFilterActive ? filteredTopLevel : topLevel
   const activeCounts = normalizedQuery === '' ? filterResult.counts : searchCounts ?? EMPTY_FILTER_COUNTS
   // While dragging a project, an empty top-level area must still show a landing
   // line — otherwise a project can never be dragged OUT of a group when every
@@ -1154,7 +1180,7 @@ export function GroupsBrowser({
                 <span className="wgCountBadge">{activeCounts.done}</span>
               </button>
             </div>
-            <SidebarFilterMenu filter={filter} onChange={setFilter} t={t} />
+            <SidebarFilterMenu filter={filter} onChange={setFilter} onReset={resetFilter} t={t} />
           </div>
           {isFilterActive && (
             <div className="wgFilterSummary">
@@ -1176,7 +1202,7 @@ export function GroupsBrowser({
               <button
                 type="button"
                 className="wgSessionToggleBtn wgFilterResetBtn"
-                onClick={() => { setFilter(DEFAULT_SIDEBAR_FILTER) }}
+                onClick={resetFilter}
               >
                 {t('filter.reset')}
               </button>
@@ -1214,7 +1240,7 @@ export function GroupsBrowser({
               startSession={startSession}
               filter={filter}
               onCountsChange={reportSearchCounts}
-              {...(isFilterActive ? { onResetFilter: () => { setFilter(DEFAULT_SIDEBAR_FILTER) } } : {})}
+              {...(isFilterActive ? { onResetFilter: resetFilter } : {})}
               onWorkspaceRename={(workspaceId, title) => {
                 setRenameTarget({ workspaceId, currentTitle: title })
                 setRenameDraft(title)
@@ -1238,7 +1264,7 @@ export function GroupsBrowser({
                     <button
                       type="button"
                       className="wgSessionToggleBtn wgFilterResetBtn wgEmptyReset"
-                      onClick={() => { setFilter(DEFAULT_SIDEBAR_FILTER) }}
+                      onClick={resetFilter}
                     >
                       {t('filter.reset')}
                     </button>
@@ -1260,14 +1286,21 @@ export function GroupsBrowser({
                   onDropRow={onDropRow}
                   onDragStartCategory={onDragStartCategory(category.key)}
                   onDragStartWorkspace={onDragStartWorkspace}
-                  {...(!isFilterActive ? {
-                    onToggleCategory: () => {
+                  onToggleCategory={() => {
+                    if (isFilterActive) {
+                      setFilterCategoryExpansion(previous => ({ ...previous, [category.key]: !category.expanded }))
+                    } else {
                       actions.setCategoryExpanded(category.key, !category.expanded)
-                    },
-                    onToggleWorkspace: (key: string) => {
+                    }
+                  }}
+                  onToggleWorkspace={(key) => {
+                    if (isFilterActive) {
+                      const expanded = category.workspaces.find(workspace => workspace.workspaceId === key)?.expanded ?? false
+                      setFilterWorkspaceExpansion(previous => ({ ...previous, [key]: !expanded }))
+                    } else {
                       actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
-                    },
-                  } : {})}
+                    }
+                  }}
                   onNewSession={startSession}
                   onOpen={open}
                   onRenameRequest={(workspaceId, title) => {
@@ -1344,11 +1377,14 @@ export function GroupsBrowser({
                   onDragLeaveRow={onDragLeaveRow}
                   onDropRow={onDropRow}
                   onDragStartWorkspace={onDragStartWorkspace}
-                  {...(!isFilterActive ? {
-                    onToggleWorkspace: (key: string) => {
+                  onToggleWorkspace={(key) => {
+                    if (isFilterActive) {
+                      const expanded = displayTopLevel.find(workspace => workspace.workspaceId === key)?.expanded ?? false
+                      setFilterWorkspaceExpansion(previous => ({ ...previous, [key]: !expanded }))
+                    } else {
                       actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
-                    },
-                  } : {})}
+                    }
+                  }}
                   onNewSession={startSession}
                   onOpen={open}
                   onRenameRequest={(workspaceId, title) => {
@@ -1732,8 +1768,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartCategory: (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
-  onToggleCategory?: () => void
-  onToggleWorkspace?: (key: string) => void
+  onToggleCategory: () => void
+  onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
@@ -1771,7 +1807,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         aria-level={1}
         aria-posinset={categoryIndex + 1}
         aria-setsize={totalRootItems}
-        {...(onToggleCategory === undefined ? {} : { onToggle: onToggleCategory })}
+        onToggle={onToggleCategory}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
         color={manual.colors?.[category.key]}
@@ -1799,9 +1835,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 aria-level={2}
                 aria-posinset={idx + 1}
                 aria-setsize={category.workspaces.length}
-                {...(onToggleWorkspace === undefined ? {} : {
-                  onToggle: () => { onToggleWorkspace(workspace.workspaceId as string) },
-                })}
+                onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
@@ -1876,7 +1910,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onDragLeaveRow: (event: DragEvent) => void
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
-  onToggleWorkspace?: (key: string) => void
+  onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
@@ -1924,9 +1958,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             aria-level={1}
             aria-posinset={totalGroups + idx + 1}
             aria-setsize={totalRootItems}
-            {...(onToggleWorkspace === undefined ? {} : {
-              onToggle: () => { onToggleWorkspace(workspace.workspaceId as string) },
-            })}
+            onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}

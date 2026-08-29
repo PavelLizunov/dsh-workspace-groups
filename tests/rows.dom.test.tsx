@@ -287,10 +287,11 @@ describe('row interaction contracts', () => {
 
     expect(scopes[2]?.getAttribute('aria-pressed')).toBe('true')
     const filteredWorkspace = host.querySelector('.wgProjectRow')
-    expect(filteredWorkspace?.getAttribute('aria-expanded')).toBe('true')
+    expect(filteredWorkspace?.getAttribute('aria-expanded')).toBe('false')
     await act(async () => {
       filteredWorkspace?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
+    expect(host.querySelector('.wgProjectRow')?.getAttribute('aria-expanded')).toBe('true')
     expect(setWorkspaceExpanded).not.toHaveBeenCalled()
 
     const summary = host.querySelector('.wgFilterSummary')

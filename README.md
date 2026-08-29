@@ -75,8 +75,9 @@
   New**; the Filter menu adds one group/project color and an optional 24-hour, 7-day, or 30-day
   recency window. Text, status, color, and recency narrow the result together.
 - **Visible and transient criteria**: active filters stay visible with one Reset action; empty
-  branches hide and matching paths expand without changing the saved expansion state. Filtered
-  search results keep the five-session preview and **Show all / Collapse** controls.
+  branches hide, while the filtered tree keeps the current expansion and remains collapsible.
+  Expansion changes made while filtering are temporary. Filtered search results keep the
+  five-session preview and **Show all / Collapse** controls.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
   session new/open/rename/fork/archive.
 
