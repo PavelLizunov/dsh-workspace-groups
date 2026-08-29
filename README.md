@@ -8,14 +8,16 @@
 ![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)
 <img src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-202724" alt="DeepSeek Harness plugin">
 
-> **A DeepSeek Harness (DSH) web client plugin: a complete workspace grouping manager.**
-> Turns the GUI sidebar's two-level workspace list (Projects → Sessions) into a
-> three-level **Category folder → Project folder → Session** tree, backed by full
-> group-management capabilities: manual group creation, rename/delete of any group,
-> drag-and-drop grouping, free ordering of projects and groups, rule-based
-> auto-classification, and tree-shaped search. Every action takes effect
-> **immediately and persists**, with **zero intrusion** on official data.
+> **A DeepSeek Harness (DSH) web client plugin for sidebar workspace grouping.**
+> Upgrades the DSH web sidebar list into a three-level **Category folder → Project folder → Session** tree with **drag-and-drop ordering**, **attention filters** (status, color, recency), and **tree search**. Backed by full group management (create, rename, delete), rule-based auto-classification, sidecar YAML configuration, and runtime overlay persistence — with **zero intrusion** on official core data.
 
+## Quick Install
+
+```sh
+dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
+```
+
+> Activation requires restarting the existing web profile through your normal service or process manager. See [Installation](#installation-github-distribution) for verification and uninstall instructions.
 
 ## Screenshot
 
@@ -108,29 +110,25 @@
   → **top level** (ungrouped projects render as top-level rows). The YAML is never
   rewritten.
 
-## Install (GitHub distribution)
+## Installation (GitHub distribution)
 
 > Prerequisite: [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 > installed (`dsh` available) with a target profile initialized (e.g. the built-in `web`).
 
 ```sh
-dsh plugin --profile web add github:z-col/dsh-workspace-groups
+dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ```
 
 This automatically:
 
-1. Adds `"dsh-workspace-groups": "github:z-col/dsh-workspace-groups"` (pinned to
+1. Adds `"dsh-workspace-groups": "github:PavelLizunov/dsh-workspace-groups"` (pinned to
    version/commit) to `dependencies` in `~/.dsh/profiles/web/package.json`
 2. Appends `"dsh-workspace-groups"` to `dsh.profile.bundles`
 3. Runs pnpm install and validates the bundle layer
 
-**Restart the web profile after installing** (both the bundle and the host half only load
-on restart):
-
-```sh
-# Stop the running dsh web process and start it again, e.g.:
-dsh web
-```
+**Restart the existing web profile after installing** (both the bundle and the host half only
+load on restart). Use the service/process manager that owns the current instance; for a foreground
+setup, stop the existing `dsh web` command before starting it again.
 
 Verify the install:
 
@@ -163,12 +161,12 @@ Default location `~/.dsh/workspace-groups.yaml` (override the home dir with the
 categories:
   - name: DSH Plugins
     rules:
-      - pathPrefix: /Users/zcol/Project/SkillsManagePlugins
+      - pathPrefix: /home/user/projects/SkillsManagePlugins
       - nameContains: plugin
       - basenameContains: plugin
   - name: Personal Projects
     rules:
-      - pathPrefix: /Users/zcol/Project/yeluzi
+      - pathPrefix: /home/user/projects/yeluzi
 ```
 
 Rule fields (each rule is an OR — any match classifies; categories are matched in order,
@@ -299,40 +297,22 @@ scripts/
   verify-groups.mjs     # real-browser CDP verification (self-spawns headless Chrome, auto-restores the scene)
 ```
 
-> Development docs (`docs/` five-level framework and `AGENTS.md`) are engineering files for
-> development, **not shipped with the repo** (excluded via `.gitignore`).
+> Root [`AGENTS.md`](./AGENTS.md) gives coding agents the architecture, verification commands,
+> generated-artifact rule, and repository safety constraints. Internal `docs/` remain untracked.
 
-## Verification record
+## Verification
 
-- v0.1/v0.2 real-combination verification (headless Chrome + CDP): three-level tree takeover,
-  correct classification, expansion persistence, search keeps workspace membership;
-  `workspace.json` / session on-disk / official store: zero intrusion.
-- v0.3 real-browser verification 24/24 (`scripts/verify-groups.mjs`: create group / drag /
-  order / collapse / rule-category menu / rename / delete-back-to-top-level /
-  scene restore; zero-intrusion assertions).
-- v0.4 real-browser verification 30/30 (added: insertion indicator, project/group
-  **downward drag** (bottom half → insert after the target), group upward drag (top half →
-  move before the target); scene restored).
-- v0.4.1 real-browser verification 34/34 (added: dragging projects OUT of a group —
-  top-level drop zone / top-level rows = forced top-level; grouped projects get the
-  "Move out of group" menu item).
-- v0.5 real-browser verification 35/35 (model change: **no "Uncategorized" bucket** — top-level
-  project rows, group delete returns members to the top level, drag/menu move-out to the
-  top level, no uncategorized bucket anywhere in the tree; scene restored).
-- v0.6 real-browser verification 40/40 (added: **level-aware folding** — dragging a project
-  folds project rows only (group rows stay open), dragging a group folds group rows only;
-  dragend restores the pre-drag expansion snapshot).
-- v0.6.1 real-browser verification 42/42 (added: the whole top-level area as the move-out
-  drop target with a visible landing highlight; distinct folder-vs-project row icons;
-  scene restored).
-- v0.7 real-browser verification 46/46 (added: top-level landing shown with an **insertion
-  line** instead of a highlight box — reorder before/after a top-level row, append below
-  the last row, or a standalone line when the top level is empty; **top-level projects are
-  reorderable** with their order persisted under `workspaceOrder["__topLevel__"]`; also
-  fixed a host validation bug that rejected `__topLevel__` and a drop-positioning bug where
-  dropping between two top-level rows landed above the first; scene restored).
-- 83 unit tests green (vitest: `core` / `manual` / `tree` / `store`).
-- Reproducible automated verification: `node scripts/verify-groups.mjs` (host restarted).
+- `pnpm verify`: TypeScript checks, **200 passed / 9 skipped** Vitest tests, and isolated
+  consumer package verification.
+- `pnpm build`: reproducible Host/client bundles and declaration artifacts in `lib/`.
+- `node scripts/verify-groups.mjs`: optional real-browser CDP suite with scene restoration;
+  it requires a compatible local browser and an already activated plugin build.
+- The v0.1.0 Public Preview is fully automation-verified; its newest filtering build has not
+  yet received a live-GUI smoke test.
+
+## Upstream & credits
+
+This project is derived from the original upstream repository [z-col/dsh-workspace-groups](https://github.com/z-col/dsh-workspace-groups). Copyright and license attribution remain with the original author as specified in [LICENSE](./LICENSE).
 
 ## License
 

@@ -14,10 +14,10 @@ categories:
   # -- DSH Plugins --
   - name: DSH Plugins
     rules:
-      - pathPrefix: /Users/zcol/Project/SkillsManagePlugins
-      - pathPrefix: /Users/zcol/Project/Documentation-Driven AI Coding
-      - pathPrefix: /Users/zcol/Project/DeepSeek-Peak-Valley-Widget
-      - pathPrefix: /Users/zcol/Project/DSH-Workspace-Groups
+      - pathPrefix: /home/user/projects/SkillsManagePlugins
+      - pathPrefix: /home/user/projects/Documentation-Driven AI Coding
+      - pathPrefix: /home/user/projects/DeepSeek-Peak-Valley-Widget
+      - pathPrefix: /home/user/projects/DSH-Workspace-Groups
       # You can also match by project display name or directory basename, e.g.:
       # - nameContains: plugin
       # - basenameContains: plugin
@@ -25,8 +25,8 @@ categories:
   # -- Personal Projects --
   - name: Personal Projects
     rules:
-      - pathPrefix: /Users/zcol/Project/yeluzi
-      - pathPrefix: /Users/zcol/Project/chat-app
+      - pathPrefix: /home/user/projects/yeluzi
+      - pathPrefix: /home/user/projects/chat-app
 
-# Projects that do not match any category (e.g. newly added /Users/zcol/Project/new-project)
+# Projects that do not match any category (e.g. newly added /home/user/projects/new-project)
 # will automatically appear as top-level projects, never omitted.

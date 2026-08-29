@@ -1,0 +1,330 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+  <title>dsh-workspace-groups Social Preview</title>
+  <desc>Workspace groups for DeepSeek Harness - Abstract developer-tool illustration of category folders, workspaces, session trees, and attention filters.</desc>
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080c19" />
+      <stop offset="50%" stop-color="#0f152a" />
+      <stop offset="100%" stop-color="#181332" />
+    </linearGradient>
+
+    <radialGradient id="glow-indigo" cx="15%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="glow-purple" cx="85%" cy="75%" r="55%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="glow-cyan" cx="85%" cy="25%" r="35%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Header / Brand Line Gradient -->
+    <linearGradient id="brand-line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Grid Pattern -->
+    <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1" />
+    </pattern>
+
+    <!-- Card Shadow -->
+    <filter id="panel-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <!-- Dot Glow Filters -->
+    <filter id="glow-amber-filter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="glow-cyan-filter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="glow-green-filter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1280" height="640" fill="url(#bg-gradient)" />
+  <rect width="1280" height="640" fill="url(#glow-indigo)" />
+  <rect width="1280" height="640" fill="url(#glow-purple)" />
+  <rect width="1280" height="640" fill="url(#glow-cyan)" />
+  <rect width="1280" height="640" fill="url(#grid-pattern)" />
+
+  <!-- LEFT HERO SECTION -->
+  <!-- Top Badge -->
+  <g transform="translate(72, 115)">
+    <rect width="250" height="32" rx="16" fill="rgba(99, 102, 241, 0.12)" stroke="#6366f1" stroke-opacity="0.6" stroke-width="1.5" />
+    <!-- Small DSH Icon Symbol -->
+    <path d="M 18 10 L 25 16 L 18 22 L 11 16 Z" fill="#38bdf8" />
+    <text x="34" y="21" fill="#a5b4fc" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="11" letter-spacing="1.5">DEEPSEEK HARNESS PLUGIN</text>
+  </g>
+
+  <!-- Title -->
+  <text x="72" y="215" fill="#ffffff" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="46" letter-spacing="-0.02em">dsh-workspace-groups</text>
+
+  <!-- Title Underline Accent -->
+  <rect x="72" y="232" width="180" height="4" rx="2" fill="url(#brand-line-grad)" />
+
+  <!-- Subtitle -->
+  <text x="72" y="275" fill="#94a3b8" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="22">Workspace groups for DeepSeek Harness</text>
+
+  <!-- Feature Line Container Box -->
+  <g transform="translate(72, 320)">
+    <rect width="470" height="52" rx="12" fill="#131b2e" fill-opacity="0.9" stroke="#2a365c" stroke-width="1.5" />
+    <text x="24" y="32" fill="#e2e8f0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="15" letter-spacing="0.2">Drag &amp; Drop <tspan fill="#6366f1">  •  </tspan> Attention Filters <tspan fill="#6366f1">  •  </tspan> Tree Search</text>
+  </g>
+
+  <!-- Key Highlights List -->
+  <g transform="translate(72, 415)">
+    <!-- Highlight 1 -->
+    <g transform="translate(0, 0)">
+      <rect width="28" height="28" rx="8" fill="rgba(99, 102, 241, 0.15)" stroke="#6366f1" stroke-opacity="0.4" stroke-width="1" />
+      <path d="M 9 14 L 13 18 L 19 10" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="40" y="19" fill="#cbd5e1" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="14">Category → Workspace → Session hierarchy</text>
+    </g>
+
+    <!-- Highlight 2 -->
+    <g transform="translate(0, 42)">
+      <rect width="28" height="28" rx="8" fill="rgba(245, 158, 11, 0.15)" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1" />
+      <circle cx="14" cy="14" r="5" fill="#f59e0b" filter="url(#glow-amber-filter)" />
+      <text x="40" y="19" fill="#cbd5e1" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="14">Attention status dots bubble up tree levels</text>
+    </g>
+
+    <!-- Highlight 3 -->
+    <g transform="translate(0, 84)">
+      <rect width="28" height="28" rx="8" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" stroke-opacity="0.4" stroke-width="1" />
+      <path d="M 9 14 H 19 M 14 9 V 19" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+      <text x="40" y="19" fill="#cbd5e1" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="14">Rule-based classification &amp; layout persistence</text>
+    </g>
+  </g>
+
+
+  <!-- RIGHT SECTION: ABSTRACT SIDEBAR ILLUSTRATION -->
+  <g transform="translate(615, 70)" filter="url(#panel-shadow)">
+    <!-- Outer Card Frame -->
+    <rect width="590" height="500" rx="16" fill="#0d1222" stroke="#232d48" stroke-width="2" />
+
+    <!-- Window Header -->
+    <rect width="590" height="46" rx="16" fill="#141a2e" />
+    <rect y="36" width="590" height="10" fill="#141a2e" />
+    <line x1="0" y1="46" x2="590" y2="46" stroke="#232d48" stroke-width="1" />
+
+    <!-- Window Controls -->
+    <circle cx="24" cy="23" r="5" fill="#ef4444" opacity="0.8" />
+    <circle cx="40" cy="23" r="5" fill="#f59e0b" opacity="0.8" />
+    <circle cx="56" cy="23" r="5" fill="#10b981" opacity="0.8" />
+
+    <!-- Header Panel Label -->
+    <text x="76" y="27" fill="#64748b" font-family="'JetBrains Mono', 'Fira Code', Consolas, monospace" font-size="12" font-weight="600" letter-spacing="1">SIDEBAR TREE HIERARCHY</text>
+
+    <!-- Header Badge -->
+    <rect x="440" y="12" width="134" height="22" rx="11" fill="rgba(99, 102, 241, 0.15)" stroke="#6366f1" stroke-width="1" />
+    <text x="507" y="27" text-anchor="middle" fill="#c7d2fe" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5">3-LEVEL STRUCTURE</text>
+
+    <!-- Search & Attention Filter Bar -->
+    <g transform="translate(20, 60)">
+      <!-- Tree Search Input Box -->
+      <rect width="290" height="34" rx="8" fill="#182035" stroke="#2a3656" stroke-width="1" />
+      <path d="M 14 17 A 4.5 4.5 0 1 1 23 17 A 4.5 4.5 0 1 1 14 17 Z M 21 21 L 25 25" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" />
+      <text x="32" y="22" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="12">Search tree...</text>
+
+      <!-- Attention Filter Pills -->
+      <g transform="translate(300, 0)">
+        <!-- All pill -->
+        <rect width="40" height="34" rx="8" fill="#252f4a" stroke="#3b4870" stroke-width="1" />
+        <text x="20" y="22" text-anchor="middle" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">All</text>
+
+        <!-- Attention pill -->
+        <rect x="46" width="118" height="34" rx="8" fill="#182035" stroke="#2a3656" stroke-width="1" />
+        <circle cx="58" cy="17" r="4" fill="#f59e0b" filter="url(#glow-amber-filter)" />
+        <text x="110" y="22" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500">Attention (2)</text>
+
+        <!-- Active pill -->
+        <rect x="170" width="80" height="34" rx="8" fill="#182035" stroke="#2a3656" stroke-width="1" />
+        <circle cx="182" cy="17" r="4" fill="#06b6d4" filter="url(#glow-cyan-filter)" />
+        <text x="216" y="22" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500">Active</text>
+      </g>
+    </g>
+
+
+    <!-- TREE CONTENT AREA -->
+
+    <!-- Category 1: Frontend Applications (Expanded) -->
+    <g transform="translate(20, 110)">
+      <!-- Row Background (Expanded Category) -->
+      <rect width="550" height="36" rx="8" fill="rgba(99, 102, 241, 0.08)" stroke="rgba(99, 102, 241, 0.3)" stroke-width="1" />
+      
+      <!-- Chevron Down -->
+      <path d="M 14 15 L 18 19 L 22 15" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <!-- Folder Icon -->
+      <path d="M 30 13 H 38 L 41 16 H 49 V 23 H 30 Z" fill="#6366f1" />
+      
+      <!-- Category Label -->
+      <text x="56" y="23" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700">Category: Frontend Apps</text>
+      
+      <!-- Category Badge -->
+      <rect x="220" y="9" width="56" height="18" rx="4" fill="#312e81" />
+      <text x="248" y="22" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="700">RULE</text>
+
+      <!-- Bubbled Attention Dot on Category Level -->
+      <circle cx="528" cy="18" r="5" fill="#f59e0b" filter="url(#glow-amber-filter)" />
+      <circle cx="528" cy="18" r="9" fill="none" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1.5" />
+    </g>
+
+    <!-- Tree Vertical Connector Line -->
+    <path d="M 38 152 V 320" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="2 2" />
+
+    <!-- Workspace 1: dsh-workspace-groups (Inside Category 1) -->
+    <g transform="translate(48, 154)">
+      <!-- Branch Line -->
+      <path d="M -10 18 H 0" fill="none" stroke="#334155" stroke-width="1.5" />
+
+      <!-- Row Background -->
+      <rect width="522" height="36" rx="8" fill="#161e36" stroke="#293556" stroke-width="1" />
+
+      <!-- Chevron Down -->
+      <path d="M 12 15 L 16 19 L 20 15" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Drag Handle Dots :: -->
+      <circle cx="28" cy="14" r="1.5" fill="#64748b" />
+      <circle cx="28" cy="18" r="1.5" fill="#64748b" />
+      <circle cx="28" cy="22" r="1.5" fill="#64748b" />
+      <circle cx="32" cy="14" r="1.5" fill="#64748b" />
+      <circle cx="32" cy="18" r="1.5" fill="#64748b" />
+      <circle cx="32" cy="22" r="1.5" fill="#64748b" />
+
+      <!-- Workspace Icon -->
+      <rect x="42" y="11" width="14" height="14" rx="3" fill="none" stroke="#38bdf8" stroke-width="1.5" />
+      <rect x="46" y="15" width="6" height="6" fill="#38bdf8" />
+
+      <!-- Workspace Label -->
+      <text x="64" y="23" fill="#e2e8f0" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600">Workspace: dsh-workspace-groups</text>
+
+      <!-- Bubbled Attention Dot on Workspace Level -->
+      <circle cx="500" cy="18" r="5" fill="#f59e0b" filter="url(#glow-amber-filter)" />
+    </g>
+
+    <!-- Session Vertical Branch Line -->
+    <path d="M 76 196 V 292" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="2 2" />
+
+    <!-- Session 1: Live Activity (Cyan Dot) -->
+    <g transform="translate(86, 198)">
+      <path d="M -10 16 H 0" fill="none" stroke="#334155" stroke-width="1.5" />
+      <rect width="484" height="32" rx="6" fill="#111728" stroke="#1e2842" stroke-width="1" />
+
+      <!-- Session File Icon -->
+      <path d="M 14 10 H 22 L 26 14 V 22 H 14 Z" fill="none" stroke="#94a3b8" stroke-width="1.2" />
+
+      <text x="34" y="21" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="12">Session: Drag-and-drop tree reordering</text>
+
+      <!-- Live Activity Attention Dot (Cyan) -->
+      <circle cx="462" cy="16" r="4.5" fill="#06b6d4" filter="url(#glow-cyan-filter)" />
+      <text x="444" y="20" text-anchor="end" fill="#06b6d4" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600">LIVE</text>
+    </g>
+
+    <!-- Session 2: Warning/Attention (Amber Dot) -->
+    <g transform="translate(86, 236)">
+      <path d="M -10 16 H 0" fill="none" stroke="#334155" stroke-width="1.5" />
+      <rect width="484" height="32" rx="6" fill="rgba(245, 158, 11, 0.08)" stroke="rgba(245, 158, 11, 0.3)" stroke-width="1" />
+
+      <!-- Session File Icon -->
+      <path d="M 14 10 H 22 L 26 14 V 22 H 14 Z" fill="none" stroke="#f59e0b" stroke-width="1.2" />
+
+      <text x="34" y="21" fill="#fef3c7" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Session: Attention filter priorities &amp; badges</text>
+
+      <!-- Warning Attention Dot (Amber) -->
+      <circle cx="462" cy="16" r="5" fill="#f59e0b" filter="url(#glow-amber-filter)" />
+      <text x="444" y="20" text-anchor="end" fill="#f59e0b" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600">ACTION</text>
+    </g>
+
+    <!-- Session 3: Completed (Green Dot) -->
+    <g transform="translate(86, 274)">
+      <path d="M -10 16 H 0" fill="none" stroke="#334155" stroke-width="1.5" />
+      <rect width="484" height="32" rx="6" fill="#111728" stroke="#1e2842" stroke-width="1" />
+
+      <!-- Session File Icon -->
+      <path d="M 14 10 H 22 L 26 14 V 22 H 14 Z" fill="none" stroke="#94a3b8" stroke-width="1.2" />
+
+      <text x="34" y="21" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="12">Session: Rule-based workspace classification</text>
+
+      <!-- Completed Attention Dot (Green) -->
+      <circle cx="462" cy="16" r="4.5" fill="#10b981" filter="url(#glow-green-filter)" />
+      <text x="444" y="20" text-anchor="end" fill="#10b981" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600">DONE</text>
+    </g>
+
+    <!-- Workspace 2: dsh-web-shell (Collapsed Workspace inside Category 1) -->
+    <g transform="translate(48, 316)">
+      <path d="M -10 18 H 0" fill="none" stroke="#334155" stroke-width="1.5" />
+      <rect width="522" height="34" rx="8" fill="#13192c" stroke="#222c47" stroke-width="1" />
+
+      <!-- Chevron Right -->
+      <path d="M 14 13 L 18 17 L 14 21" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Workspace Icon -->
+      <rect x="28" y="10" width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+
+      <text x="50" y="22" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Workspace: dsh-web-shell</text>
+
+      <text x="500" y="22" text-anchor="end" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">4 sessions</text>
+    </g>
+
+    <!-- Category 2: Core Services & Plugins (Collapsed Category) -->
+    <g transform="translate(20, 360)">
+      <rect width="550" height="34" rx="8" fill="#13192c" stroke="#222c47" stroke-width="1" />
+
+      <!-- Chevron Right -->
+      <path d="M 16 13 L 20 17 L 16 21" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Folder Icon -->
+      <path d="M 28 12 H 36 L 39 15 H 47 V 22 H 28 Z" fill="#818cf8" />
+
+      <text x="54" y="22" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600">Category: Core Services</text>
+
+      <!-- Bubbled Attention Dot (Green) -->
+      <circle cx="528" cy="17" r="4.5" fill="#10b981" filter="url(#glow-green-filter)" />
+    </g>
+
+    <!-- Top-Level Ungrouped Workspace -->
+    <g transform="translate(20, 404)">
+      <rect width="550" height="34" rx="8" fill="#101526" stroke="#1c243b" stroke-width="1" />
+
+      <!-- Chevron Right -->
+      <path d="M 16 13 L 20 17 L 16 21" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Workspace Icon -->
+      <rect x="28" y="10" width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5" />
+
+      <text x="50" y="22" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Workspace: dsh-agent-presets</text>
+
+      <!-- Ungrouped Tag -->
+      <rect x="440" y="8" width="94" height="18" rx="4" fill="#1e293b" />
+      <text x="487" y="21" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600">UNGROUPED</text>
+    </g>
+
+    <!-- Interactive Drag & Drop Callout Tooltip Overlay -->
+    <g transform="translate(260, 138)">
+      <rect width="136" height="26" rx="13" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5" />
+      <!-- Drag dots -->
+      <circle cx="14" cy="13" r="1.5" fill="#a5b4fc" />
+      <circle cx="18" cy="13" r="1.5" fill="#a5b4fc" />
+      <circle cx="22" cy="13" r="1.5" fill="#a5b4fc" />
+      <text x="76" y="17" text-anchor="middle" fill="#e0e7ff" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700">Drag &amp; Drop</text>
+    </g>
+  </g>
+</svg>

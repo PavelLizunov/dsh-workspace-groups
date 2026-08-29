@@ -1,7 +1,7 @@
 {
   "name": "dsh-workspace-groups",
   "version": "0.1.0",
-  "description": "Complete workspace grouping manager for the DSH web sidebar: Category → Project → Session three-level tree, manual group create/rename/delete, drag-and-drop grouping & ordering with insertion indicator, rule-based auto-classification, tree search. Sidecar YAML + runtime overlay, zero core-storage intrusion.",
+  "description": "DeepSeek Harness (DSH) sidebar workspace grouping plugin: Category → Project → Session three-level tree, drag-and-drop ordering, attention filters, rule-based auto-classification, and tree search with zero core-storage intrusion.",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -11,13 +11,22 @@
     "sidebar",
     "workspace",
     "workspace-groups",
+    "workspace-manager",
+    "chat-sessions",
+    "drag-and-drop",
+    "attention-filters",
+    "tree-search",
+    "ai-agents",
+    "agentic-ai",
+    "developer-tools",
+    "typescript",
     "client-plugin"
   ],
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/z-col/dsh-workspace-groups"
+    "url": "https://github.com/PavelLizunov/dsh-workspace-groups"
   },
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

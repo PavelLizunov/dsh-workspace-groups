@@ -4,4 +4,3 @@ node_modules/
 
 # Development-only engineering files are not tracked by this plugin repository.
 docs/
-AGENTS.md

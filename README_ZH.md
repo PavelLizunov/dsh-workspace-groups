@@ -8,15 +8,20 @@
 ![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)
 <img src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-202724" alt="DeepSeek Harness plugin">
 
-> **DeepSeek Harness（DSH）Web 客户端插件：完整的工作区分组管理工具。**
-> 把 GUI 侧边栏的工作区列表从两层「项目 → 会话」升级为三层
-> **「分类文件夹 → 项目文件夹 → 会话」**，并围绕它提供完整的分组管理能力——
-> 手动建组、重命名/删除分组、拖拽归类、项目与分组的自由排序、规则自动归类、
-> 树形搜索。所有操作**即时生效并持久化**，对官方数据**零侵入**。
+> **DeepSeek Harness (DSH) 侧边栏工作区分组插件。**
+> 将 DSH Web 侧边栏工作区列表升级为三层 **「分类文件夹 → 项目文件夹 → 会话」** 树状结构，提供 **拖拽排序（Drag-and-drop ordering）**、**注意力筛选（Attention filters，按状态/颜色/时间）** 和 **树形搜索（Tree search）**。支持手动分组管理、规则自动归类、Sidecar YAML 配置与运行时 Overlay 持久化，对官方核心数据 **零侵入**。
 
 典型场景：多个 DSH 插件项目（SkillsManagePlugins / Documentation-Driven AI Coding /
 DeepSeek峰谷小组件 等）归入一个「DSH 插件」分类文件夹，点开是各项目，再点开是各自会话；
 临时项目随手建个「临时」分组拖进去，用完删除分组，项目全部回归**顶层**。
+
+## 快速安装 (Quick Install)
+
+```sh
+dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
+```
+
+> 激活插件需要通过现有的服务或进程管理方式重启当前 web profile。验证与卸载说明见后文 [安装（GitHub 分发）](#安装github-分发)。
 
 ## 截图
 
@@ -99,22 +104,18 @@ DeepSeek峰谷小组件 等）归入一个「DSH 插件」分类文件夹，点�
 > （`dsh` 命令可用），并已初始化好目标 profile（如内置 `web`）。
 
 ```sh
-dsh plugin --profile web add github:z-col/dsh-workspace-groups
+dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ```
 
 这会自动：
 
 1. 在 `~/.dsh/profiles/web/package.json` 的 `dependencies` 加入
-   `"dsh-workspace-groups": "github:z-col/dsh-workspace-groups"`（含版本/commit）
+   `"dsh-workspace-groups": "github:PavelLizunov/dsh-workspace-groups"`（含版本/commit）
 2. 在 `dsh.profile.bundles` 末尾追加 `"dsh-workspace-groups"`
 3. 运行 pnpm 安装并校验 bundle 层
 
-**安装后重启 web profile**（bundle 与 host 半只有在重启后才会被加载）：
-
-```sh
-# 停止现有 dsh web 进程后重新启动，例如：
-dsh web
-```
+**安装后重启当前 web profile**（bundle 与 host 半只有在重启后才会被加载）。请使用
+管理现有实例的服务/进程管理器；若以前台方式运行，请先停止当前 `dsh web`，再重新启动。
 
 验证安装：
 
@@ -147,12 +148,12 @@ dsh plugin --profile web remove dsh-workspace-groups
 categories:
   - name: DSH 插件
     rules:
-      - pathPrefix: /Users/zcol/Project/SkillsManagePlugins
+      - pathPrefix: /home/user/projects/SkillsManagePlugins
       - nameContains: 插件
       - basenameContains: plugin
   - name: 个人项目
     rules:
-      - pathPrefix: /Users/zcol/Project/yeluzi
+      - pathPrefix: /home/user/projects/yeluzi
 ```
 
 规则字段（每个 rule 是 OR 关系，任一命中即归类；分类按序匹配，先到先得）：
@@ -271,31 +272,21 @@ scripts/
   verify-groups.mjs     # 真机 CDP 验证（自启 headless Chrome，自动恢复现场）
 ```
 
-> 开发文档（`docs/` 五级框架与 `AGENTS.md`）是开发用工程文件，**不随仓库分发**
-> （已在 `.gitignore` 排除）。
+> 根目录 [`AGENTS.md`](./AGENTS.md) 为编码代理提供架构、验证命令、生成产物规则与
+> 仓库安全约束；内部 `docs/` 仍不纳入版本控制。
 
-## 验证记录
+## 验证
 
-- v0.1/v0.2 真实组合验证（headless Chrome + CDP 实操）：三层树顶替生效、分类正确、
-  展开持久化、搜索保留归属；`workspace.json` / 会话落盘 / 官方 store 零侵入。
-- v0.3 真机验证 24/24（`scripts/verify-groups.mjs`：建组/拖拽/排序/收起/规则分类
-  菜单/重命名/删除回顶层/现场恢复，零侵入断言）。
-- v0.4 真机验证 30/30（新增：插入指示线、项目/分组**向下拖**（行下半 → 插到目标
-  之后）、分组向上拖（行上半 → 移到目标之前）；现场恢复通过）。
-- v0.4.1 真机验证 34/34（新增：**从分组拖出**——顶层落点区/顶层行 drop =
-  强制顶层；分组内项目行菜单「移出分组」）。
-- v0.5 真机验证 35/35（模型变更：**无「未分类」桶**——顶层项目行、删除分组成员
-  回顶层、拖拽/菜单移出到顶层、树中不存在未分类桶；现场恢复）。
-- v0.6 真机验证 40/40（新增：**按级别收起**——拖项目只收起项目行（分组行不收）、
-  拖分组只收起分组行（项目行不收）；dragend 还原拖动前展开快照）。
-- v0.6.1 真机验证 42/42（新增：**整个顶层区域为移出落点**且拖拽中有可见高亮提示；
-  分组/项目行图标区分；现场恢复）。
-- v0.7 真机验证 46/46（新增：顶层落点改用**插入横线**（非高亮框）——拖到顶层行前/后、
-  最后一行下方追加、顶层为空时独立横线；**顶层项目可排序**，顺序持久化
-  `workspaceOrder["__topLevel__"]`；并修复 host 校验拒绝 `__topLevel__` 与
-  「拖到两行之间却落在上一行上面」的落点定位 bug；现场恢复）。
-- 单测 66 用例全绿（vitest：`core` / `manual` / `tree` / `store`）。
-- 可复跑的自动化真机验证：`node scripts/verify-groups.mjs`（需 host 已重启）。
+- `pnpm verify`：TypeScript 检查、Vitest **200 通过 / 9 跳过**，以及隔离的 consumer
+  package 验证。
+- `pnpm build`：可复现生成 Host/client bundle 与 `lib/` 声明文件。
+- `node scripts/verify-groups.mjs`：可选的真实浏览器 CDP 测试并自动恢复现场；需要兼容的
+  本地浏览器和已激活的插件构建。
+- v0.1.0 Public Preview 已通过完整自动化验证；最新筛选构建尚未执行实时 GUI 冒烟测试。
+
+## 上游与致谢 (Upstream & credits)
+
+本项目源自上游仓库 [z-col/dsh-workspace-groups](https://github.com/z-col/dsh-workspace-groups)。版权与许可证归原作者所有，详见 [LICENSE](./LICENSE)。
 
 ## License
 
