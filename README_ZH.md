@@ -23,10 +23,6 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 > 激活插件需要通过现有的服务或进程管理方式重启当前 web profile。验证与卸载说明见后文 [安装（GitHub 分发）](#安装github-分发)。
 
-## 截图
-
-<img src="screenshot.png" alt="dsh-workspace-groups 工作区分组管理" width="280" />
-
 ## 特性
 
 ### 分组树浏览

@@ -19,10 +19,6 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 > Activation requires restarting the existing web profile through your normal service or process manager. See [Installation](#installation-github-distribution) for verification and uninstall instructions.
 
-## Screenshot
-
-<img src="screenshot.png" alt="dsh-workspace-groups workspace grouping manager" width="280" />
-
 ## Features
 
 ### Grouped tree browsing
