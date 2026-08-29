@@ -121,4 +121,10 @@ export const en: WorkspaceGroupsDict = {
   collapse: 'Collapse',
   expandMore: 'Show all',
   newSession: 'New Session',
+  'tree.actions': 'Tree actions',
+  'tree.collapseAll': 'Collapse all',
+  'tree.expandGroups': 'Expand groups only',
+  'tree.expandAll': 'Expand all',
+  'group.expandEntire': 'Expand entire group',
+  'group.collapseEntire': 'Collapse entire group',
 }

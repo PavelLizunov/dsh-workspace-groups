@@ -47,11 +47,13 @@ export declare const COLOR_PRESETS: readonly ["red", "orange", "yellow", "green"
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export declare function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
     node: CategoryNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
     onToggle?: () => void;
+    onExpandEntire?: (() => void) | undefined;
+    onCollapseEntire?: (() => void) | undefined;
     /** Rename/delete actions; the hover menu renders only when both provided. */
     onRename?: () => void;
     onDelete?: () => void;

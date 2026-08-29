@@ -337,6 +337,12 @@ describe('redesign source contracts: localization for extra controls and concurr
     'filter.new',
     'filter.recency',
     'filter.reset',
+    'tree.actions',
+    'tree.collapseAll',
+    'tree.expandGroups',
+    'tree.expandAll',
+    'group.expandEntire',
+    'group.collapseEntire',
   ] as const
 
   it('defines extra controls and concurrency keys in WorkspaceGroupsKey type', () => {
@@ -361,5 +367,31 @@ describe('redesign source contracts: localization for extra controls and concurr
       expect(typeof zh[key]).toBe('string')
       expect(zh[key].length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('bulk tree expansion and fixed filter bar source contracts', () => {
+  it('defines fixed layout structure in styles.css and GroupsBrowser.tsx', () => {
+    expect(stylesSource).toMatch(/\.wgHeaderActions\s*\{[^}]*max-width:\s*96px;/)
+    expect(stylesSource).toMatch(/\.wgTreeBody\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/)
+    expect(stylesSource).toMatch(/\.wgTreeControls\s*\{[^}]*flex:\s*none;/)
+    expect(stylesSource).toMatch(/\.wgTreeScroller\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/)
+    expect(browserSource).toContain('className="wgTreeControls"')
+    expect(browserSource).toContain('className="wgTreeScroller"')
+  })
+
+  it('renders Tree actions menu only when wide and normalizedQuery is empty', () => {
+    expect(browserSource).toMatch(/wide && normalizedQuery === ''/)
+    expect(browserSource).toContain("t('tree.actions')")
+    expect(browserSource).toContain("t('tree.collapseAll')")
+    expect(browserSource).toContain("t('tree.expandGroups')")
+    expect(browserSource).toContain("t('tree.expandAll')")
+  })
+
+  it('supports CategoryRow entire group expand/collapse menu and Option/Alt-click chevron', () => {
+    expect(rowsSource).toContain("t('group.expandEntire')")
+    expect(rowsSource).toContain("t('group.collapseEntire')")
+    expect(rowsSource).toContain('event.altKey')
+    expect(rowsSource).toContain('toggleEntire()')
   })
 })

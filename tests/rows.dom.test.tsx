@@ -310,4 +310,322 @@ describe('row interaction contracts', () => {
 
     vi.unstubAllGlobals()
   })
+
+  it('CategoryRow supports Option/Alt-click on disclosure chevron vs ordinary toggle', () => {
+    const onToggle = vi.fn()
+    const onExpandEntire = vi.fn()
+    const onCollapseEntire = vi.fn()
+
+    // Test collapsed node (expanded: false)
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat1', label: 'Category 1', expanded: false, containsCurrent: false, workspaces: [] }}
+          t={t}
+          onToggle={onToggle}
+          onExpandEntire={onExpandEntire}
+          onCollapseEntire={onCollapseEntire}
+        />,
+      )
+    })
+
+    const categoryRow = host.querySelector<HTMLElement>('.wgCategoryRow')!
+    const chevron = host.querySelector<HTMLElement>('.wgChevron')!
+
+    // 1. Ordinary row click -> calls onToggle, not onExpandEntire
+    act(() => {
+      categoryRow.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onExpandEntire).not.toHaveBeenCalled()
+
+    onToggle.mockClear()
+
+    // 2. Click on label with Alt -> ordinary single-node toggle
+    const label = host.querySelector<HTMLElement>('.wgCategoryLabel')!
+    act(() => {
+      label.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))
+    })
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onExpandEntire).not.toHaveBeenCalled()
+
+    onToggle.mockClear()
+
+    // 3. Option/Alt-click specifically on disclosure chevron when collapsed -> calls onExpandEntire
+    act(() => {
+      chevron.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))
+    })
+    expect(onExpandEntire).toHaveBeenCalledTimes(1)
+    expect(onToggle).not.toHaveBeenCalled()
+
+    // 4. Test expanded node (expanded: true)
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat1', label: 'Category 1', expanded: true, containsCurrent: false, workspaces: [] }}
+          t={t}
+          onToggle={onToggle}
+          onExpandEntire={onExpandEntire}
+          onCollapseEntire={onCollapseEntire}
+        />,
+      )
+    })
+
+    const chevronOpen = host.querySelector<HTMLElement>('.wgChevron')!
+    act(() => {
+      chevronOpen.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))
+    })
+    expect(onCollapseEntire).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat1', label: 'Category 1', expanded: false, containsCurrent: false, workspaces: [] }}
+          t={t}
+          onToggle={onToggle}
+        />,
+      )
+    })
+    act(() => {
+      host.querySelector<HTMLElement>('.wgChevron')?.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))
+    })
+    expect(onToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('CategoryRow includes group action menu labels for Expand/Collapse entire group', () => {
+    const onExpandEntire = vi.fn()
+    const onCollapseEntire = vi.fn()
+    const onRename = vi.fn()
+    const onDelete = vi.fn()
+
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat1', label: 'Category 1', expanded: true, containsCurrent: false, workspaces: [] }}
+          t={t}
+          onExpandEntire={onExpandEntire}
+          onCollapseEntire={onCollapseEntire}
+          onRename={onRename}
+          onDelete={onDelete}
+        />,
+      )
+    })
+
+    const menuItems = Array.from(host.querySelectorAll('button'))
+    const expandItem = menuItems.find(b => b.textContent === 'group.expandEntire')
+    const collapseItem = menuItems.find(b => b.textContent === 'group.collapseEntire')
+
+    expect(expandItem).toBeDefined()
+    expect(collapseItem).toBeDefined()
+
+    act(() => {
+      expandItem?.click()
+    })
+    expect(onExpandEntire).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      collapseItem?.click()
+    })
+    expect(onCollapseEntire).toHaveBeenCalledTimes(1)
+  })
+
+  it('GroupsBrowser handles header menu presence/absence and fixed control/scroller layout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ categories: [{ name: 'Dev', rules: [{ pathPrefix: '/w1' }] }] }),
+      headers: new Headers(),
+    }))
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1'],
+      byId: { s1: { id: 's1', displayTitle: 'S1', blank: false, running: false, updatedAt: Date.now() } },
+      current: undefined,
+    }))
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] }],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: {} }))
+    const setCategoryExpanded = vi.fn()
+    const setWorkspaceExpanded = vi.fn()
+    const setCategoriesExpanded = vi.fn()
+    const setWorkspacesExpanded = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded, setWorkspaceExpanded, setCategoriesExpanded, setWorkspacesExpanded, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    // Fixed control/scroller structure
+    const treeBody = host.querySelector('.wgTreeBody')
+    expect(treeBody).not.toBeNull()
+    const treeControls = host.querySelector('.wgTreeBody > .wgTreeControls')
+    expect(treeControls).not.toBeNull()
+    expect(treeControls?.querySelector('.wgFilterBar')).not.toBeNull()
+    const treeScroller = host.querySelector('.wgTreeBody > .wgTreeScroller')
+    expect(treeScroller).not.toBeNull()
+    expect(treeScroller?.querySelector('.wgList')).not.toBeNull()
+
+    // Header Menu presence when normalizedQuery === ''
+    const treeActionsBtn = host.querySelector<HTMLElement>('[aria-label="tree.actions"]')
+    expect(treeActionsBtn).not.toBeNull()
+
+    // Test global commands in idle mode
+    const menuContainer = treeActionsBtn?.closest('[data-menu-portal]')
+    const collapseAllBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.collapseAll')
+    const expandGroupsBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.expandGroups')
+    const expandAllBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.expandAll')
+
+    expect(collapseAllBtn).toBeDefined()
+    expect(expandGroupsBtn).toBeDefined()
+    expect(expandAllBtn).toBeDefined()
+
+    await act(async () => {
+      collapseAllBtn?.click()
+    })
+    expect(setCategoriesExpanded).toHaveBeenCalledWith(['Dev'], false)
+    expect(setWorkspacesExpanded).toHaveBeenCalledWith(['w1'], false)
+
+    await act(async () => {
+      expandGroupsBtn?.click()
+    })
+    expect(setCategoriesExpanded).toHaveBeenCalledWith(['Dev'], true)
+    expect(setWorkspacesExpanded).toHaveBeenCalledWith(['w1'], false)
+
+    await act(async () => {
+      expandAllBtn?.click()
+    })
+    expect(setCategoriesExpanded).toHaveBeenCalledWith(['Dev'], true)
+    expect(setWorkspacesExpanded).toHaveBeenCalledWith(['w1'], true)
+
+    setCategoriesExpanded.mockClear()
+    setWorkspacesExpanded.mockClear()
+    const expandGroupBtn = Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'group.expandEntire')
+    await act(async () => { expandGroupBtn?.click() })
+    expect(setCategoriesExpanded).toHaveBeenCalledWith(['Dev'], true)
+    expect(setWorkspacesExpanded).toHaveBeenCalledWith(['w1'], true)
+
+    vi.unstubAllGlobals()
+  })
+
+  it('GroupsBrowser suppresses tree actions menu when searching and handles transient active filter writes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ categories: [{ name: 'Dev', rules: [{ pathPrefix: '/w1' }] }] }),
+      headers: new Headers(),
+    }))
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1'],
+      byId: { s1: { id: 's1', displayTitle: 'S1', blank: false, running: true, updatedAt: Date.now() } },
+      current: undefined,
+    }))
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] }],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: {} }))
+    const setCategoryExpanded = vi.fn()
+    const setWorkspaceExpanded = vi.fn()
+    const setCategoriesExpanded = vi.fn()
+    const setWorkspacesExpanded = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded, setWorkspaceExpanded, setCategoriesExpanded, setWorkspacesExpanded, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    // Activate running filter
+    const scopes = Array.from(host.querySelectorAll('.wgStatusScopeBtn'))
+    await act(async () => {
+      scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    setCategoriesExpanded.mockClear()
+    setWorkspacesExpanded.mockClear()
+    setCategoryExpanded.mockClear()
+    setWorkspaceExpanded.mockClear()
+
+    // Global command in filter mode -> transient filter write, no persisted batch call
+    const treeActionsBtn = host.querySelector<HTMLElement>('[aria-label="tree.actions"]')!
+    const menuContainer = treeActionsBtn.closest('[data-menu-portal]')
+    const expandAllBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.expandAll')
+
+    await act(async () => {
+      expandAllBtn?.click()
+    })
+
+    expect(host.querySelector('.wgCategoryRow')?.getAttribute('aria-expanded')).toBe('true')
+    expect(host.querySelector('.wgProjectRow')?.getAttribute('aria-expanded')).toBe('true')
+    expect(setCategoriesExpanded).not.toHaveBeenCalled()
+    expect(setWorkspacesExpanded).not.toHaveBeenCalled()
+    expect(setCategoryExpanded).not.toHaveBeenCalled()
+    expect(setWorkspaceExpanded).not.toHaveBeenCalled()
+
+    // Open search input -> tree actions menu should be absent when query is non-empty
+    const searchInputBtn = host.querySelector<HTMLElement>('.wgSearch .wgIconButton')!
+    await act(async () => {
+      searchInputBtn.click()
+    })
+    const searchInput = host.querySelector<HTMLInputElement>('.wgSearchInput')!
+    await act(async () => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      nativeSetter?.call(searchInput, 'hello')
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    expect(host.querySelector('[aria-label="tree.actions"]')).toBeNull()
+
+    vi.unstubAllGlobals()
+  })
 })

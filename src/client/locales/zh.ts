@@ -121,4 +121,10 @@ export const zh: WorkspaceGroupsDict = {
   collapse: '折叠',
   expandMore: '展开全部',
   newSession: '新建会话',
+  'tree.actions': '树层操作',
+  'tree.collapseAll': '折叠全部',
+  'tree.expandGroups': '仅展开分组',
+  'tree.expandAll': '展开全部',
+  'group.expandEntire': '展开整个分组',
+  'group.collapseEntire': '折叠整个分组',
 }

@@ -131,6 +131,12 @@ export type WorkspaceGroupsKey =
   | 'collapse'
   | 'expandMore'
   | 'newSession'
+  | 'tree.actions'
+  | 'tree.collapseAll'
+  | 'tree.expandGroups'
+  | 'tree.expandAll'
+  | 'group.expandEntire'
+  | 'group.collapseEntire'
 
 export type WorkspaceGroupsDict = LocaleDictOf<'workspaceGroups'>
 

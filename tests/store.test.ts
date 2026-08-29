@@ -13,7 +13,9 @@ import {
   captureExpansionSnapshot,
   retainKeysImpl,
   restoreExpansionSnapshotImpl,
+  setCategoriesExpandedImpl,
   setCategoryExpandedImpl,
+  setWorkspacesExpandedImpl,
   setWorkspaceExpandedImpl,
   type GroupsViewState,
 } from '../src/client/store-core.ts'
@@ -43,6 +45,19 @@ describe('groups view store expansion semantics', () => {
     setWorkspaceExpandedImpl(state, 'ws-1', false)
     expect(state.workspaceExpansion).toHaveProperty('ws-1', false)
     expect('ws-1' in state.workspaceExpansion).toBe(true)
+  })
+
+  it('sets multiple categories explicitly while preserving unrelated keys', () => {
+    const state: GroupsViewState = { categoryExpansion: { untouched: true }, workspaceExpansion: {} }
+    setCategoriesExpandedImpl(state, ['A', 'B'], false)
+    expect(state.categoryExpansion).toEqual({ untouched: true, A: false, B: false })
+    expect(Object.hasOwn(state.categoryExpansion, 'A')).toBe(true)
+  })
+
+  it('sets multiple workspaces explicitly while preserving unrelated keys', () => {
+    const state: GroupsViewState = { categoryExpansion: {}, workspaceExpansion: { untouched: false } }
+    setWorkspacesExpandedImpl(state, ['ws-1', 'ws-2'], true)
+    expect(state.workspaceExpansion).toEqual({ untouched: false, 'ws-1': true, 'ws-2': true })
   })
 
   it('restores temporary drag folding when the state was not changed by the user', () => {

@@ -14,7 +14,9 @@ import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-run
 import {
   retainKeysImpl,
   restoreExpansionSnapshotImpl,
+  setCategoriesExpandedImpl,
   setCategoryExpandedImpl,
+  setWorkspacesExpandedImpl,
   setWorkspaceExpandedImpl,
   type GroupsViewState,
 } from './store-core.ts'
@@ -23,6 +25,8 @@ import {
 type GroupsViewActions = {
   setCategoryExpanded: typeof setCategoryExpandedImpl
   setWorkspaceExpanded: typeof setWorkspaceExpandedImpl
+  setCategoriesExpanded: typeof setCategoriesExpandedImpl
+  setWorkspacesExpanded: typeof setWorkspacesExpandedImpl
   restoreExpansionSnapshot: typeof restoreExpansionSnapshotImpl
   retainKeys: typeof retainKeysImpl
 }
@@ -38,6 +42,8 @@ export function createGroupsViewStore(): EngineStoreHandle<GroupsViewState, Grou
     actions: {
       setCategoryExpanded: setCategoryExpandedImpl,
       setWorkspaceExpanded: setWorkspaceExpandedImpl,
+      setCategoriesExpanded: setCategoriesExpandedImpl,
+      setWorkspacesExpanded: setWorkspacesExpandedImpl,
       restoreExpansionSnapshot: restoreExpansionSnapshotImpl,
       retainKeys: retainKeysImpl,
     },

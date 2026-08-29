@@ -1,8 +1,8 @@
 /**
  * The workspace-groups browsing region filling the sidebar shell's
  * `sidebar.workspaces` hole: section header (title + right-aligned search +
- * new-group + add workspace), the three-level tree (category → workspace →
- * session), group management dialogs, and the workspace/session dialogs. Wide
+ * tree controls + new-group + add workspace), the three-level tree (category
+ * → workspace → session), group management dialogs, and the workspace/session dialogs. Wide
  * state renders the full browser; rail state renders the two region icons
  * (search / add workspace) as 36px controls on the shell's shared rail entry
  * path, each requesting expansion through the owner share.
@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import {
   Button,
   IconCloseFill14,
+  IconEllipsisOutline16,
   IconFolderOpenOutline16,
   IconProjectAddOutline16,
   IconSearchOutline16,
@@ -478,6 +479,33 @@ export function GroupsBrowser({
   const displayGroups = isFilterActive ? filteredGroups : groups
   const displayTopLevel = isFilterActive ? filteredTopLevel : topLevel
   const activeCounts = normalizedQuery === '' ? filterResult.counts : searchCounts ?? EMPTY_FILTER_COUNTS
+
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
+
+  const setTreeExpanded = useCallback((categoriesExpanded: boolean, workspacesExpanded: boolean) => {
+    const categoryKeys = isFilterActive ? displayGroups.map(category => category.key) : allCategoryKeys
+    const workspaceKeys = isFilterActive
+      ? [...displayGroups.flatMap(category => category.workspaces.map(workspace => workspace.workspaceId as string)), ...displayTopLevel.map(workspace => workspace.workspaceId as string)]
+      : allWorkspaceIds
+    if (isFilterActive) {
+      setFilterCategoryExpansion(previous => ({ ...previous, ...Object.fromEntries(categoryKeys.map(key => [key, categoriesExpanded])) }))
+      setFilterWorkspaceExpansion(previous => ({ ...previous, ...Object.fromEntries(workspaceKeys.map(key => [key, workspacesExpanded])) }))
+      return
+    }
+    actions.setCategoriesExpanded(categoryKeys, categoriesExpanded)
+    actions.setWorkspacesExpanded(workspaceKeys, workspacesExpanded)
+  }, [actions, allCategoryKeys, allWorkspaceIds, displayGroups, displayTopLevel, isFilterActive])
+
+  const setCategoryTreeExpanded = useCallback((category: CategoryNode, expanded: boolean) => {
+    const workspaceKeys = category.workspaces.map(workspace => workspace.workspaceId as string)
+    if (isFilterActive) {
+      setFilterCategoryExpansion(previous => ({ ...previous, [category.key]: expanded }))
+      setFilterWorkspaceExpansion(previous => ({ ...previous, ...Object.fromEntries(workspaceKeys.map(key => [key, expanded])) }))
+      return
+    }
+    actions.setCategoriesExpanded([category.key], expanded)
+    actions.setWorkspacesExpanded(workspaceKeys, expanded)
+  }, [actions, isFilterActive])
   // While dragging a project, an empty top-level area must still show a landing
   // line — otherwise a project can never be dragged OUT of a group when every
   // project is currently grouped.
@@ -1094,6 +1122,38 @@ export function GroupsBrowser({
           </div>
         )}
         <div className={`wgHeaderActions${wide && searchExpanded ? ' wgHeaderActionsHidden' : ''}`}>
+          {wide && normalizedQuery === '' && (
+            <Menu
+              open={headerMenuOpen}
+              onClose={() => { setHeaderMenuOpen(false) }}
+              items={[
+                { type: 'label' as const, id: 'tree-actions-title', text: t('tree.actions') },
+                { id: 'collapseAll', label: t('tree.collapseAll') },
+                { id: 'expandGroups', label: t('tree.expandGroups') },
+                { id: 'expandAll', label: t('tree.expandAll') },
+              ]}
+              onSelect={(id) => {
+                setHeaderMenuOpen(false)
+                if (id === 'collapseAll') setTreeExpanded(false, false)
+                if (id === 'expandGroups') setTreeExpanded(true, false)
+                if (id === 'expandAll') setTreeExpanded(true, true)
+              }}
+              portal
+              closeOnPointerLeave
+              anchor={(
+                <Tooltip label={t('tree.actions')} side="bottom" delayMs={500}>
+                  <button
+                    type="button"
+                    className="wgIconButton"
+                    aria-label={t('tree.actions')}
+                    onClick={() => { setHeaderMenuOpen(v => !v) }}
+                  >
+                    <IconEllipsisOutline16 size={16} />
+                  </button>
+                </Tooltip>
+              )}
+            />
+          )}
           {wide && (
             <Tooltip label={t('group.create')} side="bottom" delayMs={500}>
               <button
@@ -1141,73 +1201,76 @@ export function GroupsBrowser({
 
       {wide && (
         <div className="wgTreeBody">
-          <div className="wgFilterBar" role="toolbar" aria-label={t('filter.statusScope')}>
-            <div className="wgStatusScopeBar" role="group" aria-label={t('filter.statusScope')}>
-              <button
-                type="button"
-                aria-pressed={filter.status === 'all'}
-                className={`wgStatusScopeBtn${filter.status === 'all' ? ' wgStatusScopeBtnActive' : ''}`}
-                onClick={() => { setFilter(prev => ({ ...prev, status: 'all' })) }}
-              >
-                <span>{t('filter.all')}</span>
-                <span className="wgCountBadge">{activeCounts.all}</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={filter.status === 'warning'}
-                className={`wgStatusScopeBtn${filter.status === 'warning' ? ' wgStatusScopeBtnActive' : ''}`}
-                onClick={() => { setFilter(prev => ({ ...prev, status: 'warning' })) }}
-              >
-                <span>{t('filter.attention')}</span>
-                <span className="wgCountBadge">{activeCounts.warning}</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={filter.status === 'ongoing'}
-                className={`wgStatusScopeBtn${filter.status === 'ongoing' ? ' wgStatusScopeBtnActive' : ''}`}
-                onClick={() => { setFilter(prev => ({ ...prev, status: 'ongoing' })) }}
-              >
-                <span>{t('filter.running')}</span>
-                <span className="wgCountBadge">{activeCounts.ongoing}</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={filter.status === 'done'}
-                className={`wgStatusScopeBtn${filter.status === 'done' ? ' wgStatusScopeBtnActive' : ''}`}
-                onClick={() => { setFilter(prev => ({ ...prev, status: 'done' })) }}
-              >
-                <span>{t('filter.new')}</span>
-                <span className="wgCountBadge">{activeCounts.done}</span>
-              </button>
+          <div className="wgTreeControls">
+            <div className="wgFilterBar" role="toolbar" aria-label={t('filter.statusScope')}>
+              <div className="wgStatusScopeBar" role="group" aria-label={t('filter.statusScope')}>
+                <button
+                  type="button"
+                  aria-pressed={filter.status === 'all'}
+                  className={`wgStatusScopeBtn${filter.status === 'all' ? ' wgStatusScopeBtnActive' : ''}`}
+                  onClick={() => { setFilter(prev => ({ ...prev, status: 'all' })) }}
+                >
+                  <span>{t('filter.all')}</span>
+                  <span className="wgCountBadge">{activeCounts.all}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={filter.status === 'warning'}
+                  className={`wgStatusScopeBtn${filter.status === 'warning' ? ' wgStatusScopeBtnActive' : ''}`}
+                  onClick={() => { setFilter(prev => ({ ...prev, status: 'warning' })) }}
+                >
+                  <span>{t('filter.attention')}</span>
+                  <span className="wgCountBadge">{activeCounts.warning}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={filter.status === 'ongoing'}
+                  className={`wgStatusScopeBtn${filter.status === 'ongoing' ? ' wgStatusScopeBtnActive' : ''}`}
+                  onClick={() => { setFilter(prev => ({ ...prev, status: 'ongoing' })) }}
+                >
+                  <span>{t('filter.running')}</span>
+                  <span className="wgCountBadge">{activeCounts.ongoing}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={filter.status === 'done'}
+                  className={`wgStatusScopeBtn${filter.status === 'done' ? ' wgStatusScopeBtnActive' : ''}`}
+                  onClick={() => { setFilter(prev => ({ ...prev, status: 'done' })) }}
+                >
+                  <span>{t('filter.new')}</span>
+                  <span className="wgCountBadge">{activeCounts.done}</span>
+                </button>
+              </div>
+              <SidebarFilterMenu filter={filter} onChange={setFilter} onReset={resetFilter} t={t} />
             </div>
-            <SidebarFilterMenu filter={filter} onChange={setFilter} onReset={resetFilter} t={t} />
+            {isFilterActive && (
+              <div className="wgFilterSummary">
+                <span className="wgFilterSummaryLabel">{t('filter.summary')}:</span>
+                {filter.color !== null && (
+                  <span className="wgFilterChip">
+                    <span className="wgFilterColorDot" data-color={filter.color} />
+                    {t(`color.${filter.color}`)}
+                  </span>
+                )}
+                {filter.recency !== 'all' && (
+                  <span className="wgFilterChip">{t(`filter.recency.${filter.recency}`)}</span>
+                )}
+                {filter.status !== 'all' && (
+                  <span className="wgFilterChip">
+                    {filter.status === 'warning' ? t('filter.attention') : filter.status === 'ongoing' ? t('filter.running') : t('filter.new')}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="wgSessionToggleBtn wgFilterResetBtn"
+                  onClick={resetFilter}
+                >
+                  {t('filter.reset')}
+                </button>
+              </div>
+            )}
           </div>
-          {isFilterActive && (
-            <div className="wgFilterSummary">
-              <span className="wgFilterSummaryLabel">{t('filter.summary')}:</span>
-              {filter.color !== null && (
-                <span className="wgFilterChip">
-                  <span className="wgFilterColorDot" data-color={filter.color} />
-                  {t(`color.${filter.color}`)}
-                </span>
-              )}
-              {filter.recency !== 'all' && (
-                <span className="wgFilterChip">{t(`filter.recency.${filter.recency}`)}</span>
-              )}
-              {filter.status !== 'all' && (
-                <span className="wgFilterChip">
-                  {filter.status === 'warning' ? t('filter.attention') : filter.status === 'ongoing' ? t('filter.running') : t('filter.new')}
-                </span>
-              )}
-              <button
-                type="button"
-                className="wgSessionToggleBtn wgFilterResetBtn"
-                onClick={resetFilter}
-              >
-                {t('filter.reset')}
-              </button>
-            </div>
-          )}
+          <div className="wgTreeScroller">
           {configError !== null && (
             <div className="wgSearchStatus" role="status">{t('configUnavailable')}</div>
           )}
@@ -1293,6 +1356,8 @@ export function GroupsBrowser({
                       actions.setCategoryExpanded(category.key, !category.expanded)
                     }
                   }}
+                  onExpandEntire={() => { setCategoryTreeExpanded(category, true) }}
+                  onCollapseEntire={() => { setCategoryTreeExpanded(category, false) }}
                   onToggleWorkspace={(key) => {
                     if (isFilterActive) {
                       const expanded = category.workspaces.find(workspace => workspace.workspaceId === key)?.expanded ?? false
@@ -1415,6 +1480,7 @@ export function GroupsBrowser({
               )}
             </div>
           )}
+          </div>
         </div>
       )}
 
@@ -1754,7 +1820,7 @@ function WorkspaceSessions({
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
   category: CategoryNode
   categoryIndex: number
   totalRootItems: number
@@ -1769,6 +1835,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onDragStartCategory: (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
   onToggleCategory: () => void
+  onExpandEntire?: () => void
+  onCollapseEntire?: () => void
   onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
@@ -1808,6 +1876,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         aria-posinset={categoryIndex + 1}
         aria-setsize={totalRootItems}
         onToggle={onToggleCategory}
+        onExpandEntire={onExpandEntire}
+        onCollapseEntire={onCollapseEntire}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
         color={manual.colors?.[category.key]}

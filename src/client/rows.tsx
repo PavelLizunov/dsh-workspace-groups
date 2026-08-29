@@ -134,11 +134,13 @@ function ColorMenu({ t, color, onSelect }: {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSetColor, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onRename, onDelete, color, onSetColor, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: CategoryNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
   onToggle?: () => void
+  onExpandEntire?: (() => void) | undefined
+  onCollapseEntire?: (() => void) | undefined
   /** Rename/delete actions; the hover menu renders only when both provided. */
   onRename?: () => void
   onDelete?: () => void
@@ -158,7 +160,7 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
 } & RowDropProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const count = node.workspaces.length
-  const manageable = onRename !== undefined && onDelete !== undefined
+  const manageable = (onRename !== undefined && onDelete !== undefined) || onExpandEntire !== undefined || onCollapseEntire !== undefined
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (onToggle === undefined || event.target !== event.currentTarget) return
     if (event.key !== 'Enter' && event.key !== ' ') return
@@ -182,7 +184,16 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
       onDragLeave={onRowDragLeave}
       onDrop={onRowDrop}
     >
-      <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
+      <span
+        className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}
+        onClick={(event) => {
+          if (!event.altKey) return
+          const toggleEntire = node.expanded ? onCollapseEntire : onExpandEntire
+          if (toggleEntire === undefined) return
+          event.stopPropagation()
+          toggleEntire()
+        }}
+      >
         <IconTriangleRightFill14 />
       </span>
       <span className="wgCategoryIcon" data-wg-row-icon="group">
@@ -221,13 +232,17 @@ export function CategoryRow({ node, t, onToggle, onRename, onDelete, color, onSe
               open={menuOpen}
               onClose={() => { setMenuOpen(false) }}
               items={[
+                ...(onExpandEntire !== undefined ? [{ id: 'expandEntire', label: t('group.expandEntire') }] : []),
+                ...(onCollapseEntire !== undefined ? [{ id: 'collapseEntire', label: t('group.collapseEntire') }] : []),
                 ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
                 ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
-                { id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> },
-                { id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true },
+                ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> }] : []),
+                ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
               ]}
               onSelect={(id) => {
                 setMenuOpen(false)
+                if (id === 'expandEntire') onExpandEntire?.()
+                if (id === 'collapseEntire') onCollapseEntire?.()
                 if (id === 'moveUp') onMoveUp?.()
                 if (id === 'moveDown') onMoveDown?.()
                 if (id === 'rename') onRename?.()

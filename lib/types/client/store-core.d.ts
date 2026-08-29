@@ -25,6 +25,10 @@ export interface ExpansionSnapshot {
 export declare function setCategoryExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void;
 /** Collapse writes `false` (key retained); expand writes `true`. */
 export declare function setWorkspaceExpandedImpl(state: GroupsViewState, key: string, expanded: boolean): void;
+/** Set many category folders in one store action while preserving unrelated keys. */
+export declare function setCategoriesExpandedImpl(state: GroupsViewState, keys: readonly string[], expanded: boolean): void;
+/** Set many workspace folders in one store action while preserving unrelated keys. */
+export declare function setWorkspacesExpandedImpl(state: GroupsViewState, keys: readonly string[], expanded: boolean): void;
 /** Snapshot current expansion state before temporary drag folding. */
 export declare function captureExpansionSnapshot(state: GroupsViewState): ExpansionSnapshot;
 /** Restore temporary drag folding while preserving keys the user toggled during the drag. */

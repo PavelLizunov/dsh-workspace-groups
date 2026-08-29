@@ -24,6 +24,9 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ### Grouped tree browsing
 - **Group folder → project folder → session row**, both levels collapsible; expansion state
   persists independently (`dsh.workspace.groups.view.v1`, survives refresh/restart)
+- **Bulk tree controls & shortcuts**: global **Collapse all**, **Expand groups only**, and **Expand all**
+  controls manage tree density; per-group recursive commands and **Option-click** (macOS) /
+  **Alt-click** (Windows/Linux) on a Group disclosure chevron recursively expand or collapse a group and all contained project folders (see [BULK_TREE_CONTROLS_SPEC.md](./BULK_TREE_CONTROLS_SPEC.md))
 - **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
   or returned by a group delete) render as plain rows right after the group folders, at the
   same level — **there is no "Uncategorized" bucket**
@@ -74,8 +77,9 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
   recency window. Text, status, color, and recency narrow the result together.
 - **Visible and transient criteria**: active filters stay visible with one Reset action; empty
   branches hide, while the filtered tree keeps the current expansion and remains collapsible.
-  Expansion changes made while filtering are temporary. Filtered search results keep the
-  five-session preview and **Show all / Collapse** controls.
+  Expansion changes made while filtering are temporary and isolated from the persisted idle state.
+  Filtered search results keep the five-session preview and **Show all / Collapse** controls.
+- **Fixed filter controls & active chips**: status scope bar, filter controls, and active summary chips remain fixed at the top of the workspace browser while the tree list scrolls underneath.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
   session new/open/rename/fork/archive.
 
@@ -223,6 +227,7 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 | Reorder top-level projects | drag a top-level row onto another top-level row: **top half = insert before, bottom half = insert after**; order persists under `workspaceOrder["__topLevel__"]` |
 | Move out of a group | drop anywhere on the **top-level area** (an insertion line shows the spot — reorder before/after a top-level row, or append below the last row; when the top level is empty a line shows under the last group), or the project row's "Move out of group" menu (forced top-level) |
 | Reorder groups | drag a group row onto another group row: **top half = move before, bottom half = move after** (indicator shows the spot; expansion stays unchanged) |
+| Bulk expand / collapse | header controls for **Collapse all**, **Expand groups only**, or **Expand all**; **Option/Alt-click** on a group disclosure chevron recursively toggles that group and its nested projects |
 
 ## Topics
 
@@ -298,13 +303,13 @@ scripts/
 
 ## Verification
 
-- `pnpm verify`: TypeScript checks, **200 passed / 9 skipped** Vitest tests, and isolated
-  consumer package verification.
+- `pnpm verify`: TypeScript checks, the full Vitest suite, and isolated consumer package
+  verification.
 - `pnpm build`: reproducible Host/client bundles and declaration artifacts in `lib/`.
 - `node scripts/verify-groups.mjs`: optional real-browser CDP suite with scene restoration;
   it requires a compatible local browser and an already activated plugin build.
-- The v0.1.0 Public Preview is fully automation-verified; its newest filtering build has not
-  yet received a live-GUI smoke test.
+- The current `main` build is fully automation-verified but has not yet received a live-GUI
+  smoke test.
 
 ## Upstream & credits
 

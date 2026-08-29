@@ -34,6 +34,16 @@ export function setWorkspaceExpandedImpl(state: GroupsViewState, key: string, ex
   state.workspaceExpansion[key] = expanded
 }
 
+/** Set many category folders in one store action while preserving unrelated keys. */
+export function setCategoriesExpandedImpl(state: GroupsViewState, keys: readonly string[], expanded: boolean): void {
+  for (const key of keys) state.categoryExpansion[key] = expanded
+}
+
+/** Set many workspace folders in one store action while preserving unrelated keys. */
+export function setWorkspacesExpandedImpl(state: GroupsViewState, keys: readonly string[], expanded: boolean): void {
+  for (const key of keys) state.workspaceExpansion[key] = expanded
+}
+
 /** Snapshot current expansion state before temporary drag folding. */
 export function captureExpansionSnapshot(state: GroupsViewState): ExpansionSnapshot {
   return {
