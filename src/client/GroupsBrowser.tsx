@@ -14,16 +14,27 @@
  * through `PUT /workspace-groups/manual`; the sidecar YAML is never rewritten
  * (rule-group rename/delete ride the overlay `renamed`/`hidden` maps).
  */
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import {
   Button,
   IconCloseFill14,
   IconFolderOpenOutline16,
   IconProjectAddOutline16,
   IconSearchOutline16,
+  Menu,
   Modal,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  DEFAULT_SIDEBAR_FILTER,
+  applySidebarFilter,
+  sidebarFilterActive,
+  type ColorPreset,
+  type FilterCounts,
+  type RecencyScope,
+  type SidebarFilter,
+  type StatusScope,
+} from './tree-filter.ts'
 import type { SessionId, SessionListState, SessionSearchResultItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   displayCategoryKeys,
@@ -40,11 +51,12 @@ import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.ts'
-import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
+import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
+const EMPTY_FILTER_COUNTS: FilterCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
 
 /** Overlay with every optional field materialized (plain-object edits, no undefined spreads). */
 type NormalizedManual = Required<ManualGroups>
@@ -172,6 +184,62 @@ export type DragIndicator =
   | { mode: 'into'; categoryKey: string }
   | null
 
+function SidebarFilterMenu({ filter, onChange, t }: {
+  filter: SidebarFilter
+  onChange: (filter: SidebarFilter) => void
+  t: GroupsBrowserProps['t']
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Menu
+      open={open}
+      onClose={() => { setOpen(false) }}
+      items={[
+        { type: 'label' as const, id: 'color-label', text: t('color.title') },
+        { id: 'color:none', label: t('color.reset') },
+        ...COLOR_PRESETS.map(color => ({
+          id: `color:${color}`,
+          label: t(`color.${color}`),
+          icon: <span className="wgFilterColorDot" data-color={color} />,
+        })),
+        { type: 'separator' as const, id: 'filter-separator' },
+        { type: 'label' as const, id: 'recency-label', text: t('filter.recency') },
+        { id: 'recency:all', label: t('filter.recency.all') },
+        { id: 'recency:24h', label: t('filter.recency.24h') },
+        { id: 'recency:7d', label: t('filter.recency.7d') },
+        { id: 'recency:30d', label: t('filter.recency.30d') },
+      ]}
+      footer={[{ id: 'filter:reset', label: t('filter.reset') }]}
+      selectedIds={[`color:${filter.color ?? 'none'}`, `recency:${filter.recency}`]}
+      onSelect={(id) => {
+        if (id === 'filter:reset') {
+          onChange(DEFAULT_SIDEBAR_FILTER)
+        } else if (id.startsWith('color:')) {
+          const color = id.slice('color:'.length)
+          onChange({ ...filter, color: color === 'none' ? null : color as ColorPreset })
+        } else if (id.startsWith('recency:')) {
+          onChange({ ...filter, recency: id.slice('recency:'.length) as RecencyScope })
+        }
+      }}
+      portal
+      compact
+      closeOnPointerLeave
+      align="end"
+      anchor={(
+        <button
+          type="button"
+          className={`wgFilterSelectBtn${filter.color !== null || filter.recency !== 'all' ? ' wgFilterSelectBtnActive' : ''}`}
+          aria-label={t('filter.title')}
+          aria-expanded={open}
+          onClick={(event) => { event.stopPropagation(); setOpen(value => !value) }}
+        >
+          {t('filter.title')}
+        </button>
+      )}
+    />
+  )
+}
+
 /**
  * Render the browsing region.
  * @param props - composed slot props (shell owner share + store + injected actions).
@@ -240,6 +308,7 @@ export function GroupsBrowser({
 
   const list = useSessions(s => s)
   const current = list.current
+  const now = Date.now()
   const currentWorkspaceKey = current === undefined
     ? undefined
     : (workspaces.find(w => w.sessionIds.includes(current as SessionId))?.workspaceId as string | undefined)
@@ -275,6 +344,18 @@ export function GroupsBrowser({
   const [remoteSearch, setRemoteSearch] = useState<RemoteSearchState>({
     query: '', status: 'idle', items: [], hasMore: false,
   })
+  const [filter, setFilter] = useState<SidebarFilter>(DEFAULT_SIDEBAR_FILTER)
+  const isFilterActive = sidebarFilterActive(filter)
+  const [searchCounts, setSearchCounts] = useState<FilterCounts | null>(null)
+  const reportSearchCounts = useCallback((next: FilterCounts) => {
+    setSearchCounts(previous => previous !== null
+      && previous.all === next.all
+      && previous.warning === next.warning
+      && previous.ongoing === next.ongoing
+      && previous.done === next.done
+      ? previous
+      : next)
+  }, [])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
 
@@ -282,10 +363,12 @@ export function GroupsBrowser({
   useEffect(() => {
     if (normalizedQuery === '') {
       setRemoteSearch({ query: '', status: 'idle', items: [], hasMore: false })
+      setSearchCounts(null)
       return
     }
     const controller = new AbortController()
     setRemoteSearch({ query: normalizedQuery, status: 'loading', items: [], hasMore: false })
+    setSearchCounts(null)
     const timer = window.setTimeout(() => {
       searchSessions(normalizedQuery, controller.signal).then((result) => {
         if (controller.signal.aborted) return
@@ -322,6 +405,31 @@ export function GroupsBrowser({
     () => Object.entries(workspaceExpansion).filter(([, v]) => v).map(([k]) => k),
     [workspaceExpansion],
   )
+
+  const allCategoryKeys = useMemo(() => displayCategoryKeys(config, manual), [config, manual])
+  const allWorkspaceIds = useMemo(() => workspaces.map(w => w.workspaceId as string), [workspaces])
+
+  const fullIdleGroups = useMemo(
+    () => deriveGroups(list, workspaces, archivedSessionIds, config, {
+      expandedCategories: allCategoryKeys,
+      expandedWorkspaces: allWorkspaceIds,
+    }, manual),
+    [list, workspaces, archivedSessionIds, config, manual, allCategoryKeys, allWorkspaceIds],
+  )
+
+  const fullIdleTopLevel = useMemo(
+    () => deriveTopLevel(list, workspaces, archivedSessionIds, config, {
+      expandedCategories: allCategoryKeys,
+      expandedWorkspaces: allWorkspaceIds,
+    }, manual),
+    [list, workspaces, archivedSessionIds, config, manual, allCategoryKeys, allWorkspaceIds],
+  )
+
+  const filterResult = useMemo(
+    () => applySidebarFilter(fullIdleGroups, fullIdleTopLevel, filter, manual.colors, now),
+    [fullIdleGroups, fullIdleTopLevel, filter, manual.colors, now],
+  )
+
   // Which level is being dragged: drives the top-level drop target (project
   // drags only) and which level's rows fold.
   const [dragging, setDragging] = useState<DragLevel>(null)
@@ -340,6 +448,10 @@ export function GroupsBrowser({
     }, manual),
     [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
   )
+
+  const displayGroups = isFilterActive ? filterResult.categories : groups
+  const displayTopLevel = isFilterActive ? filterResult.topLevel : topLevel
+  const activeCounts = normalizedQuery === '' ? filterResult.counts : searchCounts ?? EMPTY_FILTER_COUNTS
   // While dragging a project, an empty top-level area must still show a landing
   // line — otherwise a project can never be dragged OUT of a group when every
   // project is currently grouped.
@@ -819,8 +931,6 @@ export function GroupsBrowser({
     }
   }
 
-  const now = Date.now()
-
   const moveCategoryUp = (key: string): void => {
     const keys = displayCategoryKeys(config, manual)
     const index = keys.indexOf(key)
@@ -1005,6 +1115,73 @@ export function GroupsBrowser({
 
       {wide && (
         <div className="wgTreeBody">
+          <div className="wgFilterBar" role="toolbar" aria-label={t('filter.statusScope')}>
+            <div className="wgStatusScopeBar" role="group" aria-label={t('filter.statusScope')}>
+              <button
+                type="button"
+                aria-pressed={filter.status === 'all'}
+                className={`wgStatusScopeBtn${filter.status === 'all' ? ' wgStatusScopeBtnActive' : ''}`}
+                onClick={() => { setFilter(prev => ({ ...prev, status: 'all' })) }}
+              >
+                <span>{t('filter.all')}</span>
+                <span className="wgCountBadge">{activeCounts.all}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={filter.status === 'warning'}
+                className={`wgStatusScopeBtn${filter.status === 'warning' ? ' wgStatusScopeBtnActive' : ''}`}
+                onClick={() => { setFilter(prev => ({ ...prev, status: 'warning' })) }}
+              >
+                <span>{t('filter.attention')}</span>
+                <span className="wgCountBadge">{activeCounts.warning}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={filter.status === 'ongoing'}
+                className={`wgStatusScopeBtn${filter.status === 'ongoing' ? ' wgStatusScopeBtnActive' : ''}`}
+                onClick={() => { setFilter(prev => ({ ...prev, status: 'ongoing' })) }}
+              >
+                <span>{t('filter.running')}</span>
+                <span className="wgCountBadge">{activeCounts.ongoing}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={filter.status === 'done'}
+                className={`wgStatusScopeBtn${filter.status === 'done' ? ' wgStatusScopeBtnActive' : ''}`}
+                onClick={() => { setFilter(prev => ({ ...prev, status: 'done' })) }}
+              >
+                <span>{t('filter.new')}</span>
+                <span className="wgCountBadge">{activeCounts.done}</span>
+              </button>
+            </div>
+            <SidebarFilterMenu filter={filter} onChange={setFilter} t={t} />
+          </div>
+          {isFilterActive && (
+            <div className="wgFilterSummary">
+              <span className="wgFilterSummaryLabel">{t('filter.summary')}:</span>
+              {filter.color !== null && (
+                <span className="wgFilterChip">
+                  <span className="wgFilterColorDot" data-color={filter.color} />
+                  {t(`color.${filter.color}`)}
+                </span>
+              )}
+              {filter.recency !== 'all' && (
+                <span className="wgFilterChip">{t(`filter.recency.${filter.recency}`)}</span>
+              )}
+              {filter.status !== 'all' && (
+                <span className="wgFilterChip">
+                  {filter.status === 'warning' ? t('filter.attention') : filter.status === 'ongoing' ? t('filter.running') : t('filter.new')}
+                </span>
+              )}
+              <button
+                type="button"
+                className="wgSessionToggleBtn wgFilterResetBtn"
+                onClick={() => { setFilter(DEFAULT_SIDEBAR_FILTER) }}
+              >
+                {t('filter.reset')}
+              </button>
+            </div>
+          )}
           {configError !== null && (
             <div className="wgSearchStatus" role="status">{t('configUnavailable')}</div>
           )}
@@ -1035,6 +1212,9 @@ export function GroupsBrowser({
               manual={manual}
               t={t}
               startSession={startSession}
+              filter={filter}
+              onCountsChange={reportSearchCounts}
+              {...(isFilterActive ? { onResetFilter: () => { setFilter(DEFAULT_SIDEBAR_FILTER) } } : {})}
               onWorkspaceRename={(workspaceId, title) => {
                 setRenameTarget({ workspaceId, currentTitle: title })
                 setRenameDraft(title)
@@ -1051,15 +1231,26 @@ export function GroupsBrowser({
             />
           ) : (
             <div className="wgList" role="tree" aria-label={t('section.workspaces')}>
-              {groups.length === 0 && (
-                <div className="wgEmpty">{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
+              {displayGroups.length === 0 && displayTopLevel.length === 0 && (
+                <div className="wgEmpty">
+                  <div>{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
+                  {isFilterActive && (
+                    <button
+                      type="button"
+                      className="wgSessionToggleBtn wgFilterResetBtn wgEmptyReset"
+                      onClick={() => { setFilter(DEFAULT_SIDEBAR_FILTER) }}
+                    >
+                      {t('filter.reset')}
+                    </button>
+                  )}
+                </div>
               )}
-              {groups.map((category, idx) => (
+              {displayGroups.map((category, idx) => (
                 <CategorySection
                   key={category.key}
                   category={category}
                   categoryIndex={idx}
-                  totalRootItems={groups.length + topLevel.length}
+                  totalRootItems={displayGroups.length + displayTopLevel.length}
                   current={current}
                   now={now}
                   t={t}
@@ -1069,12 +1260,14 @@ export function GroupsBrowser({
                   onDropRow={onDropRow}
                   onDragStartCategory={onDragStartCategory(category.key)}
                   onDragStartWorkspace={onDragStartWorkspace}
-                  onToggleCategory={() => {
-                    actions.setCategoryExpanded(category.key, !category.expanded)
-                  }}
-                  onToggleWorkspace={(key) => {
-                    actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
-                  }}
+                  {...(!isFilterActive ? {
+                    onToggleCategory: () => {
+                      actions.setCategoryExpanded(category.key, !category.expanded)
+                    },
+                    onToggleWorkspace: (key: string) => {
+                      actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
+                    },
+                  } : {})}
                   onNewSession={startSession}
                   onOpen={open}
                   onRenameRequest={(workspaceId, title) => {
@@ -1108,7 +1301,7 @@ export function GroupsBrowser({
                   onOpenFolder={onOpenPath}
                   onCopyPath={onCopyPath}
                   isFirstGroup={idx === 0}
-                  isLastGroup={idx === groups.length - 1}
+                  isLastGroup={idx === displayGroups.length - 1}
                   moveTargetsFor={(workspaceId) => {
                     const workspace = workspaces.find(w => w.workspaceId === workspaceId)
                     return workspace === undefined ? [] : moveTargetsFor(workspace)
@@ -1135,11 +1328,11 @@ export function GroupsBrowser({
                   folders. While dragging a project the whole area is the
                   move-out landing spot (a line shows the insert position;
                   an empty top level shows a line under the last group). */}
-              {(topLevel.length > 0 || topLevelDropActive) && (
+              {(displayTopLevel.length > 0 || topLevelDropActive) && (
                 <TopLevelSection
-                  topLevel={topLevel}
-                  totalGroups={groups.length}
-                  totalRootItems={groups.length + topLevel.length}
+                  topLevel={displayTopLevel}
+                  totalGroups={displayGroups.length}
+                  totalRootItems={displayGroups.length + displayTopLevel.length}
                   current={current}
                   now={now}
                   t={t}
@@ -1151,9 +1344,11 @@ export function GroupsBrowser({
                   onDragLeaveRow={onDragLeaveRow}
                   onDropRow={onDropRow}
                   onDragStartWorkspace={onDragStartWorkspace}
-                  onToggleWorkspace={(key) => {
-                    actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
-                  }}
+                  {...(!isFilterActive ? {
+                    onToggleWorkspace: (key: string) => {
+                      actions.setWorkspaceExpanded(key, !workspaceExpansion[key])
+                    },
+                  } : {})}
                   onNewSession={startSession}
                   onOpen={open}
                   onRenameRequest={(workspaceId, title) => {
@@ -1537,8 +1732,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartCategory: (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
-  onToggleCategory: () => void
-  onToggleWorkspace: (key: string) => void
+  onToggleCategory?: () => void
+  onToggleWorkspace?: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
@@ -1576,7 +1771,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         aria-level={1}
         aria-posinset={categoryIndex + 1}
         aria-setsize={totalRootItems}
-        onToggle={onToggleCategory}
+        {...(onToggleCategory === undefined ? {} : { onToggle: onToggleCategory })}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
         color={manual.colors?.[category.key]}
@@ -1604,7 +1799,9 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 aria-level={2}
                 aria-posinset={idx + 1}
                 aria-setsize={category.workspaces.length}
-                onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
+                {...(onToggleWorkspace === undefined ? {} : {
+                  onToggle: () => { onToggleWorkspace(workspace.workspaceId as string) },
+                })}
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
@@ -1679,7 +1876,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onDragLeaveRow: (event: DragEvent) => void
   onDropRow: (categoryKey: string, row: DropRowRef) => (event: DragEvent) => void
   onDragStartWorkspace: (workspaceId: WorkspaceId, event: DragEvent) => void
-  onToggleWorkspace: (key: string) => void
+  onToggleWorkspace?: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
@@ -1727,7 +1924,9 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             aria-level={1}
             aria-posinset={totalGroups + idx + 1}
             aria-setsize={totalRootItems}
-            onToggle={() => { onToggleWorkspace(workspace.workspaceId as string) }}
+            {...(onToggleWorkspace === undefined ? {} : {
+              onToggle: () => { onToggleWorkspace(workspace.workspaceId as string) },
+            })}
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
@@ -1769,7 +1968,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, onWorkspaceRename, onWorkspaceDelete, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
+function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -1783,6 +1982,9 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
   manual: ManualGroups
   t: GroupsBrowserProps['t']
   startSession: (workspaceId?: WorkspaceId) => void
+  filter: SidebarFilter
+  onCountsChange?: (counts: FilterCounts) => void
+  onResetFilter?: () => void
   onWorkspaceRename: (workspaceId: WorkspaceId, title: string) => void
   onWorkspaceDelete: (workspaceId: WorkspaceId, title: string) => void
   onSessionRename: (sessionId: SessionId, title: string) => void
@@ -1799,8 +2001,17 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
     () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession),
     [list, workspaces, config, matches, archivedSessionIds, manual],
   )
-  const groups = searchTree.categories
-  const searchTopLevel = searchTree.topLevel
+  const filteredSearch = useMemo(
+    () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, now),
+    [searchTree, filter, manual.colors, now],
+  )
+
+  useEffect(() => {
+    onCountsChange?.(filteredSearch.counts)
+  }, [filteredSearch.counts, onCountsChange])
+
+  const groups = filteredSearch.categories
+  const searchTopLevel = filteredSearch.topLevel
   const pending = currentRemote.status === 'loading'
   const failed = currentRemote.status === 'error'
   const totalRootItems = groups.length + searchTopLevel.length
@@ -1828,25 +2039,18 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                   onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
                   onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
                 />
-                <div role="group">
-                  {workspace.sessions.map((session, sIdx) => (
-                    <SessionRow
-                      key={session.id}
-                      node={session}
-                      currentId={current}
-                      now={now}
-                      t={t}
-                      aria-level={3}
-                      aria-posinset={sIdx + 1}
-                      aria-setsize={workspace.sessions.length}
-                      onOpen={open}
-                      onRename={onSessionRename}
-                      onFork={onSessionFork}
-                      onArchive={onSessionArchive}
-                      actionBusy={sessionActionBusy}
-                    />
-                  ))}
-                </div>
+                <WorkspaceSessions
+                  sessions={workspace.sessions}
+                  current={current}
+                  now={now}
+                  t={t}
+                  ariaLevel={3}
+                  onOpen={open}
+                  onSessionRename={onSessionRename}
+                  onSessionArchive={onSessionArchive}
+                  onFork={onSessionFork}
+                  sessionActionBusy={sessionActionBusy}
+                />
               </div>
             ))}
           </div>
@@ -1865,31 +2069,35 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
           />
-          <div role="group">
-            {workspace.sessions.map((session, sIdx) => (
-              <SessionRow
-                key={session.id}
-                node={session}
-                currentId={current}
-                now={now}
-                t={t}
-                aria-level={2}
-                aria-posinset={sIdx + 1}
-                aria-setsize={workspace.sessions.length}
-                onOpen={open}
-                onRename={onSessionRename}
-                onFork={onSessionFork}
-                onArchive={onSessionArchive}
-                actionBusy={sessionActionBusy}
-              />
-            ))}
-          </div>
+          <WorkspaceSessions
+            sessions={workspace.sessions}
+            current={current}
+            now={now}
+            t={t}
+            ariaLevel={2}
+            onOpen={open}
+            onSessionRename={onSessionRename}
+            onSessionArchive={onSessionArchive}
+            onFork={onSessionFork}
+            sessionActionBusy={sessionActionBusy}
+          />
         </div>
       ))}
       {pending && <div className="wgSearchStatus" role="status">{t('search.pending')}</div>}
       {failed && <div className="wgSearchStatus" role="status">{t('search.unavailable')}</div>}
       {!pending && groups.length === 0 && searchTopLevel.length === 0 && (
-        <div className="wgEmpty">{t('search.noMatches')}</div>
+        <div className="wgEmpty">
+          <div>{t('search.noMatches')}</div>
+          {onResetFilter && (
+            <button
+              type="button"
+              className="wgSessionToggleBtn wgFilterResetBtn wgEmptyReset"
+              onClick={onResetFilter}
+            >
+              {t('filter.reset')}
+            </button>
+          )}
+        </div>
       )}
       {matches.hasMore && (
         <div className="wgSearchStatus">{t('search.hasMore')}</div>

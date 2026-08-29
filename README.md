@@ -68,11 +68,17 @@
 - **Distinct row icons**: group rows use a folder glyph, project rows a project glyph
   (same as the official workspace browser) — groups and projects are easy to tell apart
 
-### Search & operations
+### Search, filtering & operations
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched
   session), matched rows highlighted with a content snippet, 250ms debounce
+- **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
+  New**; the Filter menu adds one group/project color and an optional 24-hour, 7-day, or 30-day
+  recency window. Text, status, color, and recency narrow the result together.
+- **Visible and transient criteria**: active filters stay visible with one Reset action; empty
+  branches hide and matching paths expand without changing the saved expansion state. Filtered
+  search results keep the five-session preview and **Show all / Collapse** controls.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
-  session new/open/rename/fork/archive
+  session new/open/rename/fork/archive.
 
 ### Persistence & zero intrusion
 - Every manual action (groups, grouping, ordering, rename, hide) is written to the plugin's own
@@ -276,6 +282,7 @@ src/
     contract.ts         # injected surface types
     stores.ts           # expansion-state store (persist: dsh.workspace.groups.view.v1)
     tree.ts             # three-level tree derivation + tree search derivation
+    tree-filter.ts      # pure status/color/recency filtering and counts
     GroupsBrowser.tsx   # browser region component (group dialogs + drag grouping/ordering + insertion indicator)
     rows.tsx            # category/project/session/search-result rows (drag sources/targets)
     locales.ts          # locale key contract and dictionary exports

@@ -182,11 +182,11 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
   })
 
   it('group dragstart does not call setCategoryExpanded or temporaryCategories', () => {
-    const dragStartCategoryIndex = browserSource.indexOf('onDragStartCategory')
+    const dragStartCategoryIndex = browserSource.indexOf('const onDragStartCategory')
     expect(dragStartCategoryIndex).toBeGreaterThan(-1)
     const dragStartCategorySrc = browserSource.slice(
       dragStartCategoryIndex,
-      browserSource.indexOf('const now = Date.now()', dragStartCategoryIndex),
+      browserSource.indexOf('const onDragOverCategoryEnd', dragStartCategoryIndex),
     )
     expect(dragStartCategorySrc).not.toMatch(/setCategoryExpanded/)
     expect(dragStartCategorySrc).not.toMatch(/temporaryCategories/)
@@ -226,6 +226,16 @@ describe('redesign source contracts: GroupsBrowser.tsx', () => {
     expect(browserSource).toContain('<WorkspaceSessions')
     expect(browserSource).toContain("showAll ? t('collapse') : t('expandMore')")
     expect(browserSource).toContain('aria-setsize={sessions.length}')
+  })
+
+  it('integrates Finder-style sidebar filtering UI with applySidebarFilter', () => {
+    expect(browserSource).toContain("from './tree-filter.ts'")
+    expect(browserSource).toContain('applySidebarFilter(')
+    expect(browserSource).toContain('sidebarFilterActive(')
+    expect(browserSource).toContain('wgStatusScopeBar')
+    expect(browserSource).toContain('wgCountBadge')
+    expect(browserSource).toContain('wgFilterSummary')
+    expect(browserSource).toContain('wgFilterResetBtn')
   })
 })
 
@@ -288,6 +298,8 @@ describe('redesign source contracts: styles.css', () => {
   it('defines transient session limit toggle styles', () => {
     expect(stylesSource).toMatch(/\.wgSessionToggle\b/)
     expect(stylesSource).toMatch(/\.wgSessionToggleBtn\b/)
+    expect(stylesSource).toMatch(/\.wgStatusScopeBar\b/)
+    expect(stylesSource).toMatch(/\.wgStatusScopeBtn\b/)
   })
 })
 
@@ -316,6 +328,13 @@ describe('redesign source contracts: localization for extra controls and concurr
     'workspace.copyPath',
     'workspace.pathCopied',
     'manual.conflictError',
+    'filter.title',
+    'filter.all',
+    'filter.attention',
+    'filter.running',
+    'filter.new',
+    'filter.recency',
+    'filter.reset',
   ] as const
 
   it('defines extra controls and concurrency keys in WorkspaceGroupsKey type', () => {

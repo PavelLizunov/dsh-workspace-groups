@@ -11,8 +11,12 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
 }))
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
+  Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
+  Modal: ({ children, open }: { children?: React.ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   IconArchiveOutline20: () => <span />,
   IconBranchOutline16: () => <span />,
+  IconCloseFill14: () => <span />,
   IconEditOutline16: () => <span />,
   IconEllipsisOutline16: () => <span />,
   IconFolderClose16: () => <span />,
@@ -20,6 +24,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconFolderOpenOutline16: () => <span />,
   IconPlusOutline16: () => <span />,
   IconProjectAddOutline16: () => <span />,
+  IconRefreshOutline14: () => <span />,
+  IconSearchOutline16: () => <span />,
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
   StateDot: ({ state }: { state?: string }) => <span data-state-dot={state ?? ''} />,
@@ -34,6 +40,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 }))
 
 import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
+import { GroupsBrowser } from '../src/client/GroupsBrowser.tsx'
 
 const t = ((key: string) => key) as never
 let host: HTMLDivElement
@@ -207,5 +214,99 @@ describe('row interaction contracts', () => {
     expect(host.querySelector('.wgColorDot')?.getAttribute('data-color')).toBe('blue')
     stateDot = host.querySelector('[data-state-dot]')
     expect(stateDot).toBeNull()
+  })
+
+  it('renders wide-mode status scope bar and filter controls in GroupsBrowser', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ categories: [] }),
+      headers: new Headers(),
+    }))
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1'],
+      byId: { s1: { id: 's1', displayTitle: 'S1', blank: false, running: true, updatedAt: Date.now() } },
+      current: undefined,
+    }))
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] }],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: {} }))
+    const setWorkspaceExpanded = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    const statusScopeBar = host.querySelector('.wgStatusScopeBar[role="group"]')
+    expect(statusScopeBar).not.toBeNull()
+    const scopes = Array.from(host.querySelectorAll('.wgStatusScopeBtn'))
+    expect(scopes.length).toBe(4)
+    expect(scopes[0]?.textContent).toContain('filter.all')
+    expect(scopes[1]?.textContent).toContain('filter.attention')
+    expect(scopes[2]?.textContent).toContain('filter.running')
+    expect(scopes[3]?.textContent).toContain('filter.new')
+    const filterTrigger = host.querySelector('[aria-label="filter.title"]')
+    expect(filterTrigger).not.toBeNull()
+    const filterMenu = filterTrigger?.closest('[data-menu-portal]')
+    expect(filterMenu?.getAttribute('data-menu-portal')).toBe('true')
+    expect(filterMenu?.getAttribute('data-menu-compact')).toBe('true')
+    expect(filterMenu?.hasAttribute('data-has-submenu')).toBe(false)
+
+    // Click on Running scope
+    await act(async () => {
+      scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(scopes[2]?.getAttribute('aria-pressed')).toBe('true')
+    const filteredWorkspace = host.querySelector('.wgProjectRow')
+    expect(filteredWorkspace?.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => {
+      filteredWorkspace?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(setWorkspaceExpanded).not.toHaveBeenCalled()
+
+    const summary = host.querySelector('.wgFilterSummary')
+    expect(summary).not.toBeNull()
+
+    const resetBtn = host.querySelector('.wgFilterResetBtn')
+    expect(resetBtn).not.toBeNull()
+
+    // Reset filter
+    await act(async () => {
+      resetBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(scopes[0]?.getAttribute('aria-pressed')).toBe('true')
+    expect(host.querySelector('.wgFilterSummary')).toBeNull()
+
+    vi.unstubAllGlobals()
   })
 })
