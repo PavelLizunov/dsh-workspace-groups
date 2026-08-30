@@ -19,6 +19,14 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 > Activation requires restarting the existing web profile through your normal service or process manager. See [Installation](#installation-github-distribution) for verification and uninstall instructions.
 
+## Current UI
+
+Captured from the current DSH Web build; workspace and session labels use privacy-safe demo names.
+
+| Grouped sidebar | Bulk tree controls | Finder-style filters |
+| :---: | :---: | :---: |
+| <img src=".github/screenshots/sidebar-overview.png" alt="Grouped DSH sidebar with categories, workspaces, sessions, and attention states" /> | <img src=".github/screenshots/bulk-tree-controls.png" alt="Bulk Collapse all, Expand groups only, and Expand all menu" /> | <img src=".github/screenshots/finder-filters.png" alt="Fixed Finder-style status, color, and recency filters" /> |
+
 ## Features
 
 ### Grouped tree browsing

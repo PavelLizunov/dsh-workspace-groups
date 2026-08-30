@@ -23,6 +23,14 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 > 激活插件需要通过现有的服务或进程管理方式重启当前 web profile。验证与卸载说明见后文 [安装（GitHub 分发）](#安装github-分发)。
 
+## 当前界面
+
+截图来自当前 DSH Web 构建；工作区与会话名称已替换为保护隐私的演示名称。
+
+| 分组侧边栏 | 批量树形控制 | Finder 风格筛选 |
+| :---: | :---: | :---: |
+| <img src=".github/screenshots/sidebar-overview.png" alt="包含分类、工作区、会话与注意力状态的 DSH 分组侧边栏" /> | <img src=".github/screenshots/bulk-tree-controls.png" alt="折叠全部、仅展开分组与展开全部菜单" /> | <img src=".github/screenshots/finder-filters.png" alt="固定在顶部的状态、颜色与时间筛选" /> |
+
 ## 特性
 
 ### 分组树浏览
