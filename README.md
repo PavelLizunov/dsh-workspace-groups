@@ -83,7 +83,9 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
   New**; the Filter menu adds one group/project color and an optional 24-hour, 7-day, or 30-day
   recency window. Text, status, color, and recency narrow the result together.
-- **Visible and transient criteria**: active filters stay visible with one Reset action; empty
+- **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
+  restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.
+- **Visible criteria, transient expansion**: active filters stay visible with one Reset action; empty
   branches hide, while the filtered tree keeps the current expansion and remains collapsible.
   Expansion changes made while filtering are temporary and isolated from the persisted idle state.
   Filtered search results keep the five-session preview and **Show all / Collapse** controls.
@@ -95,6 +97,7 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - Every manual action (groups, grouping, ordering, rename, hide) is written to the plugin's own
   overlay (`~/.dsh/workspace-groups.manual.json`), validated by the host and **written
   atomically** (a malformed write returns 400 and keeps the previous file)
+- Filter selection uses the official profile settings service; no settings file is edited directly.
 - **Zero intrusion**: never touches `~/.dsh/storages/workspace.json`, session on-disk
   structures, or the official `@deepseek-ai/dsh-client-ui-workspace` package; the rule YAML
   is never rewritten

@@ -18,7 +18,9 @@ import {
 } from '../src/core/matcher.ts'
 import { parseGroupsConfig } from '../src/host-config.ts'
 import {
+  DEFAULT_SIDEBAR_FILTER,
   normalizePath,
+  parseSidebarFilterPreferences,
   TOP_LEVEL_ORDER_KEY,
   UNCATEGORIZED_LABEL,
   type GroupsConfig,
@@ -312,5 +314,15 @@ describe('parseGroupsConfig', () => {
 
   it('rejects the reserved top-level order key as a category name', () => {
     expect(() => parseGroupsConfig({ categories: [{ name: TOP_LEVEL_ORDER_KEY, rules: [{ pathPrefix: '/a' }] }] })).toThrow(/reserved/)
+  })
+})
+
+describe('sidebar filter preferences', () => {
+  it('accepts the exact contract and fails closed to defaults', () => {
+    expect(parseSidebarFilterPreferences({ status: 'warning', recency: '7d', color: 'blue' })).toEqual({
+      status: 'warning', recency: '7d', color: 'blue',
+    })
+    expect(parseSidebarFilterPreferences({ status: 'bad', recency: '7d', color: 'blue' })).toEqual(DEFAULT_SIDEBAR_FILTER)
+    expect(parseSidebarFilterPreferences(null)).toEqual(DEFAULT_SIDEBAR_FILTER)
   })
 })

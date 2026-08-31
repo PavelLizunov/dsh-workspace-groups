@@ -22,7 +22,19 @@ export interface GroupsWebServer {
   register(route: GroupsWebRoute): () => void
 }
 
-/** Cordis Context augmented with the services this plugin needs. */
+/** Minimal profile-settings service face used by filter preferences. */
+export interface GroupsSettings {
+  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): unknown
+  get(namespace: string): unknown
+  update(namespace: string, patch: object): Promise<void>
+}
+
+/** Cordis Context augmented with the services this plugin always needs. */
 export interface GroupsContext extends Context {
   webServer: GroupsWebServer
+}
+
+/** Child context yielded only while the optional settings service is available. */
+export interface GroupsSettingsContext extends GroupsContext {
+  settings: GroupsSettings
 }

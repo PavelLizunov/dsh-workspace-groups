@@ -86,6 +86,22 @@ export interface ManualGroups {
      */
     colors?: Record<string, string | null>;
 }
+/** Allowed shared sidebar color-filter presets. */
+export declare const FILTER_COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
+export type ColorPreset = typeof FILTER_COLOR_PRESETS[number];
+export type StatusScope = 'all' | 'warning' | 'ongoing' | 'done';
+export type RecencyScope = 'all' | '24h' | '7d' | '30d';
+/** Profile-level sidebar filter shared across browser clients. */
+export interface SidebarFilterPreferences {
+    status: StatusScope;
+    recency: RecencyScope;
+    color: ColorPreset | null;
+}
+export declare const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences;
+/** Whether an untrusted value satisfies the complete persisted filter contract. */
+export declare function isSidebarFilterPreferences(raw: unknown): raw is SidebarFilterPreferences;
+/** Fail closed to defaults when a settings response violates the filter contract. */
+export declare function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPreferences;
 /**
  * Legacy persisted label of the former fallback bucket. It is accepted only
  * for backward compatibility; the current UI renders ungrouped workspaces as

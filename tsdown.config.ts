@@ -72,10 +72,10 @@ function nodeConfig(): UserConfig {
     dts: false,
     clean: false,
     deps: {
+      neverBundle: (specifier: string) => specifier === '@deepseek-ai/schemastery',
       alwaysBundle: (specifier: string) => {
-        // js-yaml is the one runtime dependency; bundle it so the artifact is
-        // self-contained (link installs carry no node_modules guarantees).
-        return !NODE_BUILTINS.has(specifier)
+        // Bundle js-yaml; the DSH settings schema runtime is a declared platform peer.
+        return !NODE_BUILTINS.has(specifier) && specifier !== '@deepseek-ai/schemastery'
       },
     },
   }

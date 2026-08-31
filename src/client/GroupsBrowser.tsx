@@ -46,7 +46,7 @@ import {
   resolveCategory,
   takenCategoryNames,
 } from '../core/matcher.ts'
-import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
+import { parseSidebarFilterPreferences, TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
@@ -120,6 +120,22 @@ async function fetchGroupsConfig(): Promise<{ config: GroupsConfig; manual: Norm
     manual: isManualGroups(body.manual) ? normalizeManual(body.manual) : EMPTY_MANUAL,
     revision,
   }
+}
+
+async function fetchFilterPreferences(): Promise<SidebarFilter> {
+  const response = await fetch('/workspace-groups/preferences', { cache: 'no-store' })
+  if (!response.ok) throw new Error(`filter preferences request failed: ${response.status}`)
+  const body = (await response.json()) as { filter?: unknown }
+  return parseSidebarFilterPreferences(body.filter)
+}
+
+async function saveFilterPreferences(filter: SidebarFilter): Promise<void> {
+  const response = await fetch('/workspace-groups/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filter }),
+  })
+  if (!response.ok) throw new Error(`filter preferences save failed: ${response.status}`)
 }
 
 class SaveConflictError extends Error {
@@ -348,10 +364,28 @@ export function GroupsBrowser({
     query: '', status: 'idle', items: [], hasMore: false,
   })
   const [filter, setFilter] = useState<SidebarFilter>(DEFAULT_SIDEBAR_FILTER)
+  const filterDirty = useRef(false)
+  const filterSaveQueue = useRef(Promise.resolve())
   const isFilterActive = sidebarFilterActive(filter)
   const [filterCategoryExpansion, setFilterCategoryExpansion] = useState<Record<string, boolean>>({})
   const [filterWorkspaceExpansion, setFilterWorkspaceExpansion] = useState<Record<string, boolean>>({})
   const [searchCounts, setSearchCounts] = useState<FilterCounts | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetchFilterPreferences().then((saved) => {
+      if (!cancelled && !filterDirty.current) setFilter(saved)
+    }).catch(() => { /* defaults remain usable when settings are unavailable */ })
+    return () => { cancelled = true }
+  }, [])
+  const updateFilter = useCallback((next: SidebarFilter) => {
+    filterDirty.current = true
+    setFilter(next)
+    setManualError(null)
+    const write = filterSaveQueue.current.then(() => saveFilterPreferences(next))
+    filterSaveQueue.current = write.catch((reason: unknown) => {
+      setManualError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }, [])
   const reportSearchCounts = useCallback((next: FilterCounts) => {
     setSearchCounts(previous => previous !== null
       && previous.all === next.all
@@ -362,10 +396,10 @@ export function GroupsBrowser({
       : next)
   }, [])
   const resetFilter = useCallback(() => {
-    setFilter(DEFAULT_SIDEBAR_FILTER)
+    updateFilter(DEFAULT_SIDEBAR_FILTER)
     setFilterCategoryExpansion({})
     setFilterWorkspaceExpansion({})
-  }, [])
+  }, [updateFilter])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
 
@@ -1192,7 +1226,7 @@ export function GroupsBrowser({
                   type="button"
                   aria-pressed={filter.status === 'all'}
                   className={`wgStatusScopeBtn${filter.status === 'all' ? ' wgStatusScopeBtnActive' : ''}`}
-                  onClick={() => { setFilter(prev => ({ ...prev, status: 'all' })) }}
+                  onClick={() => { updateFilter({ ...filter, status: 'all' }) }}
                 >
                   <span>{t('filter.all')}</span>
                   <span className="wgCountBadge">{activeCounts.all}</span>
@@ -1201,7 +1235,7 @@ export function GroupsBrowser({
                   type="button"
                   aria-pressed={filter.status === 'warning'}
                   className={`wgStatusScopeBtn${filter.status === 'warning' ? ' wgStatusScopeBtnActive' : ''}`}
-                  onClick={() => { setFilter(prev => ({ ...prev, status: 'warning' })) }}
+                  onClick={() => { updateFilter({ ...filter, status: 'warning' }) }}
                 >
                   <span>{t('filter.attention')}</span>
                   <span className="wgCountBadge">{activeCounts.warning}</span>
@@ -1210,7 +1244,7 @@ export function GroupsBrowser({
                   type="button"
                   aria-pressed={filter.status === 'ongoing'}
                   className={`wgStatusScopeBtn${filter.status === 'ongoing' ? ' wgStatusScopeBtnActive' : ''}`}
-                  onClick={() => { setFilter(prev => ({ ...prev, status: 'ongoing' })) }}
+                  onClick={() => { updateFilter({ ...filter, status: 'ongoing' }) }}
                 >
                   <span>{t('filter.running')}</span>
                   <span className="wgCountBadge">{activeCounts.ongoing}</span>
@@ -1219,13 +1253,13 @@ export function GroupsBrowser({
                   type="button"
                   aria-pressed={filter.status === 'done'}
                   className={`wgStatusScopeBtn${filter.status === 'done' ? ' wgStatusScopeBtnActive' : ''}`}
-                  onClick={() => { setFilter(prev => ({ ...prev, status: 'done' })) }}
+                  onClick={() => { updateFilter({ ...filter, status: 'done' }) }}
                 >
                   <span>{t('filter.new')}</span>
                   <span className="wgCountBadge">{activeCounts.done}</span>
                 </button>
               </div>
-              <SidebarFilterMenu filter={filter} onChange={setFilter} onReset={resetFilter} t={t} />
+              <SidebarFilterMenu filter={filter} onChange={updateFilter} onReset={resetFilter} t={t} />
             </div>
             {isFilterActive && (
               <div className="wgFilterSummary">

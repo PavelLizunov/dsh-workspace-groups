@@ -26,6 +26,7 @@ import {
   type StateDotState,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import { FILTER_COLOR_PRESETS } from '../core/types.ts'
 import type { WorkspaceGroupsKey } from './locales.ts'
 import { sessionAttention, type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.ts'
 
@@ -81,7 +82,7 @@ export interface RowDropProps {
   onRowDrop?: (event: DragEvent) => void
 }
 
-export const COLOR_PRESETS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'] as const
+export const COLOR_PRESETS = FILTER_COLOR_PRESETS
 
 /** Flat portal menu: unlike nested submenus, Menu clamps this list to the viewport. */
 function ColorMenu({ t, color, onSelect }: {

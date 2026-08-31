@@ -91,6 +91,43 @@ export interface ManualGroups {
   colors?: Record<string, string | null>
 }
 
+/** Allowed shared sidebar color-filter presets. */
+export const FILTER_COLOR_PRESETS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'] as const
+
+export type ColorPreset = typeof FILTER_COLOR_PRESETS[number]
+export type StatusScope = 'all' | 'warning' | 'ongoing' | 'done'
+export type RecencyScope = 'all' | '24h' | '7d' | '30d'
+
+/** Profile-level sidebar filter shared across browser clients. */
+export interface SidebarFilterPreferences {
+  status: StatusScope
+  recency: RecencyScope
+  color: ColorPreset | null
+}
+
+export const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences = {
+  status: 'all',
+  recency: 'all',
+  color: null,
+}
+
+/** Whether an untrusted value satisfies the complete persisted filter contract. */
+export function isSidebarFilterPreferences(raw: unknown): raw is SidebarFilterPreferences {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return false
+  const value = raw as Record<string, unknown>
+  if (Object.keys(value).length !== 3 || !Object.hasOwn(value, 'status') || !Object.hasOwn(value, 'recency') || !Object.hasOwn(value, 'color')) return false
+  return ['all', 'warning', 'ongoing', 'done'].includes(value.status as string)
+    && ['all', '24h', '7d', '30d'].includes(value.recency as string)
+    && (value.color === null || FILTER_COLOR_PRESETS.includes(value.color as ColorPreset))
+}
+
+/** Fail closed to defaults when a settings response violates the filter contract. */
+export function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPreferences {
+  return isSidebarFilterPreferences(raw)
+    ? { status: raw.status, recency: raw.recency, color: raw.color }
+    : { ...DEFAULT_SIDEBAR_FILTER }
+}
+
 /**
  * Legacy persisted label of the former fallback bucket. It is accepted only
  * for backward compatibility; the current UI renders ungrouped workspaces as

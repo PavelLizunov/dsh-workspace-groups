@@ -534,11 +534,32 @@ describe('row interaction contracts', () => {
     vi.unstubAllGlobals()
   })
 
-  it('GroupsBrowser suppresses tree actions menu when searching and handles transient active filter writes', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ categories: [{ name: 'Dev', rules: [{ pathPrefix: '/w1' }] }] }),
-      headers: new Headers(),
+  it('GroupsBrowser restores and persists filters while keeping filtered expansion transient', async () => {
+    const filterWrites: unknown[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/workspace-groups/preferences')) {
+        if (init?.method === 'PUT') {
+          const body = JSON.parse(String(init.body)) as { filter: unknown }
+          filterWrites.push(body.filter)
+          return { ok: true, status: 200, json: async () => ({ filter: body.filter }), headers: new Headers() }
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ filter: { status: 'warning', recency: '7d', color: 'blue' } }),
+          headers: new Headers(),
+        }
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          categories: [{ name: 'Dev', rules: [{ pathPrefix: '/w1' }] }],
+          manual: { categories: [], assignments: {}, colors: { Dev: 'blue' } },
+        }),
+        headers: new Headers(),
+      }
     }))
 
     const sessionsSnapshot = {
@@ -590,11 +611,14 @@ describe('row interaction contracts', () => {
     })
 
     runtimeMocks.indexSubagentDescendants.mockClear()
-    // Activate running filter without rebuilding the canonical session tree.
     const scopes = Array.from(host.querySelectorAll('.wgStatusScopeBtn'))
+    expect(scopes[1]?.getAttribute('aria-pressed')).toBe('true')
+    // Change the restored filter without rebuilding the canonical session tree.
     await act(async () => {
       scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
     })
+    expect(filterWrites[0]).toEqual({ status: 'ongoing', recency: '7d', color: 'blue' })
     expect(runtimeMocks.indexSubagentDescendants).not.toHaveBeenCalled()
 
     setCategoriesExpanded.mockClear()
@@ -631,6 +655,12 @@ describe('row interaction contracts', () => {
     })
 
     expect(host.querySelector('[aria-label="tree.actions"]')).toBeNull()
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('.wgFilterResetBtn')?.click()
+      await Promise.resolve()
+    })
+    expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null })
 
     vi.unstubAllGlobals()
   })

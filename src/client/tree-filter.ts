@@ -4,6 +4,13 @@
  * filtered category and top-level workspace nodes alongside aggregated status counts.
  */
 import {
+  DEFAULT_SIDEBAR_FILTER,
+  type ColorPreset,
+  type RecencyScope,
+  type SidebarFilterPreferences,
+  type StatusScope,
+} from '../core/types.ts'
+import {
   sessionAttention,
   type AttentionState,
   type CategoryNode,
@@ -11,27 +18,15 @@ import {
   type WorkspaceGroupNode,
 } from './tree.ts'
 
-export type ColorPreset = 'red' | 'orange' | 'yellow' | 'green' | 'cyan' | 'blue' | 'purple' | 'pink'
-export type StatusScope = 'all' | 'warning' | 'ongoing' | 'done'
-export type RecencyScope = 'all' | '24h' | '7d' | '30d'
-
-export interface SidebarFilter {
-  status: StatusScope
-  recency: RecencyScope
-  color: ColorPreset | null
-}
+export { DEFAULT_SIDEBAR_FILTER }
+export type { ColorPreset, RecencyScope, StatusScope }
+export type SidebarFilter = SidebarFilterPreferences
 
 export interface FilterCounts {
   all: number
   warning: number
   ongoing: number
   done: number
-}
-
-export const DEFAULT_SIDEBAR_FILTER: SidebarFilter = {
-  status: 'all',
-  recency: 'all',
-  color: null,
 }
 
 export function sidebarFilterActive(filter: SidebarFilter): boolean {

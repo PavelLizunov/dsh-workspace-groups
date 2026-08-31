@@ -73,7 +73,9 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 - **Finder 风格筛选**：状态范围可切换 **全部 / 需要处理 / 运行中 / 新结果**；筛选菜单
   可再选择一种分组/项目颜色，以及最近 24 小时、7 天或 30 天。文本、状态、颜色与时间
   条件共同收窄结果。
-- **条件可见且不持久化**：启用的条件始终显示，并提供统一重置；空分支隐藏，筛选树沿用
+- **按 Profile 持久化筛选**：状态、颜色与时间条件保存在当前 DSH Profile 中，刷新页面或
+  使用另一浏览器时会恢复。已打开的浏览器将在下次加载页面时读取最新设置。
+- **条件可见、展开临时**：启用的条件始终显示，并提供统一重置；空分支隐藏，筛选树沿用
   当前展开状态并可正常折叠。筛选期间的展开操作仅临时生效，不改变保存的空闲状态。筛选后的
   搜索结果仍采用五行预览与**展开全部 / 折叠**。
 - **固定筛选栏与 Chip**：状态范围栏、筛选菜单与已启用条件 Chip 在视图区域上方固定放置，
@@ -85,6 +87,7 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 - 所有手动操作（分组、归类、排序、改名、隐藏）写入插件自有 overlay
   （`~/.dsh/workspace-groups.manual.json`），host 校验后**原子写入**（写坏返回 400 并
   保留原文件）
+- 筛选选择通过官方 Profile settings 服务保存，不直接编辑任何 settings 文件。
 - **零侵入**：不修改 `~/.dsh/storages/workspace.json`、不修改会话落盘结构、不修改官方
   `@deepseek-ai/dsh-client-ui-workspace` 包；规则 YAML 永不改写
 - **产物自包含**：`lib/` 已构建并随仓库分发，Git 安装无需执行任何依赖脚本

@@ -8,23 +8,23 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { apply } from '../src/index.ts'
-import type { GroupsContext, GroupsWebRoute } from '../src/context-types.ts'
+import type { GroupsContext, GroupsWebRoute, GroupsSettings } from '../src/context-types.ts'
+import { DEFAULT_SIDEBAR_FILTER, type SidebarFilterPreferences } from '../src/core/types.ts'
 
 describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
   let tempDir: string
   let originalDshHome: string | undefined
   let server: Server
   let baseUrl: string
+  let settingsValue: SidebarFilterPreferences
   const routeHandlers = new Map<string, GroupsWebRoute['handler']>()
 
-  beforeEach(async () => {
-    routeHandlers.clear()
-    originalDshHome = process.env.DSH_HOME
-    tempDir = await mkdtemp(join(tmpdir(), 'wg-routes-test-'))
-    process.env.DSH_HOME = tempDir
-
+  function mount(settings?: GroupsSettings): void {
     const mockCtx = {
       effect: (cb: () => () => void) => cb(),
+      inject: (_services: string[], callback: (ctx: unknown) => void) => {
+        if (settings !== undefined) callback({ settings })
+      },
       webServer: {
         register: (route: GroupsWebRoute) => {
           routeHandlers.set(route.path, route.handler)
@@ -32,8 +32,22 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
         },
       },
     } as unknown as GroupsContext
-
     apply(mockCtx)
+  }
+
+  beforeEach(async () => {
+    routeHandlers.clear()
+    originalDshHome = process.env.DSH_HOME
+    tempDir = await mkdtemp(join(tmpdir(), 'wg-routes-test-'))
+    process.env.DSH_HOME = tempDir
+    settingsValue = { ...DEFAULT_SIDEBAR_FILTER }
+    mount({
+      register: () => undefined,
+      get: () => settingsValue,
+      update: async (_namespace, patch) => {
+        settingsValue = { ...settingsValue, ...patch } as SidebarFilterPreferences
+      },
+    })
 
     server = createServer((req, res) => {
       const url = new URL(req.url ?? '/', 'http://localhost')
@@ -202,6 +216,52 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     expect(current.manual.categories).toEqual(['SeededCategory'])
     expect(current.manual.assignments).toEqual({ 'ws-seed': 'SeededCategory' })
     expect(current.revision).toBe(seeded.revision)
+  })
+
+  it('persists profile filter preferences through GET and PUT', async () => {
+    const initial = await fetch(`${baseUrl}/workspace-groups/preferences`).then(res => res.json())
+    expect(initial).toEqual({ filter: DEFAULT_SIDEBAR_FILTER })
+
+    const filter: SidebarFilterPreferences = { status: 'warning', recency: '7d', color: 'blue' }
+    const put = await fetch(`${baseUrl}/workspace-groups/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filter }),
+    })
+    expect(put.status).toBe(200)
+    expect(await put.json()).toEqual({ filter })
+    expect(await fetch(`${baseUrl}/workspace-groups/preferences`).then(res => res.json())).toEqual({ filter })
+  })
+
+  it('rejects malformed filter preference writes', async () => {
+    for (const body of [
+      {},
+      { filter: null },
+      { filter: { status: 'bad', recency: 'all', color: null } },
+      { filter: { ...DEFAULT_SIDEBAR_FILTER, extra: true } },
+      { filter: DEFAULT_SIDEBAR_FILTER, extra: true },
+    ]) {
+      const res = await fetch(`${baseUrl}/workspace-groups/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      expect(res.status).toBe(400)
+    }
+  })
+
+  it('falls back to defaults when settings is unavailable and rejects writes', async () => {
+    routeHandlers.clear()
+    mount()
+    const get = await fetch(`${baseUrl}/workspace-groups/preferences`)
+    expect(get.status).toBe(200)
+    expect(await get.json()).toEqual({ filter: DEFAULT_SIDEBAR_FILTER })
+    const put = await fetch(`${baseUrl}/workspace-groups/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filter: DEFAULT_SIDEBAR_FILTER }),
+    })
+    expect(put.status).toBe(503)
   })
 
   it('yields exactly one 200 and one 409 for two simultaneous wrapped PUTs with same valid revision', async () => {
