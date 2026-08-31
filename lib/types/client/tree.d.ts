@@ -5,8 +5,9 @@
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
 import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import { type SessionAttentionReason } from '../core/attention.js';
 import { type GroupsConfig, type ManualGroups } from '../core/types.js';
-export type AttentionState = 'warning' | 'ongoing' | 'done';
+export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done';
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
     id: SessionId;
@@ -25,6 +26,7 @@ export interface SessionNode {
     matched?: boolean;
     /** Content-match snippet from the Host search (search mode only). */
     snippet?: string;
+    projectionReason?: SessionAttentionReason;
 }
 /** One workspace folder row inside a category folder. */
 export interface WorkspaceGroupNode {
@@ -82,7 +84,7 @@ export declare const UNCATEGORIZED_KEY = "\u672A\u5206\u7C7B";
 /** Directory display label: basename of the path (both separators accepted). */
 export declare function workspaceLabel(cwd: string | undefined): string;
 /** Derive the attention state for a single session node. */
-export declare function sessionAttention(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): AttentionState | undefined;
+export declare function sessionAttention(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>): AttentionState | undefined;
 /** Build the fully populated grouped and top-level tree once per list snapshot. */
 export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups): WorkspaceTree;
 /** Apply expansion state without rescanning or rebuilding session summaries. */

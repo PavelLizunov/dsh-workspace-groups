@@ -17,7 +17,8 @@ const runtimeMocks = vi.hoisted(() => ({
 vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
 import type { SessionListState, SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
-import { deriveGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, workspaceLabel } from '../src/client/tree.ts'
+import { deriveGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
+import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
 
 const CONFIG: GroupsConfig = {
@@ -308,5 +309,55 @@ describe('aggregated attention state derivation', () => {
     expect(projected.categories[0]?.workspaces[0]?.sessions[0]).toBe(canonical.categories[0]?.workspaces[0]?.sessions[0])
     expect(projected.topLevel[0]?.expanded).toBe(false)
     expect(projected.topLevel[0]?.sessions).toEqual([])
+  })
+
+  it('maps projection reason from SessionSummary to SessionNode without extra scans', () => {
+    const ws1 = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2', 's3'])
+    const s1 = {
+      ...session('s1', 's1'),
+      projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } },
+    } as unknown as SessionSummary
+    const s2 = {
+      ...session('s2', 's2'),
+      projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'awaiting-user' } },
+    } as unknown as SessionSummary
+    const s3 = session('s3', 's3')
+    const list = customListState({ s1, s2, s3 })
+
+    const canonical = deriveWorkspaceTree(list, [ws1], [], CONFIG, { categories: [], assignments: {} })
+    const sessions = canonical.categories[0]!.workspaces[0]!.sessions
+    expect(sessions[0]?.projectionReason).toBe('error')
+    expect(sessions[1]?.projectionReason).toBe('awaiting-user')
+    expect(sessions[2]?.projectionReason).toBeUndefined()
+  })
+
+  it('evaluates sessionAttention priority: error > warning > ongoing > done', () => {
+    expect(sessionAttention({ running: false, runningSubagentCount: 0, completed: false, projectionReason: 'error' })).toBe('error')
+    expect(sessionAttention({ running: false, runningSubagentCount: 0, completed: false, projectionReason: 'interrupted' })).toBe('error')
+    expect(sessionAttention({ running: false, runningSubagentCount: 0, completed: false, projectionReason: 'max-tokens' })).toBe('error')
+    expect(sessionAttention({ pendingInteraction: 'question', running: false, runningSubagentCount: 0, completed: false, projectionReason: 'error' })).toBe('error')
+    expect(sessionAttention({ pendingInteraction: 'question', running: false, runningSubagentCount: 0, completed: false, projectionReason: 'awaiting-user' })).toBe('warning')
+    expect(sessionAttention({ running: false, runningSubagentCount: 0, completed: false, projectionReason: 'awaiting-user' })).toBe('warning')
+    expect(sessionAttention({ running: true, runningSubagentCount: 0, completed: false, projectionReason: 'awaiting-user' })).toBe('warning')
+    expect(sessionAttention({ running: true, runningSubagentCount: 0, completed: false, projectionReason: 'error' })).toBe('error')
+  })
+
+  it('aggregates category and workspace attention prioritizing error > warning > ongoing > done and counts error as warning in totals', () => {
+    const ws1 = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2'])
+    const ws2 = workspace('ws-2', '/Users/zcol/Project/SomePlugin2', 'Other Plugin', ['s3'])
+    const s1 = {
+      ...session('s1', 's1'),
+      projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } },
+    } as unknown as SessionSummary
+    const s2 = sessionWithState('s2', { pendingInteraction: 'approval' })
+    const s3 = sessionWithState('s3', { running: true })
+    const list = customListState({ s1, s2, s3 })
+
+    const canonical = deriveWorkspaceTree(list, [ws1, ws2], [], CONFIG, { categories: [], assignments: {} })
+    const cat = canonical.categories.find(g => g.label === 'DSH Plugins')!
+    expect(cat.attention).toBe('error')
+    expect(cat.workspaces.find(w => w.workspaceId === 'ws-1')?.attention).toBe('error')
+    expect(cat.workspaces.find(w => w.workspaceId === 'ws-2')?.attention).toBe('ongoing')
+    expect(canonical.counts).toEqual({ all: 3, warning: 2, ongoing: 1, done: 0 })
   })
 })

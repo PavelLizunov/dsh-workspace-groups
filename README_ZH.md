@@ -39,7 +39,8 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 - **批量树形控制与快捷键**：提供全局 **折叠全部**、**仅展开分组** 和 **展开全部** 操作；支持单分组递归命令以及按住 **Option 键** (macOS) / **Alt 键** (Windows/Linux) 点击分组折叠/展开箭头，一次性递归折叠或展开该分组及其内部的所有项目文件夹（详见 [BULK_TREE_CONTROLS_SPEC.md](./BULK_TREE_CONTROLS_SPEC.md)）
 - **顶层项目行**：不归组的项目（不匹配任何规则、被移出分组、删除分组后回归的）
   直接显示在分组列表之后，与分组平级——**没有「未分类」桶**
-- **状态逐级汇总**：折叠的项目或分组显示子会话最高优先级状态（等待操作 → 运行中 → 未读完成）
+- **醒目的注意状态**：琥珀色 **Awaiting** 标签表示待处理交互或 SDD 审批回复，红色 **Error**
+  标签表示错误、中断或达到 token 上限；折叠的项目和分组会汇总子会话的最高优先级状态
 - **会话行限制**：项目展开后默认显示五行（必要时另加当前会话），并提供临时的
   **展开全部 / 折叠** 控件
 
@@ -70,9 +71,9 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ### 搜索、筛选与操作
 - **树形搜索**：命中后仍保留三层树结构（分类 → 项目 → 命中会话），命中行高亮 +
   内容摘要，防抖 250ms
-- **Finder 风格筛选**：状态范围可切换 **全部 / 需要处理 / 运行中 / 新结果**；筛选菜单
-  可再选择一种分组/项目颜色，以及最近 24 小时、7 天或 30 天。文本、状态、颜色与时间
-  条件共同收窄结果。
+- **Finder 风格筛选**：状态范围可切换 **全部 / 需要处理 / 运行中 / 新结果**；**需要处理**
+  同时包含 Awaiting 和 Error 会话。筛选菜单可再选择一种分组/项目颜色，以及最近 24 小时、
+  7 天或 30 天。文本、状态、颜色与时间条件共同收窄结果。
 - **按 Profile 持久化筛选**：状态、颜色与时间条件保存在当前 DSH Profile 中，刷新页面或
   使用另一浏览器时会恢复。已打开的浏览器将在下次加载页面时读取最新设置。
 - **条件可见、展开临时**：启用的条件始终显示，并提供统一重置；空分支隐藏，筛选树沿用
@@ -88,6 +89,8 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
   （`~/.dsh/workspace-groups.manual.json`），host 校验后**原子写入**（写坏返回 400 并
   保留原文件）
 - 筛选选择通过官方 Profile settings 服务保存，不直接编辑任何 settings 文件。
+- 注意状态检测复用现有 `pendingInteraction` 与一个由框架管理的增量会话 projection；
+  不扫描 transcript，也不增加会话列表请求。
 - **零侵入**：不修改 `~/.dsh/storages/workspace.json`、不修改会话落盘结构、不修改官方
   `@deepseek-ai/dsh-client-ui-workspace` 包；规则 YAML 永不改写
 - **产物自包含**：`lib/` 已构建并随仓库分发，Git 安装无需执行任何依赖脚本

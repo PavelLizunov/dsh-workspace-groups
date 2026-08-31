@@ -8,7 +8,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { apply } from '../src/index.ts'
-import type { GroupsContext, GroupsWebRoute, GroupsSettings } from '../src/context-types.ts'
+import type { GroupsContext, GroupsSessionProjections, GroupsWebRoute, GroupsSettings } from '../src/context-types.ts'
 import { DEFAULT_SIDEBAR_FILTER, type SidebarFilterPreferences } from '../src/core/types.ts'
 
 describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
@@ -19,11 +19,12 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
   let settingsValue: SidebarFilterPreferences
   const routeHandlers = new Map<string, GroupsWebRoute['handler']>()
 
-  function mount(settings?: GroupsSettings): void {
+  function mount(settings?: GroupsSettings, sessionProjections?: GroupsSessionProjections): void {
     const mockCtx = {
       effect: (cb: () => () => void) => cb(),
-      inject: (_services: string[], callback: (ctx: unknown) => void) => {
-        if (settings !== undefined) callback({ settings })
+      inject: (services: string[], callback: (ctx: unknown) => void) => {
+        if (services.includes('settings') && settings !== undefined) callback({ settings })
+        if (services.includes('sessionProjections') && sessionProjections !== undefined) callback({ sessionProjections })
       },
       webServer: {
         register: (route: GroupsWebRoute) => {
@@ -73,6 +74,18 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
       process.env.DSH_HOME = originalDshHome
     }
     await rm(tempDir, { recursive: true, force: true })
+  })
+
+  it('registers the attention projection when the optional service is available', () => {
+    const registered: unknown[] = []
+    mount(undefined, {
+      register: (definition) => {
+        registered.push(definition)
+        return () => {}
+      },
+    })
+    expect(registered).toHaveLength(1)
+    expect(registered[0]).toMatchObject({ key: 'workspaceGroupsAttention', stateVersion: 1 })
   })
 
   it('GET /workspace-groups/config includes revision and ETag header', async () => {

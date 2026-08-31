@@ -27,6 +27,10 @@ export interface GroupsSettings {
     get(namespace: string): unknown;
     update(namespace: string, patch: object): Promise<void>;
 }
+/** Minimal incremental session-projection registry face used by attention folding. */
+export interface GroupsSessionProjections {
+    register(definition: unknown): () => void;
+}
 /** Cordis Context augmented with the services this plugin always needs. */
 export interface GroupsContext extends Context {
     webServer: GroupsWebServer;
@@ -34,4 +38,8 @@ export interface GroupsContext extends Context {
 /** Child context yielded only while the optional settings service is available. */
 export interface GroupsSettingsContext extends GroupsContext {
     settings: GroupsSettings;
+}
+/** Child context yielded only while the optional projection service is available. */
+export interface GroupsSessionProjectionsContext extends GroupsContext {
+    sessionProjections: GroupsSessionProjections;
 }

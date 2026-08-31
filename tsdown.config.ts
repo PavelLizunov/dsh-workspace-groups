@@ -72,10 +72,10 @@ function nodeConfig(): UserConfig {
     dts: false,
     clean: false,
     deps: {
-      neverBundle: (specifier: string) => specifier === '@deepseek-ai/schemastery',
+      neverBundle: (specifier: string) => specifier === '@deepseek-ai/schemastery' || specifier === 'zod',
       alwaysBundle: (specifier: string) => {
-        // Bundle js-yaml; the DSH settings schema runtime is a declared platform peer.
-        return !NODE_BUILTINS.has(specifier) && specifier !== '@deepseek-ai/schemastery'
+        // Bundle js-yaml; keep schema runtimes as package-resolved dependencies.
+        return !NODE_BUILTINS.has(specifier) && specifier !== '@deepseek-ai/schemastery' && specifier !== 'zod'
       },
     },
   }

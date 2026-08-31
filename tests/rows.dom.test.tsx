@@ -66,6 +66,67 @@ describe('row interaction contracts', () => {
     expect(sessionDotState({ ...idle, running: true })).toBe('ongoing')
     expect(sessionDotState({ ...idle, runningSubagentCount: 1 })).toBe('ongoing')
     expect(sessionDotState({ ...idle, running: true, pendingInteraction: 'approval' })).toBe('warning')
+    expect(sessionDotState({ ...idle, projectionReason: 'awaiting-user' })).toBe('warning')
+    expect(sessionDotState({ ...idle, projectionReason: 'error' })).toBe('error')
+    expect(sessionDotState({ ...idle, projectionReason: 'interrupted' })).toBe('error')
+    expect(sessionDotState({ ...idle, projectionReason: 'max-tokens' })).toBe('error')
+  })
+
+  it('renders localized pills and accessible status labels on SessionRow', () => {
+    const mockT = ((key: string) => (key === 'session.statusAwaiting' ? 'Awaiting' : key === 'session.statusError' ? 'Error' : key)) as never
+
+    // Waiting state
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's1' as never, title: 'Session 1', blank: false, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0, projectionReason: 'awaiting-user' }}
+          currentId={undefined}
+          now={0}
+          t={mockT}
+          onOpen={() => {}}
+        />,
+      )
+    })
+    let row = host.querySelector('[role="treeitem"]')!
+    let pill = host.querySelector('.wgSessionPill')
+    expect(pill?.textContent).toBe('Awaiting')
+    expect(pill?.getAttribute('data-status')).toBe('warning')
+    expect(row.getAttribute('aria-label')).toBe('Session 1 (Awaiting)')
+
+    // Error state
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's2' as never, title: 'Session 2', blank: false, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0, projectionReason: 'error' }}
+          currentId={undefined}
+          now={0}
+          t={mockT}
+          onOpen={() => {}}
+        />,
+      )
+    })
+    row = host.querySelector('[role="treeitem"]')!
+    pill = host.querySelector('.wgSessionPill')
+    expect(pill?.textContent).toBe('Error')
+    expect(pill?.getAttribute('data-status')).toBe('error')
+    expect(row.getAttribute('aria-label')).toBe('Session 2 (Error)')
+
+    // Idle/ongoing state (no pill)
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's3' as never, title: 'Session 3', blank: false, running: true, runningSubagentCount: 0, completed: false, updatedAt: 0 }}
+          currentId={undefined}
+          now={0}
+          t={mockT}
+          onOpen={() => {}}
+        />,
+      )
+    })
+    row = host.querySelector('[role="treeitem"]')!
+    pill = host.querySelector('.wgSessionPill')
+    expect(pill).toBeNull()
+    expect(row.getAttribute('aria-label')).toBe('Session 3')
   })
 
   it('starts a Workspace drag from the selected row, not only the first row', () => {

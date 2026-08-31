@@ -61,13 +61,16 @@ function isWorkspaceColorMatched(
 }
 
 function aggregateCategoryAttention(workspaces: readonly WorkspaceGroupNode[]): AttentionState | undefined {
+  let hasWarning = false
   let hasOngoing = false
   let hasDone = false
   for (const ws of workspaces) {
-    if (ws.attention === 'warning') return 'warning'
-    if (ws.attention === 'ongoing') hasOngoing = true
+    if (ws.attention === 'error') return 'error'
+    if (ws.attention === 'warning') hasWarning = true
+    else if (ws.attention === 'ongoing') hasOngoing = true
     else if (ws.attention === 'done') hasDone = true
   }
+  if (hasWarning) return 'warning'
   if (hasOngoing) return 'ongoing'
   if (hasDone) return 'done'
   return undefined
@@ -93,12 +96,13 @@ export function applySidebarFilter(
       for (const session of workspace.sessions) {
         counts.all++
         const state = sessionAttention(session)
-        if (state === 'warning') {
+        if (state === 'error' || state === 'warning') {
           counts.warning++
-          attention = 'warning'
+          if (state === 'error') attention = 'error'
+          else if (attention !== 'error') attention = 'warning'
         } else if (state === 'ongoing') {
           counts.ongoing++
-          if (attention !== 'warning') attention = 'ongoing'
+          if (attention !== 'error' && attention !== 'warning') attention = 'ongoing'
         } else if (state === 'done') {
           counts.done++
           if (attention === undefined) attention = 'done'
@@ -158,13 +162,18 @@ export function applySidebarFilter(
       if (session.updatedAt < cutoff) continue
       counts.all++
       const state = sessionAttention(session)
-      if (state === 'warning') counts.warning++
+      if (state === 'error' || state === 'warning') counts.warning++
       else if (state === 'ongoing') counts.ongoing++
       else if (state === 'done') counts.done++
-      if (filter.status !== 'all' && state !== filter.status) continue
+
+      const matchesStatus = filter.status === 'all'
+        || (filter.status === 'warning' ? (state === 'warning' || state === 'error') : state === filter.status)
+      if (!matchesStatus) continue
+
       matchedSessions.push(session)
-      if (state === 'warning') matchedAttention = 'warning'
-      else if (state === 'ongoing' && matchedAttention !== 'warning') matchedAttention = 'ongoing'
+      if (state === 'error') matchedAttention = 'error'
+      else if (state === 'warning' && matchedAttention !== 'error') matchedAttention = 'warning'
+      else if (state === 'ongoing' && matchedAttention !== 'error' && matchedAttention !== 'warning') matchedAttention = 'ongoing'
       else if (state === 'done' && matchedAttention === undefined) matchedAttention = 'done'
     }
 

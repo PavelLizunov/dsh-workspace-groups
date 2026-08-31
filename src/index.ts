@@ -16,7 +16,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import Schema from '@deepseek-ai/schemastery'
-import type { GroupsContext, GroupsSettingsContext } from './context-types.ts'
+import type { GroupsContext, GroupsSessionProjectionsContext, GroupsSettingsContext } from './context-types.ts'
 import {
   DEFAULT_SIDEBAR_FILTER,
   FILTER_COLOR_PRESETS,
@@ -26,6 +26,7 @@ import {
   type SidebarFilterPreferences,
 } from './core/types.ts'
 import { defaultConfigPath, readGroupsConfig } from './host-config.ts'
+import { workspaceGroupsAttentionProjectionDefinition } from './host-attention.ts'
 import {
   defaultManualPath,
   parseManualGroups,
@@ -167,6 +168,9 @@ export function apply(ctx: GroupsContext): void {
         return parseSidebarFilterPreferences(settings.get(FILTER_SETTINGS_NAMESPACE))
       },
     }
+  })
+  ctx.inject(['sessionProjections'], (injected) => {
+    (injected as GroupsSessionProjectionsContext).sessionProjections.register(workspaceGroupsAttentionProjectionDefinition)
   })
 
   let writeQueue = Promise.resolve()

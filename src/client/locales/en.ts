@@ -110,6 +110,8 @@ export const en: WorkspaceGroupsDict = {
   'session.renameConfirm': 'Rename',
   'session.renameCancel': 'Cancel',
   'session.renaming': 'Renaming…',
+  'session.statusAwaiting': 'Awaiting',
+  'session.statusError': 'Error',
   uncategorized: 'Uncategorized',
   'empty.none': 'Nothing here',
   'empty.noWorkspaces': 'No workspaces yet',

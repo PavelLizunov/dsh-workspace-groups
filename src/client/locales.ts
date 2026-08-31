@@ -120,6 +120,8 @@ export type WorkspaceGroupsKey =
   | 'session.renameConfirm'
   | 'session.renameCancel'
   | 'session.renaming'
+  | 'session.statusAwaiting'
+  | 'session.statusError'
   | 'uncategorized'
   | 'empty.none'
   | 'empty.noWorkspaces'

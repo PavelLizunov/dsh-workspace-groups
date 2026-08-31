@@ -602,6 +602,29 @@
   color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, rgba(127, 127, 127, 0.8)));
 }
 
+.wgSessionPill {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex: none;
+}
+
+.wgSessionPill[data-status="warning"] {
+  background: var(--dsw-alias-state-warning-tertiary, rgba(234, 179, 8, 0.15));
+  color: var(--dsw-alias-state-warning-primary, var(--dsw-fg-warning, #d97706));
+}
+
+.wgSessionPill[data-status="error"] {
+  background: var(--dsw-alias-state-error-tertiary, rgba(239, 68, 68, 0.15));
+  color: var(--dsw-alias-state-error-primary, var(--dsw-fg-error, #ef4444));
+}
+
 /* Five-session limit toggle button row */
 .wgSessionToggle {
   box-sizing: border-box;

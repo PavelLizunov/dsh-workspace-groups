@@ -118,17 +118,20 @@ describe('applySidebarFilter - status filtering & counts', () => {
     expect(result.counts).toEqual({ all: 1, warning: 1, ongoing: 0, done: 0 })
   })
 
-  it('filters by status: warning', () => {
+  it('filters by status: warning including error states in warning scope while preserving error attention', () => {
+    const sErr = createSession('s-err', { projectionReason: 'error' })
+    const sAwaiting = createSession('s-awaiting', { projectionReason: 'awaiting-user' })
+    const sIdle = createSession('s-idle', {})
+    const ws = createWorkspace('ws-err-warn', [sErr, sAwaiting, sIdle])
+    const cat = createCategory('cat-err', [ws])
+
     const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null }
-    const result = applySidebarFilter([cat1], [wsTop], filter, {}, NOW)
+    const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
-    expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-warning'])
-    expect(result.categories[0]!.workspaces[0]!.sessionCount).toBe(1)
-    expect(result.categories[0]!.workspaces[0]!.attention).toBe('warning')
-    expect(result.categories[0]!.attention).toBe('warning')
-
-    expect(result.topLevel[0]!.sessions.map(s => s.id)).toEqual(['s-warning'])
-    expect(result.topLevel[0]!.attention).toBe('warning')
+    expect(result.counts.warning).toBe(2)
+    expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-err', 's-awaiting'])
+    expect(result.categories[0]!.workspaces[0]!.attention).toBe('error')
+    expect(result.categories[0]!.attention).toBe('error')
   })
 
   it('filters by status: ongoing', () => {

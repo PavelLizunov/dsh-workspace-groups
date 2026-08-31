@@ -15,12 +15,13 @@ import {
   type WorkspaceId,
   type WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
+import { readAttentionProjection, type SessionAttentionReason } from '../core/attention.ts'
 import { effectiveCategories, orderedWorkspaceIds, resolveCategory } from '../core/matcher.ts'
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 
 const UNKNOWN_WORKSPACE_LABEL = 'Unknown workspace'
 
-export type AttentionState = 'warning' | 'ongoing' | 'done'
+export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done'
 
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
@@ -40,6 +41,7 @@ export interface SessionNode {
   matched?: boolean
   /** Content-match snippet from the Host search (search mode only). */
   snippet?: string
+  projectionReason?: SessionAttentionReason
 }
 
 /** One workspace folder row inside a category folder. */
@@ -124,6 +126,7 @@ function sessionNode(
   s: SessionSummary,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
 ): SessionNode {
+  const projection = readAttentionProjection(s.projectionValues)
   return {
     id: s.id,
     title: sessionTitle(s),
@@ -133,17 +136,26 @@ function sessionNode(
     completed: s.completed === true,
     updatedAt: s.updatedAt,
     ...(s.pendingInteraction === undefined ? {} : { pendingInteraction: s.pendingInteraction }),
+    ...(projection.reason === null ? {} : { projectionReason: projection.reason }),
   }
 }
 
 /** Derive the attention state for a single session node. */
 export function sessionAttention(
-  node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>,
+  node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>,
 ): AttentionState | undefined {
+  if (
+    node.projectionReason === 'error' ||
+    node.projectionReason === 'interrupted' ||
+    node.projectionReason === 'max-tokens'
+  ) {
+    return 'error'
+  }
   if (
     node.pendingInteraction === 'approval' ||
     node.pendingInteraction === 'plan-review' ||
-    node.pendingInteraction === 'question'
+    node.pendingInteraction === 'question' ||
+    node.projectionReason === 'awaiting-user'
   ) {
     return 'warning'
   }
@@ -151,30 +163,36 @@ export function sessionAttention(
   return node.completed ? 'done' : undefined
 }
 
-/** Aggregate attention state across session nodes with priority warning > ongoing > done. */
+/** Aggregate attention state across session nodes with priority error > warning > ongoing > done. */
 function aggregateAttention(nodes: readonly SessionNode[]): AttentionState | undefined {
+  let hasWarning = false
   let hasOngoing = false
   let hasDone = false
   for (const node of nodes) {
     const state = sessionAttention(node)
-    if (state === 'warning') return 'warning'
-    if (state === 'ongoing') hasOngoing = true
+    if (state === 'error') return 'error'
+    if (state === 'warning') hasWarning = true
+    else if (state === 'ongoing') hasOngoing = true
     else if (state === 'done') hasDone = true
   }
+  if (hasWarning) return 'warning'
   if (hasOngoing) return 'ongoing'
   if (hasDone) return 'done'
   return undefined
 }
 
-/** Aggregate category attention across member workspace nodes with priority warning > ongoing > done. */
+/** Aggregate category attention across member workspace nodes with priority error > warning > ongoing > done. */
 function aggregateCategoryAttention(workspaces: readonly WorkspaceGroupNode[]): AttentionState | undefined {
+  let hasWarning = false
   let hasOngoing = false
   let hasDone = false
   for (const ws of workspaces) {
-    if (ws.attention === 'warning') return 'warning'
-    if (ws.attention === 'ongoing') hasOngoing = true
+    if (ws.attention === 'error') return 'error'
+    if (ws.attention === 'warning') hasWarning = true
+    else if (ws.attention === 'ongoing') hasOngoing = true
     else if (ws.attention === 'done') hasDone = true
   }
+  if (hasWarning) return 'warning'
   if (hasOngoing) return 'ongoing'
   if (hasDone) return 'done'
   return undefined
@@ -217,7 +235,7 @@ export function deriveWorkspaceTree(
   const countSession = (session: SessionNode): void => {
     counts.all++
     const attention = sessionAttention(session)
-    if (attention === 'warning') counts.warning++
+    if (attention === 'error' || attention === 'warning') counts.warning++
     else if (attention === 'ongoing') counts.ongoing++
     else if (attention === 'done') counts.done++
   }

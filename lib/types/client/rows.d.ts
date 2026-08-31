@@ -25,7 +25,7 @@ export declare const DND_CATEGORY_TYPE = "application/x-dsh-workspace-groups-cat
 /** Whether a drag carries any of the plugin's payloads (drop targets accept both). */
 export declare function hasPluginDragType(types: DOMStringList | readonly string[]): boolean;
 /** Primary status dot state for a session row; idle viewed sessions have no dot. */
-export declare function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState | undefined;
+export declare function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>): StateDotState | undefined;
 /** Compact relative time ("now"/"5min"/"3h"/"2d"/"4mo"/"1y"). */
 export declare function relativeTimeLabel(updatedAt: number, now: number): string;
 /** Drop-target props shared by category and workspace rows (all optional). */

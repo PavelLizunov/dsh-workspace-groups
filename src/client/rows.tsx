@@ -50,7 +50,7 @@ export function hasPluginDragType(types: DOMStringList | readonly string[]): boo
 }
 
 /** Primary status dot state for a session row; idle viewed sessions have no dot. */
-export function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): StateDotState | undefined {
+export function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>): StateDotState | undefined {
   return sessionAttention(node)
 }
 
@@ -445,6 +445,8 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
   const selected = node.id === currentId
   const [menuOpen, setMenuOpen] = useState(false)
   const dotState = sessionDotState(node)
+  const pillLabel = dotState === 'error' ? t('session.statusError') : dotState === 'warning' ? t('session.statusAwaiting') : undefined
+  const ariaLabel = pillLabel !== undefined ? `${node.title} (${pillLabel})` : node.title
   const menuItems = [
     ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 />, disabled: actionBusy }] : []),
@@ -463,7 +465,7 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
       tabIndex={0}
       aria-selected={selected}
       aria-current={selected ? 'true' : undefined}
-      aria-label={node.title}
+      aria-label={ariaLabel}
       aria-level={ariaLevel}
       aria-posinset={ariaPosinset}
       aria-setsize={ariaSetsize}
@@ -474,6 +476,9 @@ export function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, 
         {dotState !== undefined && <StateDot state={dotState} />}
       </span>
       <span className="wgSessionTitle">{node.title}</span>
+      {pillLabel !== undefined && (
+        <span className="wgSessionPill" data-status={dotState}>{pillLabel}</span>
+      )}
       {!node.blank && <span className="wgSessionTime">{relativeTimeLabel(node.updatedAt, now)}</span>}
       {node.snippet !== undefined && (
         <span className="wgSessionSnippet" title={node.snippet}>{node.snippet}</span>

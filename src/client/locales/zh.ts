@@ -110,6 +110,8 @@ export const zh: WorkspaceGroupsDict = {
   'session.renameConfirm': '重命名',
   'session.renameCancel': '取消',
   'session.renaming': '重命名中…',
+  'session.statusAwaiting': '等待中',
+  'session.statusError': '错误',
   uncategorized: '未分类',
   'empty.none': '暂无内容',
   'empty.noWorkspaces': '还没有工作区',

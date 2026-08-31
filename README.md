@@ -38,9 +38,9 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
   or returned by a group delete) render as plain rows right after the group folders, at the
   same level — **there is no "Uncategorized" bucket**
-- **Session status dots**: warning for pending interaction, animated for live activity, green
-  for an unviewed completion, and hidden after that completed session is opened; collapsed
-  project and group rows bubble up the highest-priority child status
+- **Visible attention markers**: an amber **Awaiting** pill marks a pending interaction or an
+  SDD approval response, while a red **Error** pill marks error, interrupted, and
+  max-token turn endings; collapsed project and group rows bubble up the highest-priority state
 - **Bounded session lists**: expanded projects show five session rows by default (plus the
   selected session when needed), with transient **Show all / Collapse** controls
 
@@ -81,8 +81,9 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched
   session), matched rows highlighted with a content snippet, 250ms debounce
 - **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
-  New**; the Filter menu adds one group/project color and an optional 24-hour, 7-day, or 30-day
-  recency window. Text, status, color, and recency narrow the result together.
+  New**; **Needs attention** includes both Awaiting and Error sessions. The Filter menu adds one
+  group/project color and an optional 24-hour, 7-day, or 30-day recency window. Text, status,
+  color, and recency narrow the result together.
 - **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
   restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.
 - **Visible criteria, transient expansion**: active filters stay visible with one Reset action; empty
@@ -98,6 +99,8 @@ Captured from the current DSH Web build; workspace and session labels use privac
   overlay (`~/.dsh/workspace-groups.manual.json`), validated by the host and **written
   atomically** (a malformed write returns 400 and keeps the previous file)
 - Filter selection uses the official profile settings service; no settings file is edited directly.
+- Attention detection uses existing `pendingInteraction` state plus one framework-managed incremental
+  session projection; it never scans transcripts or adds session-list requests.
 - **Zero intrusion**: never touches `~/.dsh/storages/workspace.json`, session on-disk
   structures, or the official `@deepseek-ai/dsh-client-ui-workspace` package; the rule YAML
   is never rewritten
