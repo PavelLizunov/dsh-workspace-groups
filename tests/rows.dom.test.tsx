@@ -6,9 +6,10 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  indexSubagentDescendants: () => new Map(),
+const runtimeMocks = vi.hoisted(() => ({
+  indexSubagentDescendants: vi.fn(() => new Map()),
 }))
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
@@ -540,17 +541,20 @@ describe('row interaction contracts', () => {
       headers: new Headers(),
     }))
 
-    const useSessions = vi.fn((selector) => selector({
+    const sessionsSnapshot = {
       ids: ['s1'],
       byId: { s1: { id: 's1', displayTitle: 'S1', blank: false, running: true, updatedAt: Date.now() } },
       current: undefined,
-    }))
-    const useWorkspaces = vi.fn((selector) => selector({
+    }
+    const workspacesSnapshot = {
       items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] }],
       phase: 'ready',
       archivedSessionIds: [],
-    }))
-    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: {} }))
+    }
+    const viewSnapshot = { categoryExpansion: {}, workspaceExpansion: {} }
+    const useSessions = vi.fn((selector) => selector(sessionsSnapshot))
+    const useWorkspaces = vi.fn((selector) => selector(workspacesSnapshot))
+    const useStore = vi.fn((selector) => selector(viewSnapshot))
     const setCategoryExpanded = vi.fn()
     const setWorkspaceExpanded = vi.fn()
     const setCategoriesExpanded = vi.fn()
@@ -585,11 +589,13 @@ describe('row interaction contracts', () => {
       )
     })
 
-    // Activate running filter
+    runtimeMocks.indexSubagentDescendants.mockClear()
+    // Activate running filter without rebuilding the canonical session tree.
     const scopes = Array.from(host.querySelectorAll('.wgStatusScopeBtn'))
     await act(async () => {
       scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
+    expect(runtimeMocks.indexSubagentDescendants).not.toHaveBeenCalled()
 
     setCategoriesExpanded.mockClear()
     setWorkspacesExpanded.mockClear()

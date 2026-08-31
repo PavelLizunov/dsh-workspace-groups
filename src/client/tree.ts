@@ -83,6 +83,21 @@ export interface GroupsTreeView {
   expandedWorkspaces: readonly string[]
 }
 
+/** Attention counts collected while building the canonical session nodes. */
+export interface WorkspaceTreeCounts {
+  all: number
+  warning: number
+  ongoing: number
+  done: number
+}
+
+/** Fully populated grouped and top-level branches for one session snapshot. */
+export interface WorkspaceTree {
+  categories: readonly CategoryNode[]
+  topLevel: readonly WorkspaceGroupNode[]
+  counts: WorkspaceTreeCounts
+}
+
 /** Key of the uncategorized bucket (matches the config fallback label). */
 export const UNCATEGORIZED_KEY = UNCATEGORIZED_LABEL
 
@@ -171,30 +186,128 @@ function workspaceSessions(
   workspace: WorkspaceView,
   archived: ReadonlySet<SessionId>,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
+  onSession?: (session: SessionNode) => void,
 ): SessionNode[] {
   const nodes: SessionNode[] = []
   for (const id of workspace.sessionIds) {
     const summary = list.byId[id]
     if (summary === undefined) continue // account may lead the list pull; appears when the summary lands
     if (!sessionVisible(summary, list.current, archived)) continue
-    nodes.push(sessionNode(summary, descendants))
+    const node = sessionNode(summary, descendants)
+    nodes.push(node)
+    onSession?.(node)
   }
   return nodes
 }
 
-/**
- * Derive the three-level tree.
- * @param list - sessions list snapshot (`current` feeds containsCurrent).
- * @param workspaces - real workspaces in stable Host order.
- * @param archivedSessionIds - registry-global archive set.
- * @param config - sidecar grouping config (rule categories).
- * @param view - local expansion arrays.
- * @param manual - runtime overlay (manual groups + overrides). A workspace's
- * manual override wins over rule classification; removing it reverts to rules.
- * @returns category sections in render order (rule categories first, then
- * manual-only ones, uncategorized last). Manual groups render even while
- * empty; empty rule buckets stay hidden.
- */
+/** Build the fully populated grouped and top-level tree once per list snapshot. */
+export function deriveWorkspaceTree(
+  list: SessionListState,
+  workspaces: readonly WorkspaceView[],
+  archivedSessionIds: readonly SessionId[],
+  config: GroupsConfig,
+  manual: ManualGroups,
+): WorkspaceTree {
+  const archived = new Set(archivedSessionIds)
+  const descendants = indexSubagentDescendants(list.byId)
+  const categoryKeys = effectiveCategories(config, manual).map(({ key }) => key)
+  const byCategory = new Map(categoryKeys.map(key => [key, [] as WorkspaceView[]]))
+  const topLevelWorkspaces: WorkspaceView[] = []
+  const counts: WorkspaceTreeCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
+  const countSession = (session: SessionNode): void => {
+    counts.all++
+    const attention = sessionAttention(session)
+    if (attention === 'warning') counts.warning++
+    else if (attention === 'ongoing') counts.ongoing++
+    else if (attention === 'done') counts.done++
+  }
+  let currentWorkspaceId: WorkspaceId | undefined
+
+  for (const workspace of workspaces) {
+    if (currentWorkspaceId === undefined && list.current !== undefined && workspace.sessionIds.includes(list.current)) {
+      currentWorkspaceId = workspace.workspaceId
+    }
+    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+    if (key === undefined) {
+      topLevelWorkspaces.push(workspace)
+      continue
+    }
+    if (!byCategory.has(key)) byCategory.set(key, [])
+    byCategory.get(key)!.push(workspace)
+  }
+
+  const workspaceNode = (workspace: WorkspaceView): WorkspaceGroupNode => {
+    const sessions = workspaceSessions(list, workspace, archived, descendants, countSession)
+    const attention = aggregateAttention(sessions)
+    return {
+      workspaceId: workspace.workspaceId,
+      path: workspace.path,
+      label: workspace.title,
+      createdAt: Date.parse(workspace.createdAt),
+      sessionCount: sessions.length,
+      expanded: true,
+      containsCurrent: workspace.workspaceId === currentWorkspaceId,
+      sessions,
+      ...(attention === undefined ? {} : { attention }),
+    }
+  }
+
+  const manualCategories = new Set(manual.categories)
+  const categories: CategoryNode[] = []
+  for (const key of categoryKeys) {
+    const bucket = byCategory.get(key) ?? []
+    if (bucket.length === 0 && !manualCategories.has(key)) continue
+    const byId = new Map(bucket.map(workspace => [workspace.workspaceId as string, workspace]))
+    const workspaceNodes = orderedWorkspaceIds(manual, key, [...byId.keys()])
+      .flatMap(workspaceId => {
+        const workspace = byId.get(workspaceId)
+        return workspace === undefined ? [] : [workspaceNode(workspace)]
+      })
+    const attention = aggregateCategoryAttention(workspaceNodes)
+    categories.push({
+      key,
+      label: key,
+      expanded: true,
+      containsCurrent: workspaceNodes.some(workspace => workspace.containsCurrent),
+      workspaces: workspaceNodes,
+      ...(attention === undefined ? {} : { attention }),
+    })
+  }
+
+  const topLevelById = new Map(topLevelWorkspaces.map(workspace => [workspace.workspaceId as string, workspace]))
+  const topLevel = orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, [...topLevelById.keys()])
+    .flatMap(workspaceId => {
+      const workspace = topLevelById.get(workspaceId)
+      return workspace === undefined ? [] : [workspaceNode(workspace)]
+    })
+
+  return { categories, topLevel, counts }
+}
+
+/** Apply expansion state without rescanning or rebuilding session summaries. */
+export function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTreeView): WorkspaceTree {
+  const expandedCategories = new Set(view.expandedCategories)
+  const expandedWorkspaces = new Set(view.expandedWorkspaces)
+  const projectWorkspace = (workspace: WorkspaceGroupNode): WorkspaceGroupNode => {
+    const expanded = expandedWorkspaces.has(workspace.workspaceId as string)
+    return {
+      ...workspace,
+      expanded,
+      sessions: expanded ? workspace.sessions : [],
+    }
+  }
+  return {
+    categories: tree.categories.map(category => ({
+      ...category,
+      expanded: expandedCategories.has(category.key),
+      workspaces: category.workspaces.map(projectWorkspace),
+    })),
+    topLevel: tree.topLevel.map(projectWorkspace),
+    counts: tree.counts,
+  }
+}
+
+/** Derive grouped branches with the requested expansion state. */
 export function deriveGroups(
   list: SessionListState,
   workspaces: readonly WorkspaceView[],
@@ -203,80 +316,13 @@ export function deriveGroups(
   view: GroupsTreeView,
   manual: ManualGroups,
 ): CategoryNode[] {
-  const archived = new Set(archivedSessionIds)
-  const expandedCategories = new Set(view.expandedCategories)
-  const expandedWorkspaces = new Set(view.expandedWorkspaces)
-  const descendants = indexSubagentDescendants(list.byId)
-
-  // Bucket workspaces by display key. Seed with every effective category so
-  // manual groups render while empty. Top-level (ungrouped) workspaces are
-  // handled by deriveTopLevel and never land here.
-  const byCategory = new Map<string, WorkspaceView[]>()
-  for (const { key } of effectiveCategories(config, manual)) {
-    byCategory.set(key, [])
-  }
-  for (const workspace of workspaces) {
-    const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
-    if (key === undefined) continue // top-level — rendered by deriveTopLevel
-    if (!byCategory.has(key)) byCategory.set(key, [])
-    byCategory.get(key)!.push(workspace)
-  }
-
-  const manualCategories = new Set(manual.categories)
-  const currentWorkspaceId = list.current === undefined
-    ? undefined
-    : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
-
-  const nodes: CategoryNode[] = []
-  // Effective categories in display order (categoryOrder applied).
-  for (const key of effectiveCategories(config, manual).map(e => e.key)) {
-    const bucket = byCategory.get(key) ?? []
-    // Manual groups stay visible while empty; everything else hides when empty.
-    if (bucket.length === 0 && !manualCategories.has(key)) continue
-    const expanded = expandedCategories.has(key)
-    const ordered = orderedWorkspaceIds(manual, key, bucket.map(w => w.workspaceId as string))
-    const workspaceNodes: WorkspaceGroupNode[] = []
-    let containsCurrent = false
-    for (const workspaceId of ordered) {
-      const workspace = bucket.find(w => w.workspaceId === workspaceId)
-      if (workspace === undefined) continue
-      const sessions = workspaceSessions(list, workspace, archived, descendants)
-      const wsExpanded = expandedWorkspaces.has(workspace.workspaceId as string)
-      const wsContainsCurrent = workspace.workspaceId === currentWorkspaceId
-      if (wsContainsCurrent) containsCurrent = true
-      const attention = aggregateAttention(sessions)
-      workspaceNodes.push({
-        workspaceId: workspace.workspaceId,
-        path: workspace.path,
-        label: workspace.title,
-        createdAt: Date.parse(workspace.createdAt),
-        sessionCount: sessions.length,
-        expanded: wsExpanded,
-        containsCurrent: wsContainsCurrent,
-        sessions: wsExpanded ? sessions : [],
-        ...(attention === undefined ? {} : { attention }),
-      })
-    }
-    const catAttention = aggregateCategoryAttention(workspaceNodes)
-    nodes.push({
-      key,
-      label: key,
-      expanded,
-      containsCurrent,
-      workspaces: workspaceNodes,
-      ...(catAttention === undefined ? {} : { attention: catAttention }),
-    })
-  }
-  return nodes
+  return [...projectTreeExpansion(
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual),
+    view,
+  ).categories]
 }
 
-/**
- * Top-level (ungrouped) workspace rows: workspaces resolving to no category
- * (no manual override and no matching rule, or a forced `null` override).
- * Rendered after the group folders as plain project rows (not inside any
- * folder), in manual top-level order (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`),
- * falling back to host registration order.
- */
+/** Derive top-level branches with the requested expansion state. */
 export function deriveTopLevel(
   list: SessionListState,
   workspaces: readonly WorkspaceView[],
@@ -285,38 +331,10 @@ export function deriveTopLevel(
   view: GroupsTreeView,
   manual: ManualGroups,
 ): WorkspaceGroupNode[] {
-  const archived = new Set(archivedSessionIds)
-  const expandedWorkspaces = new Set(view.expandedWorkspaces)
-  const descendants = indexSubagentDescendants(list.byId)
-  const currentWorkspaceId = list.current === undefined
-    ? undefined
-    : workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId
-
-  const topLevelIds = workspaces
-    .filter(w => resolveCategory(config, manual, w.workspaceId, w.path, w.title) === undefined)
-    .map(w => w.workspaceId as string)
-  const ordered = orderedWorkspaceIds(manual, TOP_LEVEL_ORDER_KEY, topLevelIds)
-
-  const nodes: WorkspaceGroupNode[] = []
-  for (const workspaceId of ordered) {
-    const workspace = workspaces.find(w => w.workspaceId === workspaceId)
-    if (workspace === undefined) continue
-    const sessions = workspaceSessions(list, workspace, archived, descendants)
-    const wsExpanded = expandedWorkspaces.has(workspaceId)
-    const attention = aggregateAttention(sessions)
-    nodes.push({
-      workspaceId: workspace.workspaceId,
-      path: workspace.path,
-      label: workspace.title,
-      createdAt: Date.parse(workspace.createdAt),
-      sessionCount: sessions.length,
-      expanded: wsExpanded,
-      containsCurrent: workspace.workspaceId === currentWorkspaceId,
-      sessions: wsExpanded ? sessions : [],
-      ...(attention === undefined ? {} : { attention }),
-    })
-  }
-  return nodes
+  return [...projectTreeExpansion(
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual),
+    view,
+  ).topLevel]
 }
 
 /** Recency comparator: newest first, id as the deterministic tiebreak. */
@@ -351,7 +369,6 @@ export function deriveSearchMatches(
   const q = query.trim().toLowerCase()
   if (q === '') return { matchedIds: new Set(), snippetsBySession: new Map(), hasMore: false }
   const archived = new Set(archivedSessionIds)
-  const descendants = indexSubagentDescendants(list.byId)
 
   const workspaceBySession = new Map<SessionId, WorkspaceView>()
   for (const workspace of workspaces) {

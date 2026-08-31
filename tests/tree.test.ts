@@ -11,12 +11,13 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  indexSubagentDescendants: () => new Map(),
+const runtimeMocks = vi.hoisted(() => ({
+  indexSubagentDescendants: vi.fn(() => new Map()),
 }))
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
 import type { SessionListState, SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
-import { deriveGroups, deriveTopLevel, workspaceLabel } from '../src/client/tree.ts'
+import { deriveGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, workspaceLabel } from '../src/client/tree.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
 
 const CONFIG: GroupsConfig = {
@@ -281,5 +282,31 @@ describe('aggregated attention state derivation', () => {
     const list = customListState(sessions)
     const top = deriveTopLevel(list, [ws], [], CONFIG, VIEW, { categories: [], assignments: {} })
     expect(top[0]?.attention).toBe('ongoing')
+  })
+
+  it('derives one canonical tree and projects expansion without rescanning sessions', () => {
+    const grouped = workspace('ws-grouped', '/src/SomePlugin', 'Grouped Plugin', ['s1'])
+    const top = workspace('ws-top', '/tmp/random', 'Random', ['s2'])
+    const list = customListState({
+      s1: sessionWithState('s1', { running: true }),
+      s2: sessionWithState('s2', { completed: true }),
+    })
+    runtimeMocks.indexSubagentDescendants.mockClear()
+
+    const canonical = deriveWorkspaceTree(list, [grouped, top], [], CONFIG, { categories: [], assignments: {} })
+    expect(runtimeMocks.indexSubagentDescendants).toHaveBeenCalledTimes(1)
+    expect(canonical.categories[0]?.workspaces[0]?.sessions).toHaveLength(1)
+    expect(canonical.topLevel[0]?.sessions).toHaveLength(1)
+    expect(canonical.counts).toEqual({ all: 2, warning: 0, ongoing: 1, done: 1 })
+
+    const projected = projectTreeExpansion(canonical, {
+      expandedCategories: ['DSH Plugins'],
+      expandedWorkspaces: ['ws-grouped'],
+    })
+    expect(runtimeMocks.indexSubagentDescendants).toHaveBeenCalledTimes(1)
+    expect(projected.categories[0]?.expanded).toBe(true)
+    expect(projected.categories[0]?.workspaces[0]?.sessions[0]).toBe(canonical.categories[0]?.workspaces[0]?.sessions[0])
+    expect(projected.topLevel[0]?.expanded).toBe(false)
+    expect(projected.topLevel[0]?.sessions).toEqual([])
   })
 })

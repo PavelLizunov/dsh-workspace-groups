@@ -2,16 +2,17 @@
  * Scale fixtures & pure derivation benchmarks (100 / 500 / 1000 Workspaces).
  *
  * Measures pure derivation performance (deriveGroups, deriveTopLevel, deriveSearchMatches)
- * under generous non-flaky thresholds, asserts semantic counts/ordering, and identifies
- * repeated-scan hot paths without modifying production code.
+ * under generous non-flaky thresholds, asserts semantic counts/ordering, and guards the
+ * canonical one-index tree projection used by the browser.
  */
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  indexSubagentDescendants: () => new Map(),
+const runtimeMocks = vi.hoisted(() => ({
+  indexSubagentDescendants: vi.fn(() => new Map()),
 }))
+vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
-import { deriveGroups, deriveSearchMatches, deriveTopLevel } from '../src/client/tree.ts'
+import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion } from '../src/client/tree.ts'
 import { generateScaleSnapshot, type ScaleSnapshot } from './scale-fixtures.ts'
 
 const SCALES = [100, 500, 1000]
@@ -174,59 +175,45 @@ describe('Scale Fixtures & Pure Derivation Benchmarks', () => {
     })
   }
 
-  describe('Repeated-Scan Hot Path Analysis', () => {
-    it('documents and verifies identified repeated-scan hot paths in pure tree derivation', () => {
-      const hotPaths = [
-        {
-          id: 'resolveCategory-displayCategoryKeys',
-          location: 'src/core/matcher.ts -> resolveCategory()',
-          pattern: 'Calls displayCategoryKeys(config, manual) on every workspace override check',
-          complexity: 'O(W * C) where W = workspaces, C = effective categories',
-          impact: 'Repeated array & Set allocations inside workspace classification loop',
-        },
-        {
-          id: 'deriveGroups-currentWorkspaceId-scan',
-          location: 'src/client/tree.ts -> deriveGroups() line 176',
-          pattern: 'workspaces.find(w => w.sessionIds.includes(list.current))',
-          complexity: 'O(W * S_ws) linear array scan over all workspaces and sessions',
-          impact: 'Executes on every tree re-derivation even when selected session did not change',
-        },
-        {
-          id: 'deriveGroups-bucket-workspace-lookup',
-          location: 'src/client/tree.ts -> deriveGroups() line 191',
-          pattern: 'bucket.find(w => w.workspaceId === workspaceId) inside ordered loop',
-          complexity: 'O(K^2) quadratic lookup per category bucket of size K',
-          impact: 'Scans bucket array for every item in ordered workspace IDs list',
-        },
-        {
-          id: 'deriveTopLevel-workspace-lookup',
-          location: 'src/client/tree.ts -> deriveTopLevel() line 248',
-          pattern: 'workspaces.find(w => w.workspaceId === workspaceId) inside top-level loop',
-          complexity: 'O(T * W) linear array scan where T = top-level count, W = total workspaces',
-          impact: 'Full workspace array scan for every top-level workspace in display order',
-        },
-        {
-          id: 'indexSubagentDescendants-full-scan',
-          location: 'src/client/tree.ts -> indexSubagentDescendants() call site',
-          pattern: 'Called on every deriveGroups, deriveTopLevel, deriveSearchMatches invocation',
-          complexity: 'O(S) full map scan over list.byId',
-          impact: 'Re-indexes subagents on every tree state derive even when subagent tree is unchanged',
-        },
-        {
-          id: 'deriveSearchMatches-workspaceBySession-map-construction',
-          location: 'src/client/tree.ts -> deriveSearchMatches() line 301',
-          pattern: 'Populates workspaceBySession map from scratch iterating all workspaces and sessionIds',
-          complexity: 'O(W * S_ws) work on every query keystroke',
-          impact: 'Re-allocates Map and populates entries across all workspace sessions on search query changes',
-        },
-      ]
+  describe('Canonical Tree Projection', () => {
+    it('indexes lineage once and projects 1000 workspaces without another scan', () => {
+      const snapshot = generateScaleSnapshot(1000)
+      runtimeMocks.indexSubagentDescendants.mockClear()
 
-      expect(hotPaths).toHaveLength(6)
-      for (const hp of hotPaths) {
-        expect(hp.id).toBeTruthy()
-        expect(hp.complexity).toBeTruthy()
-        expect(hp.impact).toBeTruthy()
-      }
+      const canonical = deriveWorkspaceTree(
+        snapshot.listState,
+        snapshot.workspaces,
+        snapshot.archivedSessionIds,
+        snapshot.config,
+        snapshot.manual,
+      )
+      const projected = projectTreeExpansion(canonical, snapshot.view)
+
+      expect(runtimeMocks.indexSubagentDescendants).toHaveBeenCalledTimes(1)
+      expect(projected.categories.flatMap(category => category.workspaces)).toHaveLength(800)
+      expect(projected.topLevel).toHaveLength(200)
+
+      runtimeMocks.indexSubagentDescendants.mockClear()
+      const matches = deriveSearchMatches(
+        snapshot.listState,
+        snapshot.workspaces,
+        snapshot.config,
+        snapshot.searchQuery,
+        snapshot.archivedSessionIds,
+        snapshot.searchResults,
+        snapshot.searchLimit,
+      )
+      expect(runtimeMocks.indexSubagentDescendants).not.toHaveBeenCalled()
+      deriveSearchGroups(
+        snapshot.listState,
+        snapshot.workspaces,
+        snapshot.config,
+        matches.matchedIds,
+        snapshot.archivedSessionIds,
+        snapshot.manual,
+        matches.snippetsBySession,
+      )
+      expect(runtimeMocks.indexSubagentDescendants).toHaveBeenCalledTimes(1)
     })
   })
 })

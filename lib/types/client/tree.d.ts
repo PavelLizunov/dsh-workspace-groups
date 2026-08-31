@@ -64,33 +64,32 @@ export interface GroupsTreeView {
     expandedCategories: readonly string[];
     expandedWorkspaces: readonly string[];
 }
+/** Attention counts collected while building the canonical session nodes. */
+export interface WorkspaceTreeCounts {
+    all: number;
+    warning: number;
+    ongoing: number;
+    done: number;
+}
+/** Fully populated grouped and top-level branches for one session snapshot. */
+export interface WorkspaceTree {
+    categories: readonly CategoryNode[];
+    topLevel: readonly WorkspaceGroupNode[];
+    counts: WorkspaceTreeCounts;
+}
 /** Key of the uncategorized bucket (matches the config fallback label). */
 export declare const UNCATEGORIZED_KEY = "\u672A\u5206\u7C7B";
 /** Directory display label: basename of the path (both separators accepted). */
 export declare function workspaceLabel(cwd: string | undefined): string;
 /** Derive the attention state for a single session node. */
 export declare function sessionAttention(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed'>): AttentionState | undefined;
-/**
- * Derive the three-level tree.
- * @param list - sessions list snapshot (`current` feeds containsCurrent).
- * @param workspaces - real workspaces in stable Host order.
- * @param archivedSessionIds - registry-global archive set.
- * @param config - sidecar grouping config (rule categories).
- * @param view - local expansion arrays.
- * @param manual - runtime overlay (manual groups + overrides). A workspace's
- * manual override wins over rule classification; removing it reverts to rules.
- * @returns category sections in render order (rule categories first, then
- * manual-only ones, uncategorized last). Manual groups render even while
- * empty; empty rule buckets stay hidden.
- */
+/** Build the fully populated grouped and top-level tree once per list snapshot. */
+export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups): WorkspaceTree;
+/** Apply expansion state without rescanning or rebuilding session summaries. */
+export declare function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTreeView): WorkspaceTree;
+/** Derive grouped branches with the requested expansion state. */
 export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
-/**
- * Top-level (ungrouped) workspace rows: workspaces resolving to no category
- * (no manual override and no matching rule, or a forced `null` override).
- * Rendered after the group folders as plain project rows (not inside any
- * folder), in manual top-level order (`workspaceOrder[TOP_LEVEL_ORDER_KEY]`),
- * falling back to host registration order.
- */
+/** Derive top-level branches with the requested expansion state. */
 export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): WorkspaceGroupNode[];
 /** Bounded set of matched sessions plus content snippets (feeds the search tree). */
 export interface SearchMatchSet {

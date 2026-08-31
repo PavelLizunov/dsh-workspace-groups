@@ -106,6 +106,18 @@ describe('applySidebarFilter - status filtering & counts', () => {
     expect(result.categories[0]!.workspaces[0]!.expanded).toBe(true)
   })
 
+  it('reuses an already-expanded canonical tree under the default filter', () => {
+    const session = createSession('canonical-warning', { pendingInteraction: 'approval' })
+    const workspace = createWorkspace('canonical-workspace', [session], { expanded: true, attention: 'warning' })
+    const category = createCategory('canonical-category', [workspace], { expanded: true, attention: 'warning' })
+
+    const result = applySidebarFilter([category], [], DEFAULT_SIDEBAR_FILTER, {}, NOW)
+
+    expect(result.categories[0]).toBe(category)
+    expect(result.categories[0]?.workspaces[0]).toBe(workspace)
+    expect(result.counts).toEqual({ all: 1, warning: 1, ongoing: 0, done: 0 })
+  })
+
   it('filters by status: warning', () => {
     const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null }
     const result = applySidebarFilter([cat1], [wsTop], filter, {}, NOW)
@@ -233,6 +245,30 @@ describe('applySidebarFilter - counts apply color+recency before status', () => 
       ongoing: 0,
       done: 1,
     })
+  })
+})
+
+describe('applySidebarFilter - combined filters', () => {
+  it('applies color and recency to counts before selecting the requested status', () => {
+    const day = 24 * 3600 * 1000
+    const recentWarning = createSession('recent-warning', { pendingInteraction: 'approval', updatedAt: NOW - day })
+    const recentDone = createSession('recent-done', { completed: true, updatedAt: NOW - day })
+    const oldWarning = createSession('old-warning', { pendingInteraction: 'approval', updatedAt: NOW - 10 * day })
+    const redWorkspace = createWorkspace('ws-red', [recentWarning, recentDone, oldWarning])
+    const blueWorkspace = createWorkspace('ws-blue', [createSession('blue-warning', { pendingInteraction: 'approval' })])
+    const filter: SidebarFilter = { status: 'warning', recency: '7d', color: 'red' }
+
+    const result = applySidebarFilter(
+      [createCategory('cat-red', [redWorkspace]), createCategory('cat-blue', [blueWorkspace])],
+      [],
+      filter,
+      { 'cat-red': 'red', 'cat-blue': 'blue' },
+      NOW,
+    )
+
+    expect(result.counts).toEqual({ all: 2, warning: 1, ongoing: 0, done: 1 })
+    expect(result.categories).toHaveLength(1)
+    expect(result.categories[0]?.workspaces[0]?.sessions.map(session => session.id)).toEqual(['recent-warning'])
   })
 })
 

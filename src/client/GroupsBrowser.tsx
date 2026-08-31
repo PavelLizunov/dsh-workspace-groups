@@ -51,13 +51,14 @@ import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
-import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.ts'
+import { deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
 const EMPTY_FILTER_COUNTS: FilterCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
+const EMPTY_WORKSPACE_TREE: WorkspaceTree = { categories: [], topLevel: [], counts: EMPTY_FILTER_COUNTS }
 
 /** Overlay with every optional field materialized (plain-object edits, no undefined spreads). */
 type NormalizedManual = Required<ManualGroups>
@@ -310,7 +311,7 @@ export function GroupsBrowser({
 
   const list = useSessions(s => s)
   const current = list.current
-  const now = Date.now()
+  const now = useMemo(() => Date.now(), [list])
   const currentWorkspaceKey = current === undefined
     ? undefined
     : (workspaces.find(w => w.sessionIds.includes(current as SessionId))?.workspaceId as string | undefined)
@@ -418,45 +419,28 @@ export function GroupsBrowser({
   const allCategoryKeys = useMemo(() => displayCategoryKeys(config, manual), [config, manual])
   const allWorkspaceIds = useMemo(() => workspaces.map(w => w.workspaceId as string), [workspaces])
 
-  const fullIdleGroups = useMemo(
-    () => deriveGroups(list, workspaces, archivedSessionIds, config, {
-      expandedCategories: allCategoryKeys,
-      expandedWorkspaces: allWorkspaceIds,
-    }, manual),
-    [list, workspaces, archivedSessionIds, config, manual, allCategoryKeys, allWorkspaceIds],
+  const canonicalTree = useMemo(
+    () => normalizedQuery === ''
+      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual)
+      : EMPTY_WORKSPACE_TREE,
+    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery],
   )
-
-  const fullIdleTopLevel = useMemo(
-    () => deriveTopLevel(list, workspaces, archivedSessionIds, config, {
-      expandedCategories: allCategoryKeys,
-      expandedWorkspaces: allWorkspaceIds,
-    }, manual),
-    [list, workspaces, archivedSessionIds, config, manual, allCategoryKeys, allWorkspaceIds],
-  )
-
   const filterResult = useMemo(
-    () => applySidebarFilter(fullIdleGroups, fullIdleTopLevel, filter, manual.colors, now),
-    [fullIdleGroups, fullIdleTopLevel, filter, manual.colors, now],
+    () => isFilterActive
+      ? applySidebarFilter(canonicalTree.categories, canonicalTree.topLevel, filter, manual.colors, Date.now())
+      : canonicalTree,
+    [canonicalTree, filter, isFilterActive, manual.colors],
+  )
+  const idleTree = useMemo(
+    () => projectTreeExpansion(canonicalTree, { expandedCategories, expandedWorkspaces }),
+    [canonicalTree, expandedCategories, expandedWorkspaces],
   )
 
   // Which level is being dragged: drives the top-level drop target (project
   // drags only) and which level's rows fold.
   const [dragging, setDragging] = useState<DragLevel>(null)
-  const groups = useMemo(
-    () => deriveGroups(list, workspaces, archivedSessionIds, config, {
-      expandedCategories,
-      expandedWorkspaces,
-    }, manual),
-    [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
-  )
-  // Top-level (ungrouped) workspace rows, rendered after the group folders.
-  const topLevel = useMemo(
-    () => deriveTopLevel(list, workspaces, archivedSessionIds, config, {
-      expandedCategories,
-      expandedWorkspaces,
-    }, manual),
-    [list, workspaces, archivedSessionIds, config, manual, expandedCategories, expandedWorkspaces],
-  )
+  const groups = idleTree.categories
+  const topLevel = idleTree.topLevel
 
   const filteredGroups = useMemo(
     () => filterResult.categories.map(category => ({
@@ -2104,8 +2088,8 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
     [list, workspaces, config, matches, archivedSessionIds, manual],
   )
   const filteredSearch = useMemo(
-    () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, now),
-    [searchTree, filter, manual.colors, now],
+    () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now()),
+    [searchTree, filter, manual.colors],
   )
 
   useEffect(() => {
