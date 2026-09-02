@@ -91,6 +91,7 @@ Captured from the current DSH Web build; workspace and session labels use privac
   Expansion changes made while filtering are temporary and isolated from the persisted idle state.
   Filtered search results keep the five-session preview and **Show all / Collapse** controls.
 - **Fixed filter controls & active chips**: status scope bar, filter controls, and active summary chips remain fixed at the top of the workspace browser while the tree list scrolls underneath.
+- **Session cleanup & archive**: bulk archive inactive sessions older than a configurable threshold (7, 14, 30, 60, 90 days, or custom days). Available globally from Tree Actions (⋯ menu) or scoped to a specific project from the workspace context menu. Safely skips running agents, pending interactions, and the active session.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
   session new/open/rename/fork/archive.
 

@@ -272,7 +272,7 @@ export function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntir
 }
 
 /** One workspace folder row inside a category: draggable source + drop target. */
-export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, color, onSetColor, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, draggable = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, onCleanup, color, onSetColor, canMoveOut = false, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat = false, draggable = false, dropActive = false, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
   node: WorkspaceGroupNode
   t: T
   /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -280,6 +280,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
   onNewSession?: () => void
   onRename?: () => void
   onDelete?: () => void
+  onCleanup?: (() => void) | undefined
   color?: string | null | undefined
   onSetColor?: ((color: string | null) => void) | undefined
   /** Project currently sits inside a group — offer "move out of group". */
@@ -327,6 +328,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
         : []),
     ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
     ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
+    ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutline20 size={16} /> }] : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
   ]
@@ -392,6 +394,7 @@ export function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDele
             if (id === 'moveDown') onMoveDown?.()
             if (id === 'openFolder') onOpenFolder?.()
             if (id === 'copyPath') onCopyPath?.()
+            if (id === 'cleanup') onCleanup?.()
             if (id === 'moveOut') onMoveOut?.()
             if (id.startsWith('moveTo:')) onMoveTo?.(id.slice('moveTo:'.length))
             if (id === 'rename') onRename?.()

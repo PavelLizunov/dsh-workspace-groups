@@ -13,7 +13,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
-  Modal: ({ children, open }: { children?: React.ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+  Modal: ({ children, footer, open }: { children?: React.ReactNode; footer?: React.ReactNode; open?: boolean }) => (open ? <div>{children}{footer}</div> : null),
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   IconArchiveOutline20: () => <span />,
   IconBranchOutline16: () => <span />,
@@ -178,6 +178,24 @@ describe('row interaction contracts', () => {
     expect(newSession).toHaveBeenCalledOnce()
     expect(rename).toHaveBeenCalledOnce()
     expect(buttons.some(button => button.textContent === 'workspace.delete')).toBe(false)
+  })
+
+  it('Workspace cleanup control invokes real callback when provided', () => {
+    const cleanup = vi.fn()
+    act(() => {
+      root.render(
+        <WorkspaceRow
+          node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: true, containsCurrent: false, sessions: [] }}
+          t={t}
+          onCleanup={cleanup}
+        />,
+      )
+    })
+    const buttons = Array.from(host.querySelectorAll('button'))
+    const cleanupButton = buttons.find(button => button.textContent === 'cleanup.action')
+    expect(cleanupButton).toBeDefined()
+    act(() => { cleanupButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    expect(cleanup).toHaveBeenCalledOnce()
   })
 
   it('Session Fork and Archive controls are disabled while another action is busy', () => {
@@ -722,6 +740,216 @@ describe('row interaction contracts', () => {
       await Promise.resolve()
     })
     expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null })
+
+    vi.unstubAllGlobals()
+  })
+
+  it('opens cleanup dialog from tree actions and archives eligible sessions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ categories: [] }),
+      headers: new Headers(),
+    }))
+
+    const archiveSession = vi.fn().mockResolvedValue(undefined)
+    const now = Date.now()
+    const dayMs = 86_400_000
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1', 's2', 's3'],
+      byId: {
+        s1: { id: 's1', displayTitle: 'Old Session 1', blank: false, running: false, updatedAt: now - 40 * dayMs },
+        s2: { id: 's2', displayTitle: 'New Session 2', blank: false, running: false, updatedAt: now - 5 * dayMs },
+        s3: { id: 's3', displayTitle: 'Old Running 3', blank: false, running: true, updatedAt: now - 50 * dayMs },
+      },
+      current: undefined,
+    }))
+
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1', 's2', 's3'] }],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: { w1: true } }))
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={archiveSession}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    // Open Tree Actions menu
+    const treeActionsBtn = host.querySelector<HTMLElement>('[aria-label="tree.actions"]')!
+    const menuContainer = treeActionsBtn.closest('[data-menu-portal]')
+    const cleanupBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'cleanup.action')
+    expect(cleanupBtn).toBeDefined()
+
+    await act(async () => {
+      cleanupBtn?.click()
+    })
+
+    // Dialog should be open
+    const dialogTitle = host.querySelector('.wgCleanupDescription')
+    expect(dialogTitle).not.toBeNull()
+    expect(dialogTitle?.textContent).toBe('cleanup.description')
+
+    // At default 30 days, only s1 (40 days) should match; s2 is 5 days, s3 is running
+    const preview = host.querySelector('.wgCleanupCount')
+    expect(preview?.textContent).toContain('1')
+
+    // Switch to 7 days preset
+    const preset7 = Array.from(host.querySelectorAll('.wgCleanupPresetBtn')).find(b => b.textContent?.startsWith('7'))
+    expect(preset7).toBeDefined()
+
+    await act(async () => {
+      preset7?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    // Now both s1 (40 days) and s2 (5 days) are not > 7 days, wait: 40 days > 7 days, but 5 days is NOT > 7 days!
+    // So still 1!
+    // What if we enter 2 days in custom input?
+    const numberInput = host.querySelector<HTMLInputElement>('.wgCleanupNumberInput')!
+    expect(numberInput).not.toBeNull()
+
+    await act(async () => {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      nativeSetter?.call(numberInput, '2')
+      numberInput.dispatchEvent(new Event('input', { bubbles: true }))
+      numberInput.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    // Now at 2 days cutoff: s1 (40 days) and s2 (5 days) are older than 2 days! Count is 2.
+    const preview2 = host.querySelector('.wgCleanupCount')
+    expect(preview2?.textContent).toContain('2')
+
+    // Confirm archiving
+    const confirmBtn = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'cleanup.confirm')
+    expect(confirmBtn).toBeDefined()
+
+    await act(async () => {
+      confirmBtn?.click()
+    })
+
+    // archiveSession should have been called for s1 and s2 (sorted oldest first: s1 then s2)
+    expect(archiveSession).toHaveBeenCalledTimes(2)
+    expect(archiveSession).toHaveBeenNthCalledWith(1, 's1')
+    expect(archiveSession).toHaveBeenNthCalledWith(2, 's2')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('opens cleanup dialog from workspace menu scoped to that workspace', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ categories: [] }),
+      headers: new Headers(),
+    }))
+
+    const archiveSession = vi.fn().mockResolvedValue(undefined)
+    const now = Date.now()
+    const dayMs = 86_400_000
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1', 's2'],
+      byId: {
+        s1: { id: 's1', displayTitle: 'Old Session in W1', blank: false, running: false, updatedAt: now - 40 * dayMs },
+        s2: { id: 's2', displayTitle: 'Old Session in W2', blank: false, running: false, updatedAt: now - 40 * dayMs },
+      },
+      current: undefined,
+    }))
+
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [
+        { workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] },
+        { workspaceId: 'w2', path: '/w2', title: 'W2', createdAt: '2026-01-01', sessionIds: ['s2'] },
+      ],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: {}, workspaceExpansion: { w1: true, w2: true } }))
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={archiveSession}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    // Find the WorkspaceRow for w1
+    const w1Row = host.querySelector('[data-wsid="w1"]')
+    expect(w1Row).not.toBeNull()
+
+    // Find cleanup button in w1's menu items
+    const cleanupBtn = Array.from(w1Row?.querySelectorAll('button') ?? []).find(b => b.textContent === 'cleanup.action')
+    expect(cleanupBtn).toBeDefined()
+
+    await act(async () => {
+      cleanupBtn?.click()
+    })
+
+    // Scope should show w1's label
+    const scopeEl = host.querySelector('.wgCleanupScope')
+    expect(scopeEl?.textContent).toContain('W1')
+
+    // Count should be 1 (only s1 from w1, even though s2 is also >30 days old)
+    const preview = host.querySelector('.wgCleanupCount')
+    expect(preview?.textContent).toContain('1')
+
+    // Confirm
+    const confirmBtn = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'cleanup.confirm')
+    await act(async () => {
+      confirmBtn?.click()
+    })
+
+    expect(archiveSession).toHaveBeenCalledOnce()
+    expect(archiveSession).toHaveBeenCalledWith('s1')
 
     vi.unstubAllGlobals()
   })

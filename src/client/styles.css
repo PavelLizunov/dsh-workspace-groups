@@ -974,3 +974,99 @@
     font-size: 12px;
   }
 }
+
+/* Session Cleanup Dialog */
+.wgCleanupDescription {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
+}
+
+.wgCleanupScope {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, inherit));
+}
+
+.wgCleanupDaysRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wgCleanupDaysLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgCleanupPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wgCleanupPresetBtn {
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-border, rgba(127, 127, 127, 0.3)));
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base, var(--dsw-bg-1, transparent));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.wgCleanupPresetBtn:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover, var(--dsw-bg-hover, rgba(127, 127, 127, 0.12)));
+}
+
+.wgCleanupPresetBtnActive {
+  border-color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  background: var(--dsw-alias-interactive-bg-secondary, rgba(74, 144, 217, 0.15));
+  color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+  font-weight: 600;
+}
+
+.wgCleanupCustomInput {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.wgCleanupNumberInput {
+  box-sizing: border-box;
+  width: 80px;
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-border, rgba(127, 127, 127, 0.3)));
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base, var(--dsw-bg-1, transparent));
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.wgCleanupNumberInput:focus {
+  border-color: var(--dsw-alias-state-business-primary, var(--dsw-accent, #4a90d9));
+}
+
+.wgCleanupUnit {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
+}
+
+.wgCleanupPreview {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--dsw-alias-interactive-bg-secondary, rgba(127, 127, 127, 0.08));
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary, var(--dsw-fg-1, inherit));
+}
+
+.wgCleanupEmpty {
+  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, inherit));
+}

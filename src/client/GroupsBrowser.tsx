@@ -36,7 +36,8 @@ import {
   type SidebarFilter,
   type StatusScope,
 } from './tree-filter.ts'
-import type { SessionId, SessionListState, SessionSearchResultItem, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState, SessionSearchResultItem, SessionSummary, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import { CLEANUP_DAYS_PRESETS, DEFAULT_CLEANUP_DAYS, findOldSessionsToArchive } from './session-cleanup.ts'
 import {
   displayCategoryKeys,
   moveAfter,
@@ -678,6 +679,50 @@ export function GroupsBrowser({
     }).finally(() => { setSessionActionBusy(false) })
   }
 
+  // ---- Session cleanup -------------------------------------------------------
+
+  type CleanupTarget = { workspaceId?: WorkspaceId | undefined; workspaceTitle?: string | undefined } | null
+  const [cleanupTarget, setCleanupTarget] = useState<CleanupTarget>(null)
+  const [cleanupDays, setCleanupDays] = useState<number>(DEFAULT_CLEANUP_DAYS)
+  const [cleanupBusy, setCleanupBusy] = useState<boolean>(false)
+  const [cleanupError, setCleanupError] = useState<string | null>(null)
+
+  const cleanupCandidates = useMemo(() => {
+    if (cleanupTarget === null) return []
+    const targetWs = cleanupTarget.workspaceId !== undefined
+      ? workspaces.find(w => w.workspaceId === cleanupTarget.workspaceId)
+      : undefined
+    const allSessions = list.ids.map(id => list.byId[id]).filter((s): s is SessionSummary => s !== undefined)
+    return findOldSessionsToArchive(allSessions, {
+      days: cleanupDays,
+      now,
+      currentSessionId: list.current,
+      archivedSessionIds,
+      targetWorkspaceSessionIds: targetWs?.sessionIds,
+    })
+  }, [cleanupTarget, cleanupDays, workspaces, list, now, archivedSessionIds])
+
+  const onCleanupConfirm = async () => {
+    if (cleanupBusy || cleanupCandidates.length === 0) return
+    setCleanupBusy(true)
+    setCleanupError(null)
+    try {
+      for (const session of cleanupCandidates) {
+        await archiveSession(session.id)
+      }
+      setCleanupTarget(null)
+    } catch (reason: unknown) {
+      setCleanupError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setCleanupBusy(false)
+    }
+  }
+
+  const onCleanupRequest = (workspaceId?: WorkspaceId | undefined, title?: string | undefined) => {
+    setCleanupTarget(workspaceId === undefined ? {} : { workspaceId, workspaceTitle: title })
+    setCleanupError(null)
+  }
+
   // ---- Runtime group management ----------------------------------------------
 
   const [groupDialog, setGroupDialog] = useState<GroupDialogState>(null)
@@ -1149,12 +1194,15 @@ export function GroupsBrowser({
                 { id: 'collapseAll', label: t('tree.collapseAll') },
                 { id: 'expandGroups', label: t('tree.expandGroups') },
                 { id: 'expandAll', label: t('tree.expandAll') },
+                { type: 'separator' as const, id: 'tree-cleanup-sep' },
+                { id: 'cleanup', label: t('cleanup.action') },
               ]}
               onSelect={(id) => {
                 setHeaderMenuOpen(false)
                 if (id === 'collapseAll') setTreeExpanded(false, false)
                 if (id === 'expandGroups') setTreeExpanded(true, false)
                 if (id === 'expandAll') setTreeExpanded(true, true)
+                if (id === 'cleanup') onCleanupRequest(undefined, undefined)
               }}
               portal
               closeOnPointerLeave
@@ -1331,6 +1379,9 @@ export function GroupsBrowser({
                 setDeleteTarget({ workspaceId, title })
                 setDeleteError(null)
               }}
+              onWorkspaceCleanup={(workspaceId, title) => {
+                onCleanupRequest(workspaceId, title)
+              }}
               onSessionRename={onSessionRename}
               onSessionFork={onSessionFork}
               onSessionArchive={onSessionArchive}
@@ -1395,6 +1446,7 @@ export function GroupsBrowser({
                     setDeleteTarget({ workspaceId, title })
                     setDeleteError(null)
                   }}
+                  onCleanupRequest={onCleanupRequest}
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onSessionFork}
@@ -1479,6 +1531,7 @@ export function GroupsBrowser({
                     setDeleteTarget({ workspaceId, title })
                     setDeleteError(null)
                   }}
+                  onCleanupRequest={onCleanupRequest}
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onSessionFork}
@@ -1663,6 +1716,91 @@ export function GroupsBrowser({
       >
         <div className="wgAddError" role="alert">{addError}</div>
       </Modal>
+
+      {/* Session cleanup dialog */}
+      <Modal
+        open={cleanupTarget !== null}
+        onClose={() => {
+          if (!cleanupBusy) {
+            setCleanupTarget(null)
+            setCleanupError(null)
+          }
+        }}
+        closeLabel={t('close')}
+        title={t('cleanup.title')}
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              disabled={cleanupBusy}
+              onClick={() => {
+                setCleanupTarget(null)
+                setCleanupError(null)
+              }}
+            >
+              {t('cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={cleanupBusy || cleanupCandidates.length === 0}
+              onClick={() => { void onCleanupConfirm() }}
+            >
+              {cleanupBusy ? t('cleanup.archiving') : t('cleanup.confirm')}
+            </Button>
+          </>
+        )}
+      >
+        <div className="wgCleanupDescription">{t('cleanup.description')}</div>
+        <div className="wgCleanupScope">
+          {cleanupTarget?.workspaceTitle
+            ? `${t('cleanup.scopeWorkspace')}: ${cleanupTarget.workspaceTitle}`
+            : t('cleanup.scopeGlobal')}
+        </div>
+        <div className="wgCleanupDaysRow">
+          <label className="wgCleanupDaysLabel" htmlFor="wg-cleanup-days-input">
+            {t('cleanup.daysLabel')}
+          </label>
+          <div className="wgCleanupPresets">
+            {CLEANUP_DAYS_PRESETS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={`wgCleanupPresetBtn${cleanupDays === d ? ' wgCleanupPresetBtnActive' : ''}`}
+                disabled={cleanupBusy}
+                onClick={() => { setCleanupDays(d) }}
+              >
+                {d} {t('cleanup.daysUnit')}
+              </button>
+            ))}
+          </div>
+          <div className="wgCleanupCustomInput">
+            <input
+              id="wg-cleanup-days-input"
+              type="number"
+              min={1}
+              max={9999}
+              className="wgCleanupNumberInput"
+              value={cleanupDays}
+              disabled={cleanupBusy}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10)
+                if (!isNaN(val) && val > 0) setCleanupDays(val)
+              }}
+            />
+            <span className="wgCleanupUnit">{t('cleanup.daysUnit')}</span>
+          </div>
+        </div>
+        <div className="wgCleanupPreview" role="status">
+          {cleanupCandidates.length > 0 ? (
+            <span className="wgCleanupCount">
+              {t('cleanup.countPrefix')} <strong>{cleanupCandidates.length}</strong> {t('cleanup.countSuffix')}
+            </span>
+          ) : (
+            <span className="wgCleanupEmpty">{t('cleanup.noSessions')}</span>
+          )}
+        </div>
+        {cleanupError !== null && <div className="wgAddError" role="alert">{t('cleanup.error')}: {cleanupError}</div>}
+      </Modal>
     </div>
   )
 }
@@ -1838,7 +1976,7 @@ function WorkspaceSessions({
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
   category: CategoryNode
   categoryIndex: number
   totalRootItems: number
@@ -1860,6 +1998,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
   onDeleteRequest: (workspaceId: WorkspaceId, title: string) => void
+  onCleanupRequest: (workspaceId: WorkspaceId, title: string) => void
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
@@ -1927,6 +2066,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 onNewSession={() => { onNewSession(workspace.workspaceId) }}
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
+                onCleanup={() => { onCleanupRequest(workspace.workspaceId, workspace.label) }}
                 color={manual.colors?.[workspace.workspaceId]}
                 onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 canMoveOut={canMoveOut(workspace.workspaceId)}
@@ -1982,7 +2122,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
+function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
   topLevel: readonly WorkspaceGroupNode[]
   totalGroups: number
   totalRootItems: number
@@ -2003,6 +2143,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onOpen: (sessionId: SessionId) => void
   onRenameRequest: (workspaceId: WorkspaceId, currentTitle: string) => void
   onDeleteRequest: (workspaceId: WorkspaceId, title: string) => void
+  onCleanupRequest: (workspaceId: WorkspaceId, title: string) => void
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
@@ -2050,6 +2191,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             onNewSession={() => { onNewSession(workspace.workspaceId) }}
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
+            onCleanup={() => { onCleanupRequest(workspace.workspaceId, workspace.label) }}
             color={manual.colors?.[workspace.workspaceId]}
             onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
             moveTargets={moveTargetsFor(workspace.workspaceId)}
@@ -2088,7 +2230,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
+function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -2107,6 +2249,7 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
   onResetFilter?: () => void
   onWorkspaceRename: (workspaceId: WorkspaceId, title: string) => void
   onWorkspaceDelete: (workspaceId: WorkspaceId, title: string) => void
+  onWorkspaceCleanup?: (workspaceId: WorkspaceId, title: string) => void
   onSessionRename: (sessionId: SessionId, title: string) => void
   onSessionFork: (sessionId: SessionId) => void
   onSessionArchive: (sessionId: SessionId) => void
@@ -2158,6 +2301,7 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                   onNewSession={() => { startSession(workspace.workspaceId) }}
                   onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
                   onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
+                  onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
                 />
                 <WorkspaceSessions
                   sessions={workspace.sessions}
@@ -2188,6 +2332,7 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             onNewSession={() => { startSession(workspace.workspaceId) }}
             onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
+            onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
           />
           <WorkspaceSessions
             sessions={workspace.sessions}

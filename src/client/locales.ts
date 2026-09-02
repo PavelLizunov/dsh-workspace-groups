@@ -139,6 +139,19 @@ export type WorkspaceGroupsKey =
   | 'tree.expandAll'
   | 'group.expandEntire'
   | 'group.collapseEntire'
+  | 'cleanup.title'
+  | 'cleanup.action'
+  | 'cleanup.description'
+  | 'cleanup.daysLabel'
+  | 'cleanup.daysUnit'
+  | 'cleanup.confirm'
+  | 'cleanup.archiving'
+  | 'cleanup.noSessions'
+  | 'cleanup.countPrefix'
+  | 'cleanup.countSuffix'
+  | 'cleanup.scopeGlobal'
+  | 'cleanup.scopeWorkspace'
+  | 'cleanup.error'
 
 export type WorkspaceGroupsDict = LocaleDictOf<'workspaceGroups'>
 
