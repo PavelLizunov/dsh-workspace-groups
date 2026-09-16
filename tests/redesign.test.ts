@@ -394,4 +394,10 @@ describe('bulk tree expansion and fixed filter bar source contracts', () => {
     expect(rowsSource).toContain('event.altKey')
     expect(rowsSource).toContain('toggleEntire()')
   })
+
+  it('supports CategoryRow add workspace to group action and menu item', () => {
+    expect(rowsSource).toContain("t('group.addWorkspace')")
+    expect(rowsSource).toContain("id: 'addWorkspace'")
+    expect(browserSource).toContain('targetCategoryForAdd')
+  })
 })

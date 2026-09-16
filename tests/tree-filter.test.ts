@@ -229,6 +229,19 @@ describe('applySidebarFilter - color preset filtering', () => {
 
     expect(result.counts.all).toBe(4)
   })
+
+  it('includes a workspace when a child session color matches the target color', () => {
+    const coloredSession = createSession('s-tagged', { color: 'pink' })
+    const uncoloredSession = createSession('s-plain')
+    const workspace = createWorkspace('ws-plain', [coloredSession, uncoloredSession])
+    const category = createCategory('cat-plain-session', [workspace])
+    const filter: SidebarFilter = { status: 'all', recency: 'all', color: 'pink' }
+
+    const result = applySidebarFilter([category], [], filter, {}, NOW)
+    expect(result.categories).toHaveLength(1)
+    expect(result.categories[0]?.workspaces.map(w => w.workspaceId)).toEqual(['ws-plain'])
+    expect(result.categories[0]?.workspaces[0]?.sessions.map(s => s.id)).toEqual(['s-tagged', 's-plain'])
+  })
 })
 
 describe('applySidebarFilter - counts apply color+recency before status', () => {

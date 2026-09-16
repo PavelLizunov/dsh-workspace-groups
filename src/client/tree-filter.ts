@@ -48,7 +48,7 @@ function getRecencyCutoff(recency: RecencyScope, now: number): number {
 }
 
 function isWorkspaceColorMatched(
-  workspaceId: string,
+  workspace: WorkspaceGroupNode,
   categoryKey: string | undefined,
   targetColor: ColorPreset | null,
   colors?: Record<string, string | null>,
@@ -57,7 +57,8 @@ function isWorkspaceColorMatched(
   if (categoryKey !== undefined && colors?.[categoryKey] === targetColor) {
     return true
   }
-  return colors?.[workspaceId] === targetColor
+  if (colors?.[workspace.workspaceId] === targetColor) return true
+  return workspace.sessions.some(session => session.color === targetColor || colors?.[session.id] === targetColor)
 }
 
 function aggregateCategoryAttention(workspaces: readonly WorkspaceGroupNode[]): AttentionState | undefined {
@@ -152,7 +153,7 @@ export function applySidebarFilter(
     workspace: WorkspaceGroupNode,
     categoryKey: string | undefined,
   ): WorkspaceGroupNode | null {
-    if (!isWorkspaceColorMatched(workspace.workspaceId, categoryKey, filter.color, colors)) {
+    if (!isWorkspaceColorMatched(workspace, categoryKey, filter.color, colors)) {
       return null
     }
 

@@ -41,12 +41,21 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - **Visible attention markers**: an amber **Awaiting** pill marks a pending interaction or an
   SDD approval response, while a red **Error** pill marks error, interrupted, and
   max-token turn endings; collapsed project and group rows bubble up the highest-priority state
-- **Bounded session lists**: expanded projects show five session rows by default (plus the
-  selected session when needed), with transient **Show all / Collapse** controls
+- **Bounded session lists & pinned sessions**: expanded projects show five session rows by default (plus the
+  selected session and any pinned or color-tagged sessions when needed), with transient **Show all / Collapse** controls.
+  Sessions can be pinned or unpinned within a workspace via their `⋯` menu (**Pin session / Unpin session**);
+  pinned sessions display a pin icon and always remain visible at the top of the workspace.
+- **Color ping on groups, projects, and sessions**: hover a row and use its color button to tag it with one of
+  the eight presets. The same compact portal menu works in search results. Color-tagged sessions stay in the
+  five-row preview, and the Finder color filter matches a group, project, or any session tagged with that color.
 
 ### Group management (full lifecycle)
 - **Create groups manually**: the "New group" button in the section header shows the group
   immediately (empty groups render too)
+- **Add workspace directly into a group**: click the quick "Add workspace to group" button
+  on any group row, or select "Add workspace to group" in the group's `⋯` menu, to create
+  a new workspace that is immediately assigned to that group and persisted to the overlay —
+  no separate creation and drag-and-drop required
 - **Rename / delete any group**: every group row (**rule categories included**) has a hover
   `⋯` menu; deleting a group sends all of its projects back to the **top level**;
   rule-category rename/delete rides the overlay (`renamed` / `hidden`),
@@ -82,7 +91,7 @@ Captured from the current DSH Web build; workspace and session labels use privac
   session), matched rows highlighted with a content snippet, 250ms debounce
 - **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
   New**; **Needs attention** includes both Awaiting and Error sessions. The Filter menu adds one
-  group/project color and an optional 24-hour, 7-day, or 30-day recency window. Text, status,
+  group/project/session color and an optional 24-hour, 7-day, or 30-day recency window. Text, status,
   color, and recency narrow the result together.
 - **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
   restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.
@@ -93,10 +102,10 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - **Fixed filter controls & active chips**: status scope bar, filter controls, and active summary chips remain fixed at the top of the workspace browser while the tree list scrolls underneath.
 - **Session cleanup & archive**: bulk archive inactive sessions older than a configurable threshold (7, 14, 30, 60, 90 days, or custom days). Available globally from Tree Actions (⋯ menu) or scoped to a specific project from the workspace context menu. Safely skips running agents, pending interactions, and the active session.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
-  session new/open/rename/fork/archive.
+  session new/open/rename/fork/archive, and session pin/unpin.
 
 ### Persistence & zero intrusion
-- Every manual action (groups, grouping, ordering, rename, hide) is written to the plugin's own
+- Every manual action (groups, grouping, ordering, rename, hide, pinned sessions, color tags) is written to the plugin's own
   overlay (`~/.dsh/workspace-groups.manual.json`), validated by the host and **written
   atomically** (a malformed write returns 400 and keeps the previous file)
 - Filter selection uses the official profile settings service; no settings file is edited directly.
@@ -223,6 +232,8 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 - `categoryOrder` — group display order (top-level rows are not listed here; they always
   render after the group folders).
 - `workspaceOrder` — per-group manual ordering of projects (written by drag ordering).
+- `colors` — optional color ping keyed by group name, workspace id, or session id (one of the eight presets).
+- `pinnedSessions` — per-workspace ordered session ids that stay at the top of that project.
 - `renamed` / `hidden` — UI rename/delete of rule categories (a hidden category's rules become
   inert and its matches go top-level); the rule YAML stays untouched.
 - The file is written in full by the browser UI (`PUT /workspace-groups/manual`, atomic
@@ -236,7 +247,7 @@ UI operations**, at `$DSH_HOME/workspace-groups.manual.json` (e.g. `~/.dsh/works
 |---|---|
 | Create group | "New group" button in the section header (folder icon), enter a name in the dialog |
 | Rename/delete group | hover `⋯` menu on **any** group (rule categories included); deleting sends its projects back to the top level |
-| Set group/project color | hover the row and use its color button; the compact portal menu stays inside the viewport |
+| Set group/project/session color | hover the row and use its color button; the compact portal menu stays inside the viewport |
 | Drag project into group | drag a project row onto a target group row / any project row inside a group, release to move |
 | Reorder projects | drag a project row onto another project row in the same group: **top half = insert before, bottom half = insert after** (indicator shows the spot); expansion stays unchanged while dragging |
 | Reorder top-level projects | drag a top-level row onto another top-level row: **top half = insert before, bottom half = insert after**; order persists under `workspaceOrder["__topLevel__"]` |

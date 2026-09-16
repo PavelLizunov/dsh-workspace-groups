@@ -1,4 +1,3 @@
-import { classify } from './core/matcher.js';
 import { type GroupsConfig } from './core/types.js';
 /** Default sidecar location: `$DSH_HOME/workspace-groups.yaml` (DSH_HOME falls back to ~/.dsh). */
 export declare function defaultConfigPath(): string;
@@ -10,5 +9,4 @@ export declare function parseGroupsConfig(raw: unknown): GroupsConfig;
  * so the operator sees the problem instead of silently ungrouping everything.
  */
 export declare function readGroupsConfig(path: string): Promise<GroupsConfig>;
-export { classify };
 export type { GroupsConfig, GroupCategory, GroupRule } from './core/types.js';

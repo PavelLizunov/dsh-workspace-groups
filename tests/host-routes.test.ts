@@ -310,4 +310,52 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     const statuses = [res1.status, res2.status].sort()
     expect(statuses).toEqual([200, 409])
   })
+
+  it('persists and returns pinnedSessions through wrapped PUT and GET config', async () => {
+    const configRes = await fetch(`${baseUrl}/workspace-groups/config`)
+    const configData = await configRes.json()
+
+    const putRes = await fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedRevision: configData.revision,
+        manual: {
+          categories: ['Work'],
+          assignments: { 'ws-1': 'Work' },
+          pinnedSessions: { 'ws-1': ['sess-alpha', 'sess-beta'] },
+        },
+      }),
+    })
+
+    expect(putRes.status).toBe(200)
+    const putData = await putRes.json()
+    expect(putData.ok).toBe(true)
+
+    const updatedConfigRes = await fetch(`${baseUrl}/workspace-groups/config`)
+    const updatedData = await updatedConfigRes.json()
+    expect(updatedData.manual.pinnedSessions).toEqual({ 'ws-1': ['sess-alpha', 'sess-beta'] })
+  })
+
+  it('rejects wrapped PUT with mixed top-level pinnedSessions', async () => {
+    const configRes = await fetch(`${baseUrl}/workspace-groups/config`)
+    const configData = await configRes.json()
+
+    const res = await fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expectedRevision: configData.revision,
+        manual: {
+          categories: [],
+          assignments: {},
+        },
+        pinnedSessions: { 'ws-1': ['sess-1'] },
+      }),
+    })
+
+    expect(res.status).toBe(400)
+    const text = await res.text()
+    expect(text).toContain('pinnedSessions')
+  })
 })

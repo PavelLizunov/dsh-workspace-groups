@@ -39,6 +39,20 @@ export declare function moveWorkspace(manual: ManualGroups, params: MoveWorkspac
  */
 export declare function renameGroup(manual: ManualGroups, oldName: string, newName: string, options?: RenameGroupOptions): ManualGroups;
 /**
- * Set or clear the visual color tag for a group or workspace in the overlay.
+ * Set or clear the visual color tag for a group, workspace, or session in the overlay.
  */
 export declare function setItemColor(manual: ManualGroups, itemKey: string, color: string | null): ManualGroups;
+/**
+ * Pin a session inside a workspace. Pinned sessions are prepended to the workspace's pinned list.
+ * Idempotent if already pinned.
+ */
+export declare function pinSession(manual: ManualGroups, workspaceId: string, sessionId: string): ManualGroups;
+/**
+ * Unpin a session inside a workspace. Removes workspace entry if empty.
+ * Idempotent if not pinned.
+ */
+export declare function unpinSession(manual: ManualGroups, workspaceId: string, sessionId: string): ManualGroups;
+/**
+ * Toggle pin state of a session inside a workspace.
+ */
+export declare function togglePinSession(manual: ManualGroups, workspaceId: string, sessionId: string): ManualGroups;

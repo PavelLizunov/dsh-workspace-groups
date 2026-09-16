@@ -94,6 +94,20 @@ describe('parseManualGroups', () => {
     expect(() => parseManualGroups({ renamed: { 'DSH Plugins': 42 } })).toThrow(/non-empty string/)
   })
 
+  it('parses pinnedSessions and rejects invalid shapes', () => {
+    const parsed = parseManualGroups({
+      categories: [],
+      assignments: {},
+      pinnedSessions: { 'ws-1': ['sess-1', 'sess-2'] },
+    })
+    expect(parsed.pinnedSessions).toEqual({ 'ws-1': ['sess-1', 'sess-2'] })
+
+    expect(() => parseManualGroups({ pinnedSessions: 'not-a-map' })).toThrow(/pinnedSessions/)
+    expect(() => parseManualGroups({ pinnedSessions: { '': ['sess-1'] } })).toThrow(/non-empty/)
+    expect(() => parseManualGroups({ pinnedSessions: { 'ws-1': 'not-a-list' } })).toThrow(/list/)
+    expect(() => parseManualGroups({ pinnedSessions: { 'ws-1': ['sess-1', 'sess-1'] } })).toThrow(/duplicate/)
+  })
+
   it('rejects the reserved top-level key as a renamed display value', () => {
     expect(() => parseManualGroups({ renamed: { 'DSH Plugins': TOP_LEVEL_ORDER_KEY } })).toThrow(/reserved/)
   })
@@ -167,7 +181,7 @@ describe('manual file round-trip', () => {
     }
   })
 
-  it('write then read returns the same overlay with colors', async () => {
+  it('write then read returns the same overlay with colors and pinnedSessions', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'wg-manual-'))
     const path = join(dir, 'workspace-groups.manual.json')
     try {
@@ -175,6 +189,7 @@ describe('manual file round-trip', () => {
         categories: ['Temporary'],
         assignments: { 'ws-1': 'Temporary' },
         colors: { 'Temporary': 'red', 'ws-1': 'blue' },
+        pinnedSessions: { 'ws-1': ['sess-1', 'sess-2'] },
       }
       await writeManualGroups(path, overlay)
       expect(await readManualGroups(path)).toEqual(overlay)

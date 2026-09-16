@@ -19,4 +19,46 @@ describe('visibleWorkspaceSessions', () => {
   it('shows every session after expansion', () => {
     expect(visibleWorkspaceSessions(sessions, 's8' as never, true)).toEqual(sessions)
   })
+
+  it('keeps pinned sessions visible even when outside the first five', () => {
+    const withPinned = [
+      { id: 's1' as never },
+      { id: 's2' as never },
+      { id: 's3' as never },
+      { id: 's4' as never },
+      { id: 's5' as never },
+      { id: 's6' as never },
+      { id: 's7' as never, pinned: true },
+      { id: 's8' as never },
+    ]
+    expect(visibleWorkspaceSessions(withPinned, undefined, false)).toEqual([
+      withPinned[0],
+      withPinned[1],
+      withPinned[2],
+      withPinned[3],
+      withPinned[4],
+      withPinned[6], // s7 is pinned!
+    ])
+  })
+
+  it('keeps color-tagged sessions visible even when outside the first five', () => {
+    const withColor = [
+      { id: 's1' as never },
+      { id: 's2' as never },
+      { id: 's3' as never },
+      { id: 's4' as never },
+      { id: 's5' as never },
+      { id: 's6' as never },
+      { id: 's7' as never, color: 'red' },
+      { id: 's8' as never },
+    ]
+    expect(visibleWorkspaceSessions(withColor, undefined, false)).toEqual([
+      withColor[0],
+      withColor[1],
+      withColor[2],
+      withColor[3],
+      withColor[4],
+      withColor[6],
+    ])
+  })
 })

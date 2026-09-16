@@ -8,7 +8,6 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { load as parseYaml } from 'js-yaml'
-import { classify } from './core/matcher.ts'
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type GroupCategory } from './core/types.ts'
 
 /** Default sidecar location: `$DSH_HOME/workspace-groups.yaml` (DSH_HOME falls back to ~/.dsh). */
@@ -96,5 +95,4 @@ export async function readGroupsConfig(path: string): Promise<GroupsConfig> {
   return parseGroupsConfig(raw)
 }
 
-export { classify }
 export type { GroupsConfig, GroupCategory, GroupRule } from './core/types.ts'

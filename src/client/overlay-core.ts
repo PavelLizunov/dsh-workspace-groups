@@ -118,11 +118,17 @@ export function removeWorkspace(
     delete colors[workspaceId]
   }
 
+  let pinnedSessions: Record<string, string[]> | undefined = manual.pinnedSessions ? { ...manual.pinnedSessions } : undefined
+  if (pinnedSessions) {
+    delete pinnedSessions[workspaceId]
+  }
+
   return {
     ...manual,
     assignments,
     workspaceOrder,
     ...(colors !== undefined ? { colors } : {}),
+    ...(pinnedSessions !== undefined ? { pinnedSessions } : {}),
   }
 }
 
@@ -243,7 +249,7 @@ export function renameGroup(
 }
 
 /**
- * Set or clear the visual color tag for a group or workspace in the overlay.
+ * Set or clear the visual color tag for a group, workspace, or session in the overlay.
  */
 export function setItemColor(
   manual: ManualGroups,
@@ -261,3 +267,63 @@ export function setItemColor(
     colors,
   }
 }
+
+/**
+ * Pin a session inside a workspace. Pinned sessions are prepended to the workspace's pinned list.
+ * Idempotent if already pinned.
+ */
+export function pinSession(
+  manual: ManualGroups,
+  workspaceId: string,
+  sessionId: string,
+): ManualGroups {
+  const current = manual.pinnedSessions?.[workspaceId] ?? []
+  if (current.includes(sessionId)) return manual
+  const pinnedSessions: Record<string, string[]> = {
+    ...(manual.pinnedSessions ?? {}),
+    [workspaceId]: [sessionId, ...current],
+  }
+  return {
+    ...manual,
+    pinnedSessions,
+  }
+}
+
+/**
+ * Unpin a session inside a workspace. Removes workspace entry if empty.
+ * Idempotent if not pinned.
+ */
+export function unpinSession(
+  manual: ManualGroups,
+  workspaceId: string,
+  sessionId: string,
+): ManualGroups {
+  const current = manual.pinnedSessions?.[workspaceId] ?? []
+  if (!current.includes(sessionId)) return manual
+  const next = current.filter(id => id !== sessionId)
+  const pinnedSessions: Record<string, string[]> = { ...(manual.pinnedSessions ?? {}) }
+  if (next.length === 0) {
+    delete pinnedSessions[workspaceId]
+  } else {
+    pinnedSessions[workspaceId] = next
+  }
+  return {
+    ...manual,
+    pinnedSessions,
+  }
+}
+
+/**
+ * Toggle pin state of a session inside a workspace.
+ */
+export function togglePinSession(
+  manual: ManualGroups,
+  workspaceId: string,
+  sessionId: string,
+): ManualGroups {
+  const current = manual.pinnedSessions?.[workspaceId] ?? []
+  return current.includes(sessionId)
+    ? unpinSession(manual, workspaceId, sessionId)
+    : pinSession(manual, workspaceId, sessionId)
+}
+

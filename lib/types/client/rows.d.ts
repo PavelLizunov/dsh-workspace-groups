@@ -9,51 +9,19 @@
  * The payload is a custom dataTransfer type so only in-plugin drags land.
  */
 import { type DragEvent } from 'react';
-import { type StateDotState } from '@deepseek-ai/dsh-client-ui-primitives';
-import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
-import { type CategoryNode, type SessionNode, type WorkspaceGroupNode } from './tree.js';
-export interface WorkspaceMoveTarget {
-    key: string;
-    label: string;
-    current: boolean;
-}
-type T = TranslateNS<'workspaceGroups'>;
-/** dataTransfer type carrying the dragged workspace id (in-plugin drags only). */
-export declare const DND_WORKSPACE_TYPE = "application/x-dsh-workspace-groups";
-/** dataTransfer type carrying the dragged category key (group reorder). */
-export declare const DND_CATEGORY_TYPE = "application/x-dsh-workspace-groups-category";
-/** Whether a drag carries any of the plugin's payloads (drop targets accept both). */
-export declare function hasPluginDragType(types: DOMStringList | readonly string[]): boolean;
-/** Primary status dot state for a session row; idle viewed sessions have no dot. */
-export declare function sessionDotState(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>): StateDotState | undefined;
-/** Compact relative time ("now"/"5min"/"3h"/"2d"/"4mo"/"1y"). */
-export declare function relativeTimeLabel(updatedAt: number, now: number): string;
-/** Drop-target props shared by category and workspace rows (all optional). */
-export interface RowDropProps {
-    /** Row is under the dragged workspace — show the drop highlight. */
-    dropActive?: boolean;
-    /** Insertion indicator: a line above (before) or below (after) this row. */
-    insertLine?: 'before' | 'after';
-    /** Accept a drag over this row (must preventDefault to allow the drop). */
-    onRowDragOver?: (event: DragEvent) => void;
-    /** Clear the highlight when the pointer leaves the row. */
-    onRowDragLeave?: (event: DragEvent) => void;
-    /** Drop a workspace onto this row. */
-    onRowDrop?: (event: DragEvent) => void;
-}
-export declare const COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
-/**
- * One category folder row: toggle, rename/delete menu (every group — rule
- * groups via overlay renames/hides), draggable source for group reorder and
- * drop target for both workspace moves and group reorders.
- */
-export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+import { type RowDropProps, type T, type WorkspaceMoveTarget } from './row-utils.js';
+import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.js';
+export * from './row-utils.js';
+export { ColorMenu } from './ColorMenu.tsx';
+export type { ColorMenuProps } from './ColorMenu.tsx';
+export interface CategoryRowProps extends RowDropProps {
     node: CategoryNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
     onToggle?: () => void;
     onExpandEntire?: (() => void) | undefined;
     onCollapseEntire?: (() => void) | undefined;
+    onAddWorkspace?: (() => void) | undefined;
     /** Rename/delete actions; the hover menu renders only when both provided. */
     onRename?: () => void;
     onDelete?: () => void;
@@ -70,9 +38,14 @@ export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onColla
     'aria-level'?: number;
     'aria-posinset'?: number;
     'aria-setsize'?: number;
-} & RowDropProps): import("react").JSX.Element;
-/** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, onCleanup, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, draggable, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+}
+/**
+ * One category folder row: toggle, rename/delete menu (every group — rule
+ * groups via overlay renames/hides), draggable source for group reorder and
+ * drop target for both workspace moves and group reorders.
+ */
+export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onAddWorkspace, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: CategoryRowProps): import("react").JSX.Element;
+export interface WorkspaceRowProps extends RowDropProps {
     node: WorkspaceGroupNode;
     t: T;
     /** Omit for fixed-expanded, non-toggleable search branches. */
@@ -106,9 +79,10 @@ export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename
     'aria-level'?: number;
     'aria-posinset'?: number;
     'aria-setsize'?: number;
-} & RowDropProps): import("react").JSX.Element;
-/** One session leaf row. */
-export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, actionBusy, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize }: {
+}
+/** One workspace folder row inside a category: draggable source + drop target. */
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, onCleanup, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, draggable, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: WorkspaceRowProps): import("react").JSX.Element;
+export interface SessionRowProps {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
@@ -117,9 +91,22 @@ export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, 
     onRename?: (id: SessionNode['id'], currentTitle: string) => void;
     onFork?: (id: SessionNode['id']) => void;
     onArchive?: (id: SessionNode['id']) => void;
+    onPinToggle?: ((id: SessionNode['id']) => void) | undefined;
+    color?: string | null | undefined;
+    onSetColor?: ((color: string | null) => void) | undefined;
     actionBusy?: boolean;
     'aria-level'?: number;
     'aria-posinset'?: number;
     'aria-setsize'?: number;
+}
+export declare function IconPin16({ size, className }: {
+    size?: number;
+    className?: string;
 }): import("react").JSX.Element;
+export declare function IconPinOff16({ size, className }: {
+    size?: number;
+    className?: string;
+}): import("react").JSX.Element;
+/** One session leaf row. */
+export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, onPinToggle, color, onSetColor, actionBusy, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: SessionRowProps): import("react").JSX.Element;
 export type { T };

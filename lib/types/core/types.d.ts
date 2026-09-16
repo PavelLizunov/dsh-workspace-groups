@@ -81,10 +81,15 @@ export interface ManualGroups {
      */
     hidden?: string[];
     /**
-     * Optional color tags/badges keyed by category name or workspace id.
+     * Optional color tags/badges keyed by category name, workspace id, or session id.
      * Value is a color preset identifier or CSS color string (or null/absent to clear).
      */
     colors?: Record<string, string | null>;
+    /**
+     * Pinned session ids per workspace, keyed by workspace id.
+     * Pinned sessions render at the top of their workspace in this order.
+     */
+    pinnedSessions?: Record<string, string[]>;
 }
 /** Allowed shared sidebar color-filter presets. */
 export declare const FILTER_COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];

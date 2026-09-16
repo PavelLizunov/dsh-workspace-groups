@@ -4,10 +4,14 @@
  * scans. Session visibility rules mirror the official ui-workspace tree
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
-import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSummary, type SubagentDescendantSummary, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
 import { type SessionAttentionReason } from '../core/attention.js';
 import { type GroupsConfig, type ManualGroups } from '../core/types.js';
-export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done';
+import { type AttentionState } from './tree-attention.js';
+export type { AttentionState } from './tree-attention.js';
+export { sessionAttention, aggregateAttention, aggregateCategoryAttention } from './tree-attention.js';
+export type { SearchMatchSet, SearchTree } from './tree-search.js';
+export { byRecency, deriveSearchMatches, deriveSearchGroups } from './tree-search.js';
 /** One top-level session row inside a workspace folder. */
 export interface SessionNode {
     id: SessionId;
@@ -27,6 +31,10 @@ export interface SessionNode {
     /** Content-match snippet from the Host search (search mode only). */
     snippet?: string;
     projectionReason?: SessionAttentionReason;
+    /** True when the session is pinned to the top of its workspace. */
+    pinned?: boolean;
+    /** Color ping from the overlay (`manual.colors[sessionId]`). */
+    color?: string;
 }
 /** One workspace folder row inside a category folder. */
 export interface WorkspaceGroupNode {
@@ -83,8 +91,11 @@ export interface WorkspaceTree {
 export declare const UNCATEGORIZED_KEY = "\u672A\u5206\u7C7B";
 /** Directory display label: basename of the path (both separators accepted). */
 export declare function workspaceLabel(cwd: string | undefined): string;
-/** Derive the attention state for a single session node. */
-export declare function sessionAttention(node: Pick<SessionNode, 'pendingInteraction' | 'running' | 'runningSubagentCount' | 'completed' | 'projectionReason'>): AttentionState | undefined;
+/** Ordinary sessions are visible; blank only when current; archived/subagent never. */
+export declare function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean;
+/** Blank rows display the localized New Session label (never enters search). */
+export declare function sessionTitle(session: SessionSummary): string;
+export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, color?: string | null): SessionNode;
 /** Build the fully populated grouped and top-level tree once per list snapshot. */
 export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups): WorkspaceTree;
 /** Apply expansion state without rescanning or rebuilding session summaries. */
@@ -93,46 +104,3 @@ export declare function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTr
 export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
 /** Derive top-level branches with the requested expansion state. */
 export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): WorkspaceGroupNode[];
-/** Bounded set of matched sessions plus content snippets (feeds the search tree). */
-export interface SearchMatchSet {
-    /** Session ids that matched (local metadata hits + Host content hits). */
-    matchedIds: ReadonlySet<SessionId>;
-    /** Content-match snippets keyed by session id (Host search only). */
-    snippetsBySession: ReadonlyMap<SessionId, string>;
-    hasMore: boolean;
-}
-/**
- * Compute the matched-session set: immediate title/Workspace substring matches
- * from the local list, merged with ranked Host content matches. The consumer
- * (SearchBody) derives the pruned three-level tree from these ids.
- */
-export declare function deriveSearchMatches(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, query: string, archivedSessionIds: readonly SessionId[], content: {
-    items: readonly SessionSearchResultItem[];
-    hasMore: boolean;
-}, limit: number): SearchMatchSet;
-/** Search tree: group folders plus top-level (ungrouped) matched workspaces. */
-export interface SearchTree {
-    /** Group folders containing matched sessions, in display order. */
-    categories: CategoryNode[];
-    /** Top-level (ungrouped) workspaces holding matched sessions. */
-    topLevel: WorkspaceGroupNode[];
-}
-/**
- * Build a three-level search tree containing ONLY the branches that hold a
- * matched session: category folder → workspace folder → matched session row. Every matched
- * session carries `matched: true` so rows render with the search-hit tint.
- * Classification uses the same precedence as the idle tree (manual override →
- * rules), so search shows the same grouping the user sees. Matched top-level
- * workspaces are returned separately (rendered as plain rows).
- *
- * @param list - sessions list snapshot.
- * @param workspaces - real workspaces in stable Host order.
- * @param config - sidecar grouping config.
- * @param matchedIds - set of session ids that matched the query.
- * @param archivedSessionIds - registry-global archive set.
- * @param manual - runtime overlay (manual groups + overrides).
- * @param snippetsBySession - optional content-match snippets keyed by session id.
- * @returns group folders in render order plus top-level matched workspaces,
- * pruned to matched branches only.
- */
-export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>): SearchTree;

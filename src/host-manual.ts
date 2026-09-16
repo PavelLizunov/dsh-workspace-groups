@@ -142,6 +142,19 @@ export function parseManualGroups(raw: unknown): ManualGroups {
     }
     manual.colors = colors
   }
+  if (source.pinnedSessions !== undefined) {
+    if (typeof source.pinnedSessions !== 'object' || source.pinnedSessions === null || Array.isArray(source.pinnedSessions)) {
+      throw new Error('workspace-groups.manual.json: pinnedSessions must be a mapping')
+    }
+    const pinnedSessions: Record<string, string[]> = {}
+    for (const [workspaceId, ids] of Object.entries(source.pinnedSessions)) {
+      if (workspaceId.trim() === '') {
+        throw new Error('workspace-groups.manual.json: pinnedSessions keys must be non-empty')
+      }
+      pinnedSessions[workspaceId] = parseStringList(ids, `pinnedSessions["${workspaceId}"]`, true)
+    }
+    manual.pinnedSessions = pinnedSessions
+  }
 
   return manual
 }

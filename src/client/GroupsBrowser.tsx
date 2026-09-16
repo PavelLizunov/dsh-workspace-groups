@@ -50,7 +50,7 @@ import {
 import { parseSidebarFilterPreferences, TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
-import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor } from './overlay-core.ts'
+import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
@@ -65,7 +65,7 @@ const EMPTY_WORKSPACE_TREE: WorkspaceTree = { categories: [], topLevel: [], coun
 type NormalizedManual = Required<ManualGroups>
 
 const EMPTY_MANUAL: NormalizedManual = {
-  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [], colors: {},
+  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [], colors: {}, pinnedSessions: {},
 }
 
 /** Materialize optional overlay fields so every update is a plain object edit. */
@@ -78,6 +78,7 @@ function normalizeManual(manual: ManualGroups): NormalizedManual {
     renamed: manual.renamed ?? {},
     hidden: manual.hidden ?? [],
     colors: manual.colors ?? {},
+    pinnedSessions: manual.pinnedSessions ?? {},
   }
 }
 
@@ -85,11 +86,6 @@ function sanitizeSearchQuery(value: string): string {
   const withoutNul = value.replaceAll('\0', '')
   if (withoutNul.length <= SEARCH_QUERY_MAX_CODE_UNITS) return withoutNul
   return withoutNul.slice(0, SEARCH_QUERY_MAX_CODE_UNITS)
-}
-
-/** Immutable membership toggle for the local expand-all array. */
-function toggled(list: readonly string[], key: string): string[] {
-  return list.includes(key) ? list.filter(k => k !== key) : [...list, key]
 }
 
 interface RemoteSearchState {
@@ -303,22 +299,55 @@ export function GroupsBrowser({
   const [revision, setRevision] = useState<string>('')
   const [configError, setConfigError] = useState<string | null>(null)
   const [conflictError, setConflictError] = useState<boolean>(false)
-  const reloadConfig = () => {
-    setConfigError(null)
-    return fetchGroupsConfig().then(({ config: nextConfig, manual: nextManual, revision: nextRevision }) => {
-      setConfig(nextConfig)
-      setManual(nextManual)
-      setRevision(nextRevision)
-      return { config: nextConfig, manual: nextManual, revision: nextRevision }
-    }).catch((reason: unknown) => {
-      setConfigError(reason instanceof Error ? reason.message : String(reason))
-    })
-  }
-  useEffect(() => { reloadConfig() }, [])
 
   // Transient save errors for drag/menu group operations (dialog errors are local).
   const [manualError, setManualError] = useState<string | null>(null)
   const [manualSaving, setManualSaving] = useState(false)
+
+  const revisionRef = useRef(revision)
+  revisionRef.current = revision
+  const manualSavingRef = useRef(manualSaving)
+  manualSavingRef.current = manualSaving
+
+  const reloadConfig = useCallback((force = false) => {
+    if (!force && manualSavingRef.current) return Promise.resolve()
+    setConfigError(null)
+    return fetchGroupsConfig().then(({ config: nextConfig, manual: nextManual, revision: nextRevision }) => {
+      if (force || nextRevision !== revisionRef.current) {
+        setConfig(nextConfig)
+        setManual(nextManual)
+        setRevision(nextRevision)
+      }
+      return { config: nextConfig, manual: nextManual, revision: nextRevision }
+    }).catch((reason: unknown) => {
+      setConfigError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }, [])
+
+  useEffect(() => {
+    void reloadConfig(true)
+    if (typeof window === 'undefined') return
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        void reloadConfig()
+      }
+    }
+    const handleFocus = () => {
+      void reloadConfig()
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener?.('visibilitychange', handleVisibility)
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void reloadConfig()
+      }
+    }, 15000)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener?.('visibilitychange', handleVisibility)
+      clearInterval(interval)
+    }
+  }, [reloadConfig])
 
   const workspaces = useWorkspaces(state => state.items)
   const workspacePhase = useWorkspaces(state => state.phase)
@@ -544,6 +573,7 @@ export function GroupsBrowser({
   // Add Workspace uses the Host browse APIs; no native-only picker call.
   const [adding, setAdding] = useState(false)
   const [directoryOpen, setDirectoryOpen] = useState(false)
+  const [targetCategoryForAdd, setTargetCategoryForAdd] = useState<string | undefined>(undefined)
   const [addError, setAddError] = useState<string | null>(null)
   const [addErrorOpen, setAddErrorOpen] = useState(false)
   const adoptDirectory = (path: string): void => {
@@ -551,17 +581,48 @@ export function GroupsBrowser({
     setAdding(true)
     setAddError(null)
     setAddErrorOpen(false)
-    createWorkspace({ path }).then((workspace) => {
+    const targetCategory = targetCategoryForAdd
+    createWorkspace({ path }).then(async (workspace) => {
       setDirectoryOpen(false)
+      if (targetCategory !== undefined) {
+        try {
+          const existingMembers = workspaces
+            .filter(w => resolveCategory(config, manual, w.workspaceId, w.path, w.title) === targetCategory)
+            .map(w => w.workspaceId as string)
+          const targetMembers = [...existingMembers, workspace.workspaceId]
+          const next = normalizeManual(moveWorkspaceOverlay(manual, {
+            workspaceId: workspace.workspaceId,
+            targetCategoryKey: targetCategory,
+            targetMembers,
+          }))
+          const { revision: nextRevision } = await saveManualOverlay(next, revision)
+          setManual(next)
+          setRevision(nextRevision)
+          setManualError(null)
+          setConflictError(false)
+          actions.setCategoryExpanded(targetCategory, true)
+        } catch (reason) {
+          if (isConflictError(reason)) {
+            setConflictError(true)
+            void reloadConfig(true)
+          } else {
+            setManualError(reason instanceof Error ? reason.message : String(reason))
+          }
+        }
+      }
       startSession(workspace.workspaceId)
     }).catch((reason: unknown) => {
       setDirectoryOpen(false)
       setAddError(reason instanceof Error ? reason.message : String(reason))
       setAddErrorOpen(true)
-    }).finally(() => { setAdding(false) })
+    }).finally(() => {
+      setAdding(false)
+      setTargetCategoryForAdd(undefined)
+    })
   }
-  const addWorkspace = (): void => {
+  const addWorkspace = (categoryKey?: unknown): void => {
     if (adding) return
+    setTargetCategoryForAdd(typeof categoryKey === 'string' ? categoryKey : undefined)
     setAddError(null)
     setAddErrorOpen(false)
     setDirectoryOpen(true)
@@ -623,7 +684,7 @@ export function GroupsBrowser({
       if (isConflictError(reason)) {
         setConflictError(true)
         setDeleteTarget(null)
-        void reloadConfig()
+        void reloadConfig(true)
       } else {
         setDeleteError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -782,7 +843,7 @@ export function GroupsBrowser({
       if (isConflictError(reason)) {
         setConflictError(true)
         setGroupDialog(null)
-        void reloadConfig()
+        void reloadConfig(true)
       } else {
         setGroupError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -813,7 +874,7 @@ export function GroupsBrowser({
       if (isConflictError(reason)) {
         setConflictError(true)
         setGroupDeleteTarget(null)
-        void reloadConfig()
+        void reloadConfig(true)
       } else {
         setGroupDeleteError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -865,7 +926,7 @@ export function GroupsBrowser({
     } catch (reason) {
       if (isConflictError(reason)) {
         setConflictError(true)
-        void reloadConfig()
+        void reloadConfig(true)
       } else {
         setManualError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -892,7 +953,7 @@ export function GroupsBrowser({
     } catch (reason) {
       if (isConflictError(reason)) {
         setConflictError(true)
-        void reloadConfig()
+        void reloadConfig(true)
       } else {
         setManualError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -1123,7 +1184,29 @@ export function GroupsBrowser({
     } catch (reason) {
       if (isConflictError(reason)) {
         setConflictError(true)
-        void reloadConfig()
+        void reloadConfig(true)
+      } else {
+        setManualError(reason instanceof Error ? reason.message : String(reason))
+      }
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
+  const onSessionPinToggle = async (workspaceId: WorkspaceId, sessionId: SessionId): Promise<void> => {
+    if (manualSaving) return
+    setManualSaving(true)
+    try {
+      const next = normalizeManual(togglePinSession(manual, workspaceId, sessionId))
+      const { revision: nextRevision } = await saveManualOverlay(next, revision)
+      setManual(next)
+      setRevision(nextRevision)
+      setManualError(null)
+      setConflictError(false)
+    } catch (reason) {
+      if (isConflictError(reason)) {
+        setConflictError(true)
+        void reloadConfig(true)
       } else {
         setManualError(reason instanceof Error ? reason.message : String(reason))
       }
@@ -1346,7 +1429,7 @@ export function GroupsBrowser({
           {conflictError && (
             <div className="wgSearchStatus wgManualError" role="alert">
               <span>{t('manual.conflictError')}</span>
-              <Button variant="outline" onClick={() => { void reloadConfig(); setConflictError(false) }}>{t('retry')}</Button>
+              <Button variant="outline" onClick={() => { void reloadConfig(true); setConflictError(false) }}>{t('retry')}</Button>
             </div>
           )}
           {manualError !== null && !conflictError && (
@@ -1385,10 +1468,12 @@ export function GroupsBrowser({
               onSessionRename={onSessionRename}
               onSessionFork={onSessionFork}
               onSessionArchive={onSessionArchive}
+              onSessionPinToggle={onSessionPinToggle}
               sessionActionBusy={sessionActionBusy}
+              onSetItemColor={onSetItemColor}
             />
           ) : (
-            <div className="wgList" role="tree" aria-label={t('section.workspaces')}>
+            <div className="wgList" role="tree" aria-label={t('section.workspaces')} onKeyDown={handleTreeKeyDown} onFocusCapture={handleTreeFocus}>
               {displayGroups.length === 0 && displayTopLevel.length === 0 && (
                 <div className="wgEmpty">
                   <div>{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
@@ -1450,6 +1535,7 @@ export function GroupsBrowser({
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onSessionFork}
+                  onSessionPinToggle={onSessionPinToggle}
                   sessionActionBusy={sessionActionBusy}
                   onGroupRename={() => {
                     setGroupDraft(category.key)
@@ -1479,6 +1565,7 @@ export function GroupsBrowser({
                     return workspace !== undefined
                       && resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) !== undefined
                   }}
+                  onAddWorkspace={() => { addWorkspace(category.key) }}
                   manual={manual}
                   onSetItemColor={onSetItemColor}
                 />
@@ -1535,6 +1622,7 @@ export function GroupsBrowser({
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onSessionFork}
+                  onSessionPinToggle={onSessionPinToggle}
                   sessionActionBusy={sessionActionBusy}
                   onMoveTo={(workspaceId, categoryKey) => { void moveWorkspaceTo(workspaceId, categoryKey) }}
                   moveTargetsFor={(workspaceId) => {
@@ -1682,9 +1770,14 @@ export function GroupsBrowser({
         listDirectory={listDirectory}
         createDirectory={createDirectory}
         onPick={adoptDirectory}
-        onClose={() => { if (!adding) setDirectoryOpen(false) }}
+        onClose={() => {
+          if (!adding) {
+            setDirectoryOpen(false)
+            setTargetCategoryForAdd(undefined)
+          }
+        }}
         strings={{
-          title: t('directory.title'),
+          title: targetCategoryForAdd !== undefined ? `${t('directory.title')} — ${targetCategoryForAdd}` : t('directory.title'),
           home: t('directory.home'),
           newFolder: t('directory.newFolder'),
           folderName: t('directory.folderName'),
@@ -1915,6 +2008,7 @@ function handleTreeFocus(event: React.FocusEvent<HTMLElement>): void {
 
 /** Shared limited session list for grouped and top-level workspaces. */
 function WorkspaceSessions({
+  workspaceId,
   sessions,
   current,
   now,
@@ -1924,8 +2018,11 @@ function WorkspaceSessions({
   onSessionRename,
   onSessionArchive,
   onFork,
+  onSessionPinToggle,
   sessionActionBusy,
+  onSetItemColor,
 }: {
+  workspaceId: WorkspaceId
   sessions: readonly SessionNode[]
   current: SessionId | undefined
   now: number
@@ -1935,10 +2032,19 @@ function WorkspaceSessions({
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
+  onSessionPinToggle?: ((workspaceId: WorkspaceId, sessionId: SessionId) => void) | undefined
   sessionActionBusy: boolean
+  onSetItemColor?: ((itemKey: string, color: string | null) => void) | undefined
 }) {
   const [showAll, setShowAll] = useState(false)
-  const visible = visibleWorkspaceSessions(sessions, current, showAll)
+  const visible = useMemo(() => visibleWorkspaceSessions(sessions, current, showAll), [sessions, current, showAll])
+  const sessionIndices = useMemo(() => {
+    const map = new Map<string, number>()
+    sessions.forEach((session, index) => {
+      map.set(session.id, index + 1)
+    })
+    return map
+  }, [sessions])
   const hasToggle = sessions.length > SESSION_ROW_LIMIT
 
   return (
@@ -1951,12 +2057,15 @@ function WorkspaceSessions({
           now={now}
           t={t}
           aria-level={ariaLevel}
-          aria-posinset={sessions.indexOf(session) + 1}
+          aria-posinset={sessionIndices.get(session.id) ?? 1}
           aria-setsize={sessions.length}
           onOpen={onOpen}
           onRename={onSessionRename}
           onFork={onFork}
           onArchive={onSessionArchive}
+          {...(onSessionPinToggle !== undefined ? { onPinToggle: (sessionId: SessionId) => { onSessionPinToggle(workspaceId, sessionId) } } : {})}
+          color={session.color}
+          {...(onSetItemColor !== undefined ? { onSetColor: (color: string | null) => { onSetItemColor(session.id, color) } } : {})}
           actionBusy={sessionActionBusy}
         />
       ))}
@@ -1976,7 +2085,7 @@ function WorkspaceSessions({
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onAddWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
   category: CategoryNode
   categoryIndex: number
   totalRootItems: number
@@ -1993,6 +2102,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onToggleCategory: () => void
   onExpandEntire?: () => void
   onCollapseEntire?: () => void
+  onAddWorkspace?: () => void
   onToggleWorkspace: (key: string) => void
   onNewSession: (workspaceId?: WorkspaceId) => void
   onOpen: (sessionId: SessionId) => void
@@ -2002,6 +2112,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
+  onSessionPinToggle?: ((workspaceId: WorkspaceId, sessionId: SessionId) => void) | undefined
   sessionActionBusy: boolean
   onGroupRename: () => void
   onGroupDelete: () => void
@@ -2035,6 +2146,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         onToggle={onToggleCategory}
         onExpandEntire={onExpandEntire}
         onCollapseEntire={onCollapseEntire}
+        onAddWorkspace={onAddWorkspace}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
         color={manual.colors?.[category.key]}
@@ -2093,6 +2205,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
               />
               {workspace.expanded && (
                 <WorkspaceSessions
+                  workspaceId={workspace.workspaceId}
                   sessions={workspace.sessions}
                   current={current}
                   now={now}
@@ -2102,7 +2215,9 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onFork}
+                  onSessionPinToggle={onSessionPinToggle}
                   sessionActionBusy={sessionActionBusy}
+                  onSetItemColor={onSetItemColor}
                 />
               )}
             </div>
@@ -2122,7 +2237,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
+function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
   topLevel: readonly WorkspaceGroupNode[]
   totalGroups: number
   totalRootItems: number
@@ -2147,6 +2262,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onSessionRename: (sessionId: SessionId, currentTitle: string) => void
   onSessionArchive: (sessionId: SessionId) => void
   onFork: (sessionId: SessionId) => void
+  onSessionPinToggle?: ((workspaceId: WorkspaceId, sessionId: SessionId) => void) | undefined
   sessionActionBusy: boolean
   onMoveTo: (workspaceId: WorkspaceId, categoryKey: string) => void
   moveTargetsFor: (workspaceId: WorkspaceId) => readonly WorkspaceMoveTarget[]
@@ -2207,6 +2323,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
           />
           {workspace.expanded && (
             <WorkspaceSessions
+              workspaceId={workspace.workspaceId}
               sessions={workspace.sessions}
               current={current}
               now={now}
@@ -2216,7 +2333,9 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
               onSessionRename={onSessionRename}
               onSessionArchive={onSessionArchive}
               onFork={onFork}
+              onSessionPinToggle={onSessionPinToggle}
               sessionActionBusy={sessionActionBusy}
+              onSetItemColor={onSetItemColor}
             />
           )}
         </div>
@@ -2230,7 +2349,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, sessionActionBusy }: {
+function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -2253,7 +2372,9 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
   onSessionRename: (sessionId: SessionId, title: string) => void
   onSessionFork: (sessionId: SessionId) => void
   onSessionArchive: (sessionId: SessionId) => void
+  onSessionPinToggle?: ((workspaceId: WorkspaceId, sessionId: SessionId) => void) | undefined
   sessionActionBusy: boolean
+  onSetItemColor: (itemKey: string, color: string | null) => void
 }) {
   const currentRemote = remote.query === query ? remote : { query, status: 'loading' as const, items: [], hasMore: false }
   const matches = useMemo(
@@ -2288,6 +2409,8 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             aria-level={1}
             aria-posinset={idx + 1}
             aria-setsize={totalRootItems}
+            color={manual.colors?.[category.key]}
+            onSetColor={(color) => { void onSetItemColor(category.key, color) }}
           />
           <div role="group">
             {category.workspaces.map((workspace, wIdx) => (
@@ -2302,8 +2425,11 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                   onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
                   onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
                   onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
+                  color={manual.colors?.[workspace.workspaceId]}
+                  onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 />
                 <WorkspaceSessions
+                  workspaceId={workspace.workspaceId}
                   sessions={workspace.sessions}
                   current={current}
                   now={now}
@@ -2313,7 +2439,9 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
                   onSessionRename={onSessionRename}
                   onSessionArchive={onSessionArchive}
                   onFork={onSessionFork}
+                  onSessionPinToggle={onSessionPinToggle}
                   sessionActionBusy={sessionActionBusy}
+                  onSetItemColor={onSetItemColor}
                 />
               </div>
             ))}
@@ -2333,8 +2461,11 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
             onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
+            color={manual.colors?.[workspace.workspaceId]}
+            onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
           />
           <WorkspaceSessions
+            workspaceId={workspace.workspaceId}
             sessions={workspace.sessions}
             current={current}
             now={now}
@@ -2344,7 +2475,9 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
             onSessionRename={onSessionRename}
             onSessionArchive={onSessionArchive}
             onFork={onSessionFork}
+            onSessionPinToggle={onSessionPinToggle}
             sessionActionBusy={sessionActionBusy}
+            onSetItemColor={onSetItemColor}
           />
         </div>
       ))}

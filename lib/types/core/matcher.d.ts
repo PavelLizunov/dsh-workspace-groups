@@ -11,6 +11,9 @@
  * would match them become top-level (ungrouped).
  */
 import { type GroupCategory, type GroupsConfig, type ManualGroups } from './types.js';
+export declare const DRIVE_LETTER_ROOT_RE: RegExp;
+export declare const TRAILING_SLASHES_RE: RegExp;
+export declare const PATH_SEPARATOR_RE: RegExp;
 /** Classify a workspace by rules only; hidden categories are inert. */
 export declare function classify(categories: readonly GroupCategory[], path: string, title: string): GroupCategory | undefined;
 /** Display name of a rule category: the rename override when present. */
@@ -42,7 +45,7 @@ export declare function displayCategoryKeys(config: GroupsConfig, manual: Manual
  * is top-level (ungrouped). Precedence: manual override (`null` = forced
  * top-level) → rule classification (hidden rules inert) → top-level.
  */
-export declare function resolveCategory(config: GroupsConfig, manual: ManualGroups | undefined, workspaceId: string, path: string, title: string): string | undefined;
+export declare function resolveCategory(config: GroupsConfig, manual: ManualGroups | undefined, workspaceId: string, path: string, title: string, validCategoryKeys?: ReadonlySet<string>): string | undefined;
 /** Whether a category key is a manual-only group (manageable via list). */
 export declare function isManualOnlyCategory(config: GroupsConfig, manual: ManualGroups | undefined, key: string): boolean;
 /**

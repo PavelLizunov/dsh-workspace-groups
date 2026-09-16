@@ -20,19 +20,23 @@ import {
   type ManualGroups,
 } from './types.ts'
 
+export const DRIVE_LETTER_ROOT_RE = /^[A-Za-z]:\/$/
+export const TRAILING_SLASHES_RE = /[/\\]+$/
+export const PATH_SEPARATOR_RE = /[/\\]/
+
 /** One rule match against a workspace's path and title. */
 function ruleMatches(rule: GroupRule, path: string, title: string): boolean {
   const normalized = normalizePath(path)
   if (rule.pathPrefix !== undefined) {
     const prefix = normalizePath(rule.pathPrefix)
-    if (normalized === prefix || prefix === '/' || /^[A-Za-z]:\/$/.test(prefix)
+    if (normalized === prefix || prefix === '/' || DRIVE_LETTER_ROOT_RE.test(prefix)
       ? normalized.startsWith(prefix)
       : normalized.startsWith(`${prefix}/`)) return true
   }
   if (rule.pathExact !== undefined && normalized === normalizePath(rule.pathExact)) return true
   if (rule.nameContains !== undefined && title.toLowerCase().includes(rule.nameContains.toLowerCase())) return true
   if (rule.basenameContains !== undefined) {
-    const base = path.replace(/[/\\]+$/, '').split(/[/\\]/).pop() ?? ''
+    const base = path.replace(TRAILING_SLASHES_RE, '').split(PATH_SEPARATOR_RE).pop() ?? ''
     if (base.toLowerCase().includes(rule.basenameContains.toLowerCase())) return true
   }
   return false
@@ -138,11 +142,12 @@ export function resolveCategory(
   workspaceId: string,
   path: string,
   title: string,
+  validCategoryKeys?: ReadonlySet<string>,
 ): string | undefined {
   const override = manual?.assignments[workspaceId]
   if (override !== undefined) {
     if (override === null || override === UNCATEGORIZED_LABEL) return undefined
-    const validKeys = new Set(displayCategoryKeys(config, manual))
+    const validKeys = validCategoryKeys ?? new Set(displayCategoryKeys(config, manual))
     return validKeys.has(override) ? override : undefined
   }
   for (const category of config.categories) {

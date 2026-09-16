@@ -75,10 +75,12 @@ export function retainKeysImpl(
   categoryKeys: readonly string[],
   workspaceKeys: readonly string[],
 ): void {
+  const allowedCategories = new Set(categoryKeys)
+  const allowedWorkspaces = new Set(workspaceKeys)
   state.categoryExpansion = Object.fromEntries(
-    Object.entries(state.categoryExpansion).filter(([key]) => categoryKeys.includes(key)),
+    Object.entries(state.categoryExpansion).filter(([key]) => allowedCategories.has(key)),
   )
   state.workspaceExpansion = Object.fromEntries(
-    Object.entries(state.workspaceExpansion).filter(([key]) => workspaceKeys.includes(key)),
+    Object.entries(state.workspaceExpansion).filter(([key]) => allowedWorkspaces.has(key)),
   )
 }

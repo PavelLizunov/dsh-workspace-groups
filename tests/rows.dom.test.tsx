@@ -13,7 +13,7 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
-  Modal: ({ children, footer, open }: { children?: React.ReactNode; footer?: React.ReactNode; open?: boolean }) => (open ? <div>{children}{footer}</div> : null),
+  Modal: ({ children, footer, open, title }: { children?: React.ReactNode; footer?: React.ReactNode; open?: boolean; title?: React.ReactNode }) => (open ? <div data-wg-modal><div className="wgModalTitle">{title}</div>{children}{footer}</div> : null),
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   IconArchiveOutline20: () => <span />,
   IconBranchOutline16: () => <span />,
@@ -56,6 +56,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => { root.unmount() })
   host.remove()
+  vi.unstubAllGlobals()
 })
 
 describe('row interaction contracts', () => {
@@ -127,6 +128,58 @@ describe('row interaction contracts', () => {
     pill = host.querySelector('.wgSessionPill')
     expect(pill).toBeNull()
     expect(row.getAttribute('aria-label')).toBe('Session 3')
+  })
+
+  it('renders pin indicator and toggles pin/unpin action in SessionRow menu', () => {
+    const onPinToggle = vi.fn()
+
+    // Pinned session
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's-pinned' as never, title: 'Pinned Session', blank: false, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0, pinned: true }}
+          currentId={undefined}
+          now={0}
+          t={t}
+          onOpen={() => {}}
+          onPinToggle={onPinToggle}
+        />,
+      )
+    })
+    const row = host.querySelector('[role="treeitem"]')!
+    const pinBadge = host.querySelector('.wgSessionPinned')
+    expect(pinBadge).not.toBeNull()
+    expect(pinBadge?.getAttribute('title')).toBe('session.pinned')
+    expect(row.getAttribute('aria-label')).toBe('Pinned Session (session.pinned)')
+
+    const unpinButton = Array.from(host.querySelectorAll('button')).find(btn => btn.textContent === 'session.unpin')
+    expect(unpinButton).toBeDefined()
+    act(() => {
+      unpinButton?.click()
+    })
+    expect(onPinToggle).toHaveBeenCalledWith('s-pinned')
+
+    // Unpinned session
+    onPinToggle.mockClear()
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's-unpinned' as never, title: 'Normal Session', blank: false, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0 }}
+          currentId={undefined}
+          now={0}
+          t={t}
+          onOpen={() => {}}
+          onPinToggle={onPinToggle}
+        />,
+      )
+    })
+    expect(host.querySelector('.wgSessionPinned')).toBeNull()
+    const pinButton = Array.from(host.querySelectorAll('button')).find(btn => btn.textContent === 'session.pin')
+    expect(pinButton).toBeDefined()
+    act(() => {
+      pinButton?.click()
+    })
+    expect(onPinToggle).toHaveBeenCalledWith('s-unpinned')
   })
 
   it('starts a Workspace drag from the selected row, not only the first row', () => {
@@ -222,6 +275,46 @@ describe('row interaction contracts', () => {
     const colorOption = buttons.find(button => button.textContent === 'color.red')
     act(() => { colorOption?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(onSetColor).toHaveBeenCalledWith('red')
+  })
+
+  it('renders SessionRow color ping and invokes onSetColor from ColorMenu', () => {
+    const onSetColor = vi.fn()
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's-color' as never, title: 'Important', blank: false, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0, color: 'green' }}
+          currentId={undefined}
+          now={0}
+          t={t}
+          onOpen={() => {}}
+          color="green"
+          onSetColor={onSetColor}
+        />,
+      )
+    })
+    const dot = host.querySelector('.wgColorDot')
+    expect(dot?.getAttribute('data-color')).toBe('green')
+    const buttons = Array.from(host.querySelectorAll('button'))
+    const colorOption = buttons.find(button => button.textContent === 'color.red')
+    act(() => { colorOption?.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    expect(onSetColor).toHaveBeenCalledWith('red')
+  })
+
+  it('omits SessionRow color menu on blank sessions even when onSetColor is provided', () => {
+    act(() => {
+      root.render(
+        <SessionRow
+          node={{ id: 's-blank' as never, title: 'New Session', blank: true, running: false, runningSubagentCount: 0, completed: false, updatedAt: 0 }}
+          currentId={undefined}
+          now={0}
+          t={t}
+          onOpen={() => {}}
+          onSetColor={() => {}}
+        />,
+      )
+    })
+    const buttons = Array.from(host.querySelectorAll('button'))
+    expect(buttons.some(button => button.getAttribute('aria-label') === 'color.title')).toBe(false)
   })
 
   it('renders aggregate attention dot only when CategoryRow is collapsed', () => {
@@ -389,6 +482,81 @@ describe('row interaction contracts', () => {
     expect(host.querySelector('.wgFilterSummary')).toBeNull()
 
     vi.unstubAllGlobals()
+  })
+
+  it('supports roving tabindex and arrow keyboard navigation on main tree', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/workspace-groups/config')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          json: () => Promise.resolve({ categories: [{ key: 'work', label: 'Work', rules: [] }], manual: { categories: ['work'], assignments: { 'ws-1': 'work' } } }),
+        })
+      }
+      return Promise.resolve({ ok: true, status: 200, headers: new Headers(), json: () => Promise.resolve({}) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const useSessions = vi.fn((selector) => selector({
+      ids: ['s1'],
+      byId: { s1: { id: 's1', displayTitle: 'S1', blank: false, running: true, updatedAt: Date.now() } },
+      current: undefined,
+    }))
+    const useWorkspaces = vi.fn((selector) => selector({
+      items: [{ workspaceId: 'w1', path: '/w1', title: 'W1', createdAt: '2026-01-01', sessionIds: ['s1'] }],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }))
+    const useStore = vi.fn((selector) => selector({ categoryExpansion: { work: true }, workspaceExpansion: {} }))
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={async () => ({} as never)}
+          listDirectory={async () => ({} as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    const tree = host.querySelector('.wgList[role="tree"]')
+    expect(tree).not.toBeNull()
+    const treeItems = Array.from(tree!.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+    expect(treeItems.length).toBeGreaterThan(0)
+
+    act(() => {
+      treeItems[0]!.focus()
+      treeItems[0]!.dispatchEvent(new FocusEvent('focus', { bubbles: true }))
+    })
+
+    act(() => {
+      treeItems[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    })
+
+    if (treeItems.length > 1) {
+      expect(treeItems[1]!.getAttribute('tabindex')).toBe('0')
+      expect(treeItems[0]!.getAttribute('tabindex')).toBe('-1')
+    }
   })
 
   it('CategoryRow supports Option/Alt-click on disclosure chevron vs ordinary toggle', () => {
@@ -950,6 +1118,242 @@ describe('row interaction contracts', () => {
 
     expect(archiveSession).toHaveBeenCalledOnce()
     expect(archiveSession).toHaveBeenCalledWith('s1')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('CategoryRow renders quick add button and action menu item for group.addWorkspace', () => {
+    const onAddWorkspace = vi.fn()
+    const onRename = vi.fn()
+    const onDelete = vi.fn()
+
+    act(() => {
+      root.render(
+        <CategoryRow
+          node={{ key: 'cat1', label: 'Category 1', expanded: true, containsCurrent: false, workspaces: [] }}
+          t={t}
+          onAddWorkspace={onAddWorkspace}
+          onRename={onRename}
+          onDelete={onDelete}
+        />,
+      )
+    })
+
+    const quickAddBtn = host.querySelector<HTMLButtonElement>('button[title="group.addWorkspace"]')
+    expect(quickAddBtn).not.toBeNull()
+    expect(quickAddBtn?.getAttribute('aria-label')).toBe('group.addWorkspace: Category 1')
+
+    act(() => {
+      quickAddBtn?.click()
+    })
+    expect(onAddWorkspace).toHaveBeenCalledTimes(1)
+
+    const menuItems = Array.from(host.querySelectorAll('button'))
+    const addItem = menuItems.find(b => b.textContent === 'group.addWorkspace')
+    expect(addItem).toBeDefined()
+
+    act(() => {
+      addItem?.click()
+    })
+    expect(onAddWorkspace).toHaveBeenCalledTimes(2)
+  })
+
+  it('GroupsBrowser supports adding workspace directly inside a specific group with overlay persistence', async () => {
+    let capturedManualBody: { expectedRevision: string; manual: any } | null = null
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/workspace-groups/config')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ etag: 'rev-1' }),
+          json: () => Promise.resolve({
+            categories: [{ key: 'Dev', label: 'Dev', rules: [] }],
+            manual: { categories: ['Dev'], assignments: {}, workspaceOrder: {} },
+          }),
+        })
+      }
+      if (url.includes('/workspace-groups/manual') && init?.method === 'PUT') {
+        capturedManualBody = JSON.parse(init.body as string)
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ etag: 'rev-2' }),
+          json: () => Promise.resolve({ ok: true, revision: 'rev-2' }),
+        })
+      }
+      return Promise.resolve({ ok: true, status: 200, headers: new Headers(), json: () => Promise.resolve({}) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const sessionsSnapshot = { ids: [], byId: {}, current: undefined }
+    const workspacesSnapshot = {
+      items: [],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }
+    const viewSnapshot = { categoryExpansion: { Dev: true }, workspaceExpansion: {} }
+    const useSessions = vi.fn((selector) => selector(sessionsSnapshot))
+    const useWorkspaces = vi.fn((selector) => selector(workspacesSnapshot))
+    const useStore = vi.fn((selector) => selector(viewSnapshot))
+    const setCategoryExpanded = vi.fn()
+    const startSession = vi.fn()
+    const createWorkspace = vi.fn().mockResolvedValue({
+      workspaceId: 'ws-new',
+      path: '/home/user',
+      title: 'user',
+      createdAt: '2026-01-01',
+      sessionIds: [],
+    })
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+          startSession={startSession}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={createWorkspace}
+          listDirectory={async () => ({ path: '/home/user', entries: [], crumbs: [] } as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    const devCategoryRow = host.querySelector('[data-wg-category="Dev"]')
+    expect(devCategoryRow).not.toBeNull()
+
+    const addBtn = devCategoryRow?.querySelector<HTMLButtonElement>('button[title="group.addWorkspace"]')
+    expect(addBtn).not.toBeNull()
+
+    await act(async () => {
+      addBtn?.click()
+    })
+
+    // DirectoryBrowser should be open and its title should include Dev
+    const modalTitle = host.querySelector('.wgModalTitle')
+    expect(modalTitle?.textContent).toContain('directory.title — Dev')
+
+    // Find the DirectoryBrowser Select/Open button (with text directory.open)
+    const openBtn = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'directory.open')
+    expect(openBtn).toBeDefined()
+
+    await act(async () => {
+      openBtn?.click()
+    })
+
+    expect(createWorkspace).toHaveBeenCalledWith({ path: '/home/user' })
+    expect(capturedManualBody).not.toBeNull()
+    expect((capturedManualBody as any).manual.assignments['ws-new']).toBe('Dev')
+    expect((capturedManualBody as any).manual.workspaceOrder['Dev']).toContain('ws-new')
+    expect(startSession).toHaveBeenCalledWith('ws-new')
+    expect(setCategoryExpanded).toHaveBeenCalledWith('Dev', true)
+
+    vi.unstubAllGlobals()
+  })
+
+  it('canceling DirectoryBrowser resets targetCategoryForAdd without modifying manual overlay', async () => {
+    let capturedManualPut = false
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/workspace-groups/config')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ etag: 'rev-1' }),
+          json: () => Promise.resolve({
+            categories: [{ key: 'Dev', label: 'Dev', rules: [] }],
+            manual: { categories: ['Dev'], assignments: {}, workspaceOrder: {} },
+          }),
+        })
+      }
+      if (url.includes('/workspace-groups/manual') && init?.method === 'PUT') {
+        capturedManualPut = true
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ etag: 'rev-2' }),
+          json: () => Promise.resolve({ ok: true, revision: 'rev-2' }),
+        })
+      }
+      return Promise.resolve({ ok: true, status: 200, headers: new Headers(), json: () => Promise.resolve({}) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const sessionsSnapshot = { ids: [], byId: {}, current: undefined }
+    const workspacesSnapshot = {
+      items: [],
+      phase: 'ready',
+      archivedSessionIds: [],
+    }
+    const viewSnapshot = { categoryExpansion: { Dev: true }, workspaceExpansion: {} }
+    const useSessions = vi.fn((selector) => selector(sessionsSnapshot))
+    const useWorkspaces = vi.fn((selector) => selector(workspacesSnapshot))
+    const useStore = vi.fn((selector) => selector(viewSnapshot))
+    const createWorkspace = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <GroupsBrowser
+          wide={true}
+          expandSidebar={() => {}}
+          useSessions={useSessions as never}
+          useWorkspaces={useWorkspaces as never}
+          useStore={useStore as never}
+          actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+          startSession={async () => {}}
+          open={() => {}}
+          renameSession={async () => {}}
+          forkSession={async () => {}}
+          renameWorkspace={async () => {}}
+          deleteWorkspace={async () => {}}
+          insertWorkspaceBefore={async () => {}}
+          archiveSession={async () => {}}
+          insertSessionBefore={async () => {}}
+          createWorkspace={createWorkspace}
+          listDirectory={async () => ({ path: '/home/user', entries: [], crumbs: [] } as never)}
+          createDirectory={async () => ''}
+          searchSessions={async () => ({ items: [], hasMore: false })}
+          searchResultLimit={20}
+          useHostDescription={(() => ({})) as never}
+          t={((key: string) => key) as never}
+        />,
+      )
+    })
+
+    const devCategoryRow = host.querySelector('[data-wg-category="Dev"]')
+    const addBtn = devCategoryRow?.querySelector<HTMLButtonElement>('button[title="group.addWorkspace"]')
+
+    await act(async () => {
+      addBtn?.click()
+    })
+
+    expect(host.querySelector('.wgModalTitle')?.textContent).toContain('directory.title — Dev')
+
+    // Click cancel button
+    const cancelBtn = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'directory.cancel')
+    expect(cancelBtn).toBeDefined()
+
+    await act(async () => {
+      cancelBtn?.click()
+    })
+
+    expect(createWorkspace).not.toHaveBeenCalled()
+    expect(capturedManualPut).toBe(false)
+    expect(host.querySelector('.wgModalTitle')).toBeNull()
 
     vi.unstubAllGlobals()
   })

@@ -360,4 +360,56 @@ describe('aggregated attention state derivation', () => {
     expect(cat.workspaces.find(w => w.workspaceId === 'ws-2')?.attention).toBe('ongoing')
     expect(canonical.counts).toEqual({ all: 3, warning: 2, ongoing: 1, done: 0 })
   })
+
+  it('orders pinned sessions at the top with pinned: true', () => {
+    const ws = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2', 's3', 's4'])
+    const list = listState([ws])
+    const manual: ManualGroups = {
+      categories: [],
+      assignments: {},
+      pinnedSessions: {
+        'ws-1': ['s3', 's1'],
+      },
+    }
+    const tree = deriveWorkspaceTree(list, [ws], [], CONFIG, manual)
+    const cat = tree.categories.find(g => g.label === 'DSH Plugins')!
+    const wsNode = cat.workspaces.find(w => w.workspaceId === 'ws-1')!
+    expect(wsNode.sessions.map(s => s.id)).toEqual(['s3', 's1', 's2', 's4'])
+    expect(wsNode.sessions[0]?.pinned).toBe(true)
+    expect(wsNode.sessions[1]?.pinned).toBe(true)
+    expect(wsNode.sessions[2]?.pinned).toBeUndefined()
+    expect(wsNode.sessions[3]?.pinned).toBeUndefined()
+  })
+
+  it('ignores pinned sessions that are archived or nonexistent', () => {
+    const ws = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2'])
+    const list = listState([ws])
+    const manual: ManualGroups = {
+      categories: [],
+      assignments: {},
+      pinnedSessions: {
+        'ws-1': ['nonexistent-sess', 's2'],
+      },
+    }
+    const tree = deriveWorkspaceTree(list, [ws], ['s1' as never], CONFIG, manual)
+    const cat = tree.categories.find(g => g.label === 'DSH Plugins')!
+    const wsNode = cat.workspaces.find(w => w.workspaceId === 'ws-1')!
+    expect(wsNode.sessions.map(s => s.id)).toEqual(['s2'])
+    expect(wsNode.sessions[0]?.pinned).toBe(true)
+  })
+
+  it('copies overlay session colors onto session nodes', () => {
+    const ws = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2'])
+    const list = listState([ws])
+    const manual: ManualGroups = {
+      categories: [],
+      assignments: {},
+      colors: { s2: 'orange' },
+    }
+    const tree = deriveWorkspaceTree(list, [ws], [], CONFIG, manual)
+    const cat = tree.categories.find(g => g.label === 'DSH Plugins')!
+    const wsNode = cat.workspaces.find(w => w.workspaceId === 'ws-1')!
+    expect(wsNode.sessions.find(s => s.id === 's1')?.color).toBeUndefined()
+    expect(wsNode.sessions.find(s => s.id === 's2')?.color).toBe('orange')
+  })
 })

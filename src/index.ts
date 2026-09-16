@@ -31,7 +31,6 @@ import {
   defaultManualPath,
   parseManualGroups,
   readManualEnvelope,
-  readManualGroups,
   validateManualGroups,
   writeManualGroupsIfRevision,
 } from './host-manual.ts'
@@ -97,6 +96,7 @@ const MIXED_TOP_LEVEL_MANUAL_FIELDS = [
   'renamed',
   'hidden',
   'colors',
+  'pinnedSessions',
 ] as const
 
 /** Strict fail-closed decoder for PUT /workspace-groups/manual payload. */

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   moveWorkspace,
+  pinSession,
   removeGroup,
   removeWorkspace,
   renameGroup,
+  setItemColor,
+  togglePinSession,
+  unpinSession,
 } from '../src/client/overlay-core.ts'
 import { TOP_LEVEL_ORDER_KEY, type ManualGroups } from '../src/core/types.ts'
 
@@ -94,6 +98,20 @@ describe('overlay-core hygiene mutations', () => {
         GroupB: ['ws-keep'],
         [TOP_LEVEL_ORDER_KEY]: ['ws-top'],
       })
+    })
+
+    it('cleans up pinnedSessions when removing a workspace', () => {
+      const manual: ManualGroups = {
+        categories: [],
+        assignments: {},
+        pinnedSessions: {
+          'ws-deleted': ['s-1', 's-2'],
+          'ws-keep': ['s-3'],
+        },
+      }
+      const result = removeWorkspace(manual, 'ws-deleted')
+      expect(result.pinnedSessions).toEqual({ 'ws-keep': ['s-3'] })
+      expect(result.pinnedSessions).not.toHaveProperty('ws-deleted')
     })
   })
 
@@ -229,6 +247,67 @@ describe('overlay-core hygiene mutations', () => {
       expect(result.workspaceOrder).toEqual({
         NewDisplay: ['ws-1'],
       })
+    })
+  })
+
+  describe('pinnedSessions mutations', () => {
+    it('pinSession prepends session and is idempotent', () => {
+      const manual: ManualGroups = { categories: [], assignments: {} }
+      const res1 = pinSession(manual, 'ws-1', 's-1')
+      expect(res1.pinnedSessions).toEqual({ 'ws-1': ['s-1'] })
+
+      const res2 = pinSession(res1, 'ws-1', 's-2')
+      expect(res2.pinnedSessions).toEqual({ 'ws-1': ['s-2', 's-1'] })
+
+      const res3 = pinSession(res2, 'ws-1', 's-2')
+      expect(res3).toBe(res2)
+    })
+
+    it('unpinSession removes session and cleans up empty keys, and is idempotent', () => {
+      const manual: ManualGroups = {
+        categories: [],
+        assignments: {},
+        pinnedSessions: {
+          'ws-1': ['s-2', 's-1'],
+          'ws-2': ['s-3'],
+        },
+      }
+
+      const res1 = unpinSession(manual, 'ws-1', 's-2')
+      expect(res1.pinnedSessions).toEqual({
+        'ws-1': ['s-1'],
+        'ws-2': ['s-3'],
+      })
+
+      const res2 = unpinSession(res1, 'ws-1', 's-1')
+      expect(res2.pinnedSessions).toEqual({
+        'ws-2': ['s-3'],
+      })
+      expect(res2.pinnedSessions).not.toHaveProperty('ws-1')
+
+      const res3 = unpinSession(res2, 'ws-1', 's-1')
+      expect(res3).toBe(res2)
+    })
+
+    it('togglePinSession toggles pin state correctly', () => {
+      const manual: ManualGroups = { categories: [], assignments: {} }
+      const pinned = togglePinSession(manual, 'ws-1', 's-1')
+      expect(pinned.pinnedSessions).toEqual({ 'ws-1': ['s-1'] })
+
+      const unpinned = togglePinSession(pinned, 'ws-1', 's-1')
+      expect(unpinned.pinnedSessions).not.toHaveProperty('ws-1')
+    })
+  })
+
+  describe('setItemColor', () => {
+    it('sets and clears a session color key in the overlay map', () => {
+      const manual: ManualGroups = { categories: [], assignments: {}, colors: { 'ws-1': 'blue' } }
+      const tagged = setItemColor(manual, 'sess-important', 'red')
+      expect(tagged.colors).toEqual({ 'ws-1': 'blue', 'sess-important': 'red' })
+
+      const cleared = setItemColor(tagged, 'sess-important', null)
+      expect(cleared.colors).toEqual({ 'ws-1': 'blue' })
+      expect(cleared.colors).not.toHaveProperty('sess-important')
     })
   })
 })

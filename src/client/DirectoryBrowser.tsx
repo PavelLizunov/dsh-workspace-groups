@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   IconChevronRightOutline14,
@@ -221,8 +221,14 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
   }
 
   const targetPath = selected?.path ?? listing?.path
-  const visibleEntries = filterDirectoryEntries(listing?.entries ?? [], showHidden)
-  const formattedCrumbs = formatCrumbs(listing?.crumbs, listing?.home, strings.home)
+  const visibleEntries = useMemo(
+    () => filterDirectoryEntries(listing?.entries ?? [], showHidden),
+    [listing?.entries, showHidden],
+  )
+  const formattedCrumbs = useMemo(
+    () => formatCrumbs(listing?.crumbs, listing?.home, strings.home),
+    [listing?.crumbs, listing?.home, strings.home],
+  )
 
   return (
     <Modal
