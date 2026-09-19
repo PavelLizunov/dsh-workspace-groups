@@ -14,8 +14,13 @@
  *   while reusing the official workspace service APIs (`listDirectory`,
  *   `createDirectory`, `create`), without claiming the official child hole.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import { findOldSessionsToArchive } from './session-cleanup.ts'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { GroupsBrowserInjected } from './contract.ts'
@@ -34,7 +39,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 const NS = 'workspaceGroups'
 
 /** Required services (cordis fiber inject). */
-export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection']
+export const inject = ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'uiSession', 'locale']
 
 /**
  * Register the grouped browser once the sidebar slot declaration is on the
@@ -52,7 +57,7 @@ export function apply(ctx: ClientContext): void {
   }
 
   const browserInjected = (): GroupsBrowserInjected => ({
-    startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
+    startSession: (workspaceId) => { ctx.uiWorkspace.startSession(workspaceId) },
     open: (sessionId) => { ctx.sessions.open(sessionId) },
     searchSessions,
     searchResultLimit: ctx.sessions.searchResultLimit,
@@ -71,16 +76,30 @@ export function apply(ctx: ClientContext): void {
     insertWorkspaceBefore: async (workspaceId, beforeWorkspaceId) => {
       await ctx.workspaces.insertBefore(workspaceId, beforeWorkspaceId)
     },
-    archiveSession: async (sessionId) => { await ctx.workspaces.archiveSession(sessionId) },
+    archiveSession: async (sessionId) => { await ctx.uiWorkspace.archiveSession(sessionId) },
+    cleanupSessions: async (sessionIds, days, workspaceId) => {
+      for (const sessionId of sessionIds) {
+        const workspaceSnapshot = ctx.workspaces.list.getSnapshot()
+        const workspace = workspaceId === undefined ? undefined : workspaceSnapshot.items.find(item => item.workspaceId === workspaceId)
+        if (workspaceId !== undefined && workspace === undefined) return
+        const sessions = ctx.sessions.list.getSnapshot()
+        const session = sessions.byId[sessionId]
+        if (session === undefined) continue
+        const eligible = findOldSessionsToArchive([session], {
+          days, now: Date.now(), currentSessionId: sessions.current,
+          archivedSessionIds: workspaceSnapshot.archivedSessionIds,
+          targetWorkspaceSessionIds: workspace?.sessionIds,
+          pendingInteractions: ctx.uiSession.pendingInteractions.getSnapshot(),
+        })
+        if (eligible.length !== 0) await ctx.uiWorkspace.archiveSession(sessionId)
+      }
+    },
     insertSessionBefore: async (workspaceId, sessionId, beforeSessionId) => {
       await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => ctx.workspaces.create(input),
-    listDirectory: (path, signal) => ctx.workspaces.listDirectory(path, signal),
-    createDirectory: (path, name) => ctx.workspaces.createDirectory(path, name),
-    hooks: {
-      hostDescription: (ctx.get('connection') as ConnectionHandle).hostDescription,
-    },
+    listDirectory: (path, signal) => ctx.uiWorkspace.listDirectory(path, signal),
+    createDirectory: (path, name) => ctx.uiWorkspace.createDirectory(path, name),
   })
 
   // priority: -1 — lower than the official browser's default 0, so the

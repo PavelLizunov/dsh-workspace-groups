@@ -6,8 +6,7 @@
  * (packages/client/tsdown.client.ts, same shape as dsh-better-sidebar and the
  * official ui-* client packages):
  * - externals resolve through the loader module table at runtime (the
- *   PLATFORM_MODULES seed list from packages/client/web/src/platform.ts,
- *   plus the runtime/client exemption),
+ *   PLATFORM_MODULES seed list from packages/client/web/src/platform.ts),
  * - everything else is inlined into the bundle,
  * - the purity gate rejects any other @deepseek-ai value import: cross-plugin
  *   collaboration goes through cordis services / slots, never value imports,
@@ -31,7 +30,7 @@ const NODE_BUILTINS = new Set([
   ...builtinModules.map(id => `node:${id}`),
 ])
 
-/** Module specifiers the web shell shares into the frozen module table (the official PLATFORM_MODULES list, plus the runtime/client exemption). */
+/** Module specifiers the web shell shares into the frozen module table (the DSH 0.1.5 PLATFORM_MODULES list). */
 const CLIENT_EXTERNALS = [
   'react',
   'react/jsx-runtime',
@@ -40,7 +39,7 @@ const CLIENT_EXTERNALS = [
   '@deepseek-ai/cordis',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-runtime/client',
+  '@deepseek-ai/dsh-client-store',
 ] as const
 
 /** Requested-from-module-table specifiers (kept as imports, never inlined). */

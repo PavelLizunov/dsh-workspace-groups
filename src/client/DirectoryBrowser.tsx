@@ -8,7 +8,7 @@ import {
   IconWarningOutline16,
   Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client'
+import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
 import css from './directory-browser.css?inline'
 
 export interface DirectoryBrowserStrings {

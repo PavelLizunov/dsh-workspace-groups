@@ -1,11 +1,6 @@
-import type {
-  SessionId,
-  SessionListState,
-  SessionSearchResultItem,
-  SessionSummary,
-  WorkspaceId,
-  WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { GroupsTreeView } from '../src/client/tree.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
 

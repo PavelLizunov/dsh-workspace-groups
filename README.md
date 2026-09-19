@@ -1,15 +1,29 @@
 <p align="right">
-  <strong>English</strong> · <a href="./README_ZH.md">简体中文</a>
+  <strong>English</strong> · <a href="./README_RU.md">Русский</a> · <a href="./README_ZH.md">简体中文</a>
 </p>
 
 # dsh-workspace-groups
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)
+![DSH](https://img.shields.io/badge/DSH-0.1.5--rc.2-purple.svg)
 <img src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-202724" alt="DeepSeek Harness plugin">
 
 > **A DeepSeek Harness (DSH) web client plugin for sidebar workspace grouping.**
 > Upgrades the DSH web sidebar list into a three-level **Category folder → Project folder → Session** tree with **drag-and-drop ordering**, **attention filters** (status, color, recency), and **tree search**. Backed by full group management (create, rename, delete), rule-based auto-classification, sidecar YAML configuration, and runtime overlay persistence — with **zero intrusion** on official core data.
+
+## Compatibility
+
+**Target: DSH 0.1.5-rc.2.** Development dependencies are pinned to that platform version.
+Do not use the older 0.1.1 client bundle with this release, or assume that arbitrary newer DSH versions are compatible.
+The repository contains the migrated source and prebuilt artifacts; no recovery folder or local platform type stubs are required.
+
+| Need | Use |
+|---|---|
+| Keep an important conversation in view | Give the session a color; it stays visible beyond the five-row preview |
+| Put a conversation first | Pin it from the session menu |
+| Find work waiting for you | Select **Needs attention**, optionally with a color or recency filter |
+| Organize projects | Create a group, drag projects into it, or add a workspace directly inside it |
+| Reduce sidebar clutter | Collapse branches or preview and archive eligible inactive sessions |
 
 ## Quick Install
 
@@ -21,7 +35,7 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 ## Current UI
 
-Captured from the current DSH Web build; workspace and session labels use privacy-safe demo names.
+Historical interface examples with privacy-safe demo names. These screenshots predate the 0.1.5 migration and do not demonstrate the latest session color controls or certify the current build.
 
 | Grouped sidebar | Bulk tree controls | Finder-style filters |
 | :---: | :---: | :---: |
@@ -109,8 +123,9 @@ Captured from the current DSH Web build; workspace and session labels use privac
   overlay (`~/.dsh/workspace-groups.manual.json`), validated by the host and **written
   atomically** (a malformed write returns 400 and keeps the previous file)
 - Filter selection uses the official profile settings service; no settings file is edited directly.
-- Attention detection uses existing `pendingInteraction` state plus one framework-managed incremental
-  session projection; it never scans transcripts or adds session-list requests.
+- Attention detection uses `uiSession.pendingInteractions` through `useSessionPendingInteraction`, plus one
+  framework-managed incremental session projection; it never scans transcripts or adds session-list requests.
+- All three Host routes use the native connection's request-authentication gate before reading data or accepting writes.
 - **Zero intrusion**: never touches `~/.dsh/storages/workspace.json`, session on-disk
   structures, or the official `@deepseek-ai/dsh-client-ui-workspace` package; the rule YAML
   is never rewritten
@@ -122,8 +137,9 @@ Captured from the current DSH Web build; workspace and session labels use privac
 - The plugin is a **client plugin** registered into the official sidebar shell's
   `sidebar.workspaces` slot (`kind: 'single'`) at `priority: -1`, replacing the official
   WorkspaceBrowser (registered at priority 0; lowest priority wins in a single slot).
-- All data comes from the runtime API: the `useWorkspaces` / `useSessions` global hooks and
-  `ctx.workspaces.*` / `ctx.sessions.*` — grouping is purely a **presentation-layer transform**.
+- Data comes from the `useWorkspaces` / `useSessions` hooks and controller services.
+  `uiWorkspace` owns starting/archiving sessions and directory browsing; `uiSession` supplies pending interactions.
+  Grouping is a **presentation-layer transform**; ordinary workspace/session operations use official APIs.
 - The host half does two things: parses the sidecar YAML and merges it with the runtime
   overlay, served to the client via `GET /workspace-groups/config` (`Cache-Control: no-cache`);
   and `PUT /workspace-groups/manual` accepts the full overlay (manual groups, per-workspace
@@ -159,8 +175,9 @@ Verify the install:
 ```sh
 dsh --profile web --dump-config | grep -A3 workspace-groups
 # expect: - id: workspace-groups / name: dsh-workspace-groups / config: {}
-curl http://127.0.0.1:3080/workspace-groups/config
-# expect: the sidecar YAML parsed as JSON
+# In your authenticated DSH browser, open /workspace-groups/config.
+# Expect JSON with categories, manual, and revision.
+# Unauthenticated requests must return 401; do not disable authentication.
 ```
 
 ## Uninstall
@@ -271,20 +288,19 @@ scan GitHub topics). Already set:
 ## Development
 
 ```sh
-pnpm install
-pnpm typecheck   # host + client dual-program type checking
-pnpm test        # core rules, overlay, tree derivation unit tests
-pnpm build       # build lib/ (node half + client bundle)
-pnpm watch       # tsdown watch (client HMR)
-node scripts/verify-groups.mjs   # real-browser CDP verification (host restarted; self-spawns a headless Chrome, auto-restores the scene)
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm build       # rebuild committed Host/client artifacts and declarations
+pnpm verify      # types, unit/DOM tests, real loader, isolated tarball installation
+pnpm test:loader # reproduce rejected legacy external; check the current bundle
+pnpm watch       # rebuild this checkout only; does not deploy to an installed profile
 ```
 
 Artifact contract (mirrors the official client packages):
 
 - `lib/index.js` — host half (ESM; reads the sidecar + `/workspace-groups/config` route;
-  js-yaml inlined, no runtime dependencies)
+  js-yaml inlined; `zod` and `@deepseek-ai/schemastery` remain package dependencies)
 - `lib/client.js` — browser half (`window.__ModuleLoader__.load({id, factory})`; only
-  requires platform seeds: react / react/jsx-runtime / @deepseek-ai/dsh-client-runtime/client /
+  requires platform seeds: react / react/jsx-runtime / @deepseek-ai/dsh-client-store /
   @deepseek-ai/dsh-client-ui-primitives; cross-plugin value imports are rejected at build
   time by the purity gate)
 - `lib/types/**` — declaration files
@@ -334,7 +350,20 @@ scripts/
 - `pnpm build`: reproducible Host/client bundles and declaration artifacts in `lib/`.
 - `node scripts/verify-groups.mjs`: optional real-browser CDP suite with scene restoration;
   it requires a compatible local browser and an already activated plugin build.
-- The current `main` build is automation-verified and confirmed in a live-GUI smoke test.
+- `pnpm test:loader` uses the real DSH 0.1.5 loader and checks the published shell's module IDs; platform exports are mocked. The isolated consumer test also runs it on the installed tarball.
+- Unit/DOM and loader checks are not a full authenticated browser lifecycle test. This repository migration does not deploy or restart the live GUI.
+
+## Updates and limitations
+
+- Use Node.js 22.18+ and pnpm 11.22.0 for the development commands above. The lockfile pins the tested dependency graph.
+- Install/update the complete plugin only into a compatible DSH profile. Host or profile changes require a separately scheduled activation; a Git push does not change a running installation.
+- Client-only HMR can avoid a restart when an existing watcher monitors that exact installed bundle. Check loader/API compatibility first; never copy a legacy bundle into a newer shell.
+- A matching child-session color admits its workspace to the filter; siblings can remain visible, subject to status and recency. Color tags do not override those other filters.
+- Manual colors do not bubble up onto collapsed parent rows; attention/error states do. Blank sessions have no color menu.
+- Group names, workspace IDs, and session IDs share the legacy `colors` map. Identical keys can collide; no namespace migration is included.
+- Archive does not remove stored color keys. A color is a reminder, not protection from cleanup. Each archive rechecks current activity, pending interactions, archive state, selected session, age, and workspace scope.
+- UI dictionaries are English and Simplified Chinese. The Russian README is documentation, not Russian UI localization.
+- The main repository is the development source; recovery folders are not build inputs. Keep all three READMEs and committed `lib/` synchronized.
 
 ## Upstream & credits
 

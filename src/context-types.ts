@@ -9,6 +9,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
+import type { HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
 
 /** One named webserver route (mirror of the host-webserver WebRoute). */
 export interface GroupsWebRoute {
@@ -24,9 +25,10 @@ export interface GroupsWebServer {
 
 /** Minimal profile-settings service face used by filter preferences. */
 export interface GroupsSettings {
-  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): unknown
-  get(namespace: string): unknown
-  update(namespace: string, patch: object): Promise<void>
+  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): {
+    get(): unknown
+    update(patch: object): Promise<void>
+  }
 }
 
 /** Minimal incremental session-projection registry face used by attention folding. */
@@ -36,6 +38,7 @@ export interface GroupsSessionProjections {
 
 /** Cordis Context augmented with the services this plugin always needs. */
 export interface GroupsContext extends Context {
+  connection: HostConnectionHandle
   webServer: GroupsWebServer
 }
 

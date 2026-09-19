@@ -1,14 +1,11 @@
 /**
  * Three-level tree search matching and pruned search tree derivation.
  */
-import {
-  indexSubagentDescendants,
-  type SessionId,
-  type SessionListState,
-  type SessionSearchResultItem,
-  type SessionSummary,
-  type WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import { indexSubagentDescendants } from './subagent-lineage.ts'
 import { effectiveCategories, resolveCategory } from '../core/matcher.ts'
 import type { GroupsConfig, ManualGroups } from '../core/types.ts'
 import {
@@ -135,6 +132,7 @@ export function deriveSearchGroups(
   archivedSessionIds: readonly SessionId[],
   manual: ManualGroups,
   snippetsBySession?: ReadonlyMap<SessionId, string>,
+  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
 ): SearchTree {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
@@ -157,7 +155,7 @@ export function deriveSearchGroups(
       if (summary === undefined || !matchedIds.has(id)) continue
       if (!sessionVisible(summary, list.current, archived)) continue
       const isPinned = pinnedSet.has(id)
-      const node = sessionNode(summary, descendants, isPinned, manual.colors?.[id])
+      const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id])
       const snippet = snippetsBySession?.get(id)
       matchedMap.set(id, {
         ...node,

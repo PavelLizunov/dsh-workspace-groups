@@ -1,11 +1,11 @@
 <p align="right">
-  <a href="./README.md">English</a> · <strong>简体中文</strong>
+  <a href="./README.md">English</a> · <a href="./README_RU.md">Русский</a> · <strong>简体中文</strong>
 </p>
 
 # dsh-workspace-groups
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)
+![DSH](https://img.shields.io/badge/DSH-0.1.5--rc.2-purple.svg)
 <img src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-202724" alt="DeepSeek Harness plugin">
 
 > **DeepSeek Harness (DSH) 侧边栏工作区分组插件。**
@@ -14,6 +14,20 @@
 典型场景：多个 DSH 插件项目（SkillsManagePlugins / Documentation-Driven AI Coding /
 DeepSeek峰谷小组件 等）归入一个「DSH 插件」分类文件夹，点开是各项目，再点开是各自会话；
 临时项目随手建个「临时」分组拖进去，用完删除分组，项目全部回归**顶层**。
+
+## 兼容性
+
+**目标版本：DSH 0.1.5-rc.2。** 开发依赖固定到该平台版本。
+不要将旧版 0.1.1 客户端产物用于此版本，也不要假定任意更新的 DSH 版本都兼容。
+仓库包含迁移后的源代码和预构建产物，不依赖本机修复目录或平台类型占位文件。
+
+| 需求 | 操作 |
+|---|---|
+| 保持重要会话可见 | 给会话设置颜色，超过五行预览也会保留 |
+| 将会话排在前面 | 在会话菜单中置顶 |
+| 查找等待处理的工作 | 选择 **需要处理**，可组合颜色或时间筛选 |
+| 整理项目 | 新建分组、拖入项目，或直接在分组内添加工作区 |
+| 减少侧边栏内容 | 折叠分支，或预览并归档符合条件的旧会话 |
 
 ## 快速安装 (Quick Install)
 
@@ -25,7 +39,7 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 
 ## 当前界面
 
-截图来自当前 DSH Web 构建；工作区与会话名称已替换为保护隐私的演示名称。
+历史界面示例，名称已替换为保护隐私的演示名称。截图早于 0.1.5 迁移，不展示最新会话颜色控件，也不是当前构建的验证证据。
 
 | 分组侧边栏 | 批量树形控制 | Finder 风格筛选 |
 | :---: | :---: | :---: |
@@ -95,8 +109,8 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
   （`~/.dsh/workspace-groups.manual.json`），host 校验后**原子写入**（写坏返回 400 并
   保留原文件）
 - 筛选选择通过官方 Profile settings 服务保存，不直接编辑任何 settings 文件。
-- 注意状态检测复用现有 `pendingInteraction` 与一个由框架管理的增量会话 projection；
-  不扫描 transcript，也不增加会话列表请求。
+- 注意状态通过 `useSessionPendingInteraction` 读取 `uiSession.pendingInteractions`，并复用一个由框架管理的增量会话 projection；不扫描 transcript，也不增加会话列表请求。
+- 三个 Host 路由在读取数据或接受写入前，均通过原生 connection 的请求认证检查。
 - **零侵入**：不修改 `~/.dsh/storages/workspace.json`、不修改会话落盘结构、不修改官方
   `@deepseek-ai/dsh-client-ui-workspace` 包；规则 YAML 永不改写
 - **产物自包含**：`lib/` 已构建并随仓库分发，Git 安装无需执行任何依赖脚本
@@ -106,8 +120,7 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 - 本插件是 **client 插件**，注册进官方 sidebar shell 声明的 `sidebar.workspaces`
   slot（`kind: 'single'`），以 `priority: -1` 顶替官方默认 WorkspaceBrowser
   （官方以 priority 0 注册；single 槽位最低 priority 胜出）。
-- 数据源全部复用运行时 API：`useWorkspaces` / `useSessions` 全局 hooks 与
-  `ctx.workspaces.*` / `ctx.sessions.*`，分类只是**展示层变换**。
+- 数据来自 `useWorkspaces` / `useSessions` hooks 和 controller 服务。`uiWorkspace` 负责新建/归档会话与目录浏览，`uiSession` 提供待处理交互。分组是**展示层变换**，工作区/会话操作调用官方 API。
 - host 半做两件事：把 sidecar YAML 解析为 JSON 与运行时 overlay 合并，经
   `GET /workspace-groups/config` 路由（`Cache-Control: no-cache`）供 client 获取；
   `PUT /workspace-groups/manual` 接收整份 overlay（手动分组、每工作区归类覆盖、
@@ -141,8 +154,9 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ```sh
 dsh --profile web --dump-config | grep -A3 workspace-groups
 # 应出现 - id: workspace-groups / name: dsh-workspace-groups / config: {}
-curl http://127.0.0.1:3080/workspace-groups/config
-# 应返回 sidecar YAML 解析后的 JSON
+# 在已认证的 DSH 浏览器中打开 /workspace-groups/config。
+# 应返回包含 categories、manual 和 revision 的 JSON。
+# 未认证请求应返回 401；不要禁用认证。
 ```
 
 ## 卸载
@@ -244,20 +258,19 @@ categories:
 ## 开发
 
 ```sh
-pnpm install
-pnpm typecheck   # host + client 双 program 类型检查
-pnpm test        # 核心规则、overlay、树派生单测
-pnpm build       # 构建 lib/（node 半 + client bundle）
-pnpm watch       # tsdown 监听（client HMR）
-node scripts/verify-groups.mjs   # 真机 CDP 验证（host 已重启时；自启独立 headless Chrome，自动恢复现场）
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm build       # 重建并提交 Host/client 产物与声明
+pnpm verify      # 类型、单元/DOM、真实 loader、隔离 tarball 安装验证
+pnpm test:loader # 重现旧 external 被拒绝，并检查当前 bundle
+pnpm watch       # 仅重建当前仓库，不部署到已安装的 profile
 ```
 
 产物契约（与官方 client 包一致）：
 
 - `lib/index.js` —— host 半（ESM；读取 sidecar + `/workspace-groups/config` 路由，
-  js-yaml 已内联，无运行时依赖）
+  js-yaml 已内联；`zod` 与 `@deepseek-ai/schemastery` 仍为包依赖）
 - `lib/client.js` —— browser 半（`window.__ModuleLoader__.load({id, factory})`；
-  仅 require 平台 seed：react / react/jsx-runtime / @deepseek-ai/dsh-client-runtime/client /
+  仅 require 平台 seed：react / react/jsx-runtime / @deepseek-ai/dsh-client-store /
   @deepseek-ai/dsh-client-ui-primitives；跨插件值 import 在构建期被 purity 门拒绝）
 - `lib/types/**` —— 声明文件
 
@@ -304,7 +317,20 @@ scripts/
 - `pnpm build`：可复现生成 Host/client bundle 与 `lib/` 声明文件。
 - `node scripts/verify-groups.mjs`：可选的真实浏览器 CDP 测试并自动恢复现场；需要兼容的
   本地浏览器和已激活的插件构建。
-- 当前 `main` 构建已通过完整自动化验证，并已完成实时 GUI 冒烟测试。
+- `pnpm test:loader` 使用真实 DSH 0.1.5 loader 并检查已发布 shell 的模块 ID；平台导出使用 mock。隔离 consumer 测试也会检查安装后的 tarball。
+- 单元/DOM 与 loader 检查不等于完整的已认证浏览器生命周期测试。本次仓库迁移不部署或重启实时 GUI。
+
+## 更新与限制
+
+- 上述开发命令使用 Node.js 22.18+ 和 pnpm 11.22.0；lockfile 固定已测试的依赖图。
+- 完整插件只能安装/更新到兼容的 DSH profile。Host 或 profile 变更需要另行安排激活；Git push 不会改变运行中的安装。
+- 已有 watcher 监视同一个已安装 bundle 时，纯客户端更新可通过 HMR 避免重启。必须先验证 loader/API 兼容性，不能把旧 bundle 复制到新 shell。
+- 子会话颜色匹配会使其工作区进入筛选结果；兄弟会话仍可显示，但继续受状态和时间条件限制。颜色不会覆盖其他筛选条件。
+- 手动颜色不向折叠的父行汇总，注意/错误状态会汇总。空白会话不显示颜色菜单。
+- 分组名、工作区 ID、会话 ID 共用旧版 `colors` map；相同键可能冲突，本次不迁移命名空间。
+- 归档不会删除颜色键。颜色是提醒，不会阻止清理。每次归档前重新检查运行状态、待处理交互、归档状态、当前会话、时间和工作区范围。
+- UI 字典为英语与简体中文；俄语 README 是文档，不代表 UI 已俄语本地化。
+- 主仓库是开发源，修复目录不是构建输入。三个 README 与已提交的 `lib/` 必须保持同步。
 
 ## 上游与致谢 (Upstream & credits)
 

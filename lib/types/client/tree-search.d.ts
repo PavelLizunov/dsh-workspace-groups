@@ -1,7 +1,10 @@
 /**
  * Three-level tree search matching and pruned search tree derivation.
  */
-import { type SessionId, type SessionListState, type SessionSearchResultItem, type SessionSummary, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
+import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client';
+import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client';
 import type { GroupsConfig, ManualGroups } from '../core/types.js';
 import { type CategoryNode, type WorkspaceGroupNode } from './tree.js';
 /** Recency comparator: newest first, id as the deterministic tiebreak. */
@@ -48,4 +51,4 @@ export interface SearchTree {
  * @returns group folders in render order plus top-level matched workspaces,
  * pruned to matched branches only.
  */
-export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>): SearchTree;
+export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>, pendingInteractions?: SessionPendingInteractionSnapshot): SearchTree;

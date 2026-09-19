@@ -21,9 +21,10 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
 
   function mount(settings?: GroupsSettings, sessionProjections?: GroupsSessionProjections): void {
     const mockCtx = {
+      connection: { requestRejection: () => undefined },
       effect: (cb: () => () => void) => cb(),
       inject: (services: string[], callback: (ctx: unknown) => void) => {
-        if (services.includes('settings') && settings !== undefined) callback({ settings })
+        if (services.includes('settings') && settings !== undefined) callback({ settings, effect: (cb: () => () => void) => cb() })
         if (services.includes('sessionProjections') && sessionProjections !== undefined) callback({ sessionProjections })
       },
       webServer: {
@@ -43,11 +44,12 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     process.env.DSH_HOME = tempDir
     settingsValue = { ...DEFAULT_SIDEBAR_FILTER }
     mount({
-      register: () => undefined,
-      get: () => settingsValue,
-      update: async (_namespace, patch) => {
-        settingsValue = { ...settingsValue, ...patch } as SidebarFilterPreferences
-      },
+      register: () => ({
+        get: () => settingsValue,
+        update: async (patch) => {
+          settingsValue = { ...settingsValue, ...patch } as SidebarFilterPreferences
+        },
+      }),
     })
 
     server = createServer((req, res) => {

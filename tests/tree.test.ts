@@ -5,18 +5,18 @@
  * rows after the group folders (no "uncategorized" bucket).
  * Pure derivation (no DOM), fixtures cast to the runtime contract types.
  *
- * The browser runtime bundle self-registers via window.__ModuleLoader__ and
- * cannot execute in a plain node process, so the one value import it provides
- * (`indexSubagentDescendants`) is stubbed; the fixtures carry no subagents.
+ * The lineage helper is mocked here to count canonical derivations;
+ * controller-client.test.ts exercises its real descendant traversal.
  */
 import { describe, expect, it, vi } from 'vitest'
 
 const runtimeMocks = vi.hoisted(() => ({
   indexSubagentDescendants: vi.fn(() => new Map()),
 }))
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
+vi.mock('../src/client/subagent-lineage.ts', () => runtimeMocks)
 
-import type { SessionListState, SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import { deriveGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
@@ -237,7 +237,7 @@ describe('aggregated attention state derivation', () => {
       s3: sessionWithState('s3', { pendingInteraction: 'approval' }),
     }
     const list = customListState(sessions)
-    const groups = deriveGroups(list, [ws1, ws2], [], CONFIG, VIEW, { categories: [], assignments: {} })
+    const groups = deriveGroups(list, [ws1, ws2], [], CONFIG, VIEW, { categories: [], assignments: {} }, new Map([[sessions.s3.id, { key: 'q', kind: 'approval', sessionId: sessions.s3.id }]]))
     const cat = groups.find(g => g.label === 'DSH Plugins')!
     expect(cat.attention).toBe('warning')
     expect(cat.workspaces.find(w => w.workspaceId === 'ws-1')?.attention).toBe('ongoing')
@@ -353,7 +353,7 @@ describe('aggregated attention state derivation', () => {
     const s3 = sessionWithState('s3', { running: true })
     const list = customListState({ s1, s2, s3 })
 
-    const canonical = deriveWorkspaceTree(list, [ws1, ws2], [], CONFIG, { categories: [], assignments: {} })
+    const canonical = deriveWorkspaceTree(list, [ws1, ws2], [], CONFIG, { categories: [], assignments: {} }, new Map([[s2.id, { key: 'q', kind: 'approval', sessionId: s2.id }]]))
     const cat = canonical.categories.find(g => g.label === 'DSH Plugins')!
     expect(cat.attention).toBe('error')
     expect(cat.workspaces.find(w => w.workspaceId === 'ws-1')?.attention).toBe('error')

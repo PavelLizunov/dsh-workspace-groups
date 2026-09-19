@@ -1,4 +1,4 @@
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 export declare const SESSION_ROW_LIMIT = 5;
 /** First five sessions, plus the selected, pinned, or color-tagged sessions when they fall outside that window. */
 export declare function visibleWorkspaceSessions<T extends {

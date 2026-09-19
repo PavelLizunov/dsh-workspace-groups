@@ -1,4 +1,4 @@
-import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client';
+import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client';
 export interface DirectoryBrowserStrings {
     title: string;
     home: string;

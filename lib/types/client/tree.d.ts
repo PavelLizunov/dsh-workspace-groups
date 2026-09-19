@@ -4,7 +4,12 @@
  * scans. Session visibility rules mirror the official ui-workspace tree
  * (blank rows only when current, archived excluded, subagent rows excluded).
  */
-import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSummary, type SubagentDescendantSummary, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client';
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client';
+import { type SubagentDescendantSummary } from './subagent-lineage.js';
+import type { PendingInteractionStatus } from './tree-attention.js';
 import { type SessionAttentionReason } from '../core/attention.js';
 import { type GroupsConfig, type ManualGroups } from '../core/types.js';
 import { type AttentionState } from './tree-attention.js';
@@ -95,12 +100,12 @@ export declare function workspaceLabel(cwd: string | undefined): string;
 export declare function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean;
 /** Blank rows display the localized New Session label (never enters search). */
 export declare function sessionTitle(session: SessionSummary): string;
-export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, color?: string | null): SessionNode;
+export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, pendingInteractions?: SessionPendingInteractionSnapshot, color?: string | null): SessionNode;
 /** Build the fully populated grouped and top-level tree once per list snapshot. */
-export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups): WorkspaceTree;
+export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot): WorkspaceTree;
 /** Apply expansion state without rescanning or rebuilding session summaries. */
 export declare function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTreeView): WorkspaceTree;
 /** Derive grouped branches with the requested expansion state. */
-export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): CategoryNode[];
+export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot): CategoryNode[];
 /** Derive top-level branches with the requested expansion state. */
-export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups): WorkspaceGroupNode[];
+export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot): WorkspaceGroupNode[];

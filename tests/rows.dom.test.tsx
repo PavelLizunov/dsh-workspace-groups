@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const runtimeMocks = vi.hoisted(() => ({
   indexSubagentDescendants: vi.fn(() => new Map()),
 }))
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
+vi.mock('../src/client/subagent-lineage.ts', () => runtimeMocks)
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
@@ -43,6 +43,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 import { GroupsBrowser } from '../src/client/GroupsBrowser.tsx'
 
+const emptyPending = new Map<never, never>()
 const t = ((key: string) => key) as never
 let host: HTMLDivElement
 let root: Root
@@ -415,6 +416,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded, retainKeys: () => {} } as never}
@@ -426,13 +428,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -516,6 +518,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
@@ -527,13 +530,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -706,6 +709,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded, setWorkspaceExpanded, setCategoriesExpanded, setWorkspacesExpanded, retainKeys: () => {} } as never}
@@ -717,13 +721,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -834,6 +838,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded, setWorkspaceExpanded, setCategoriesExpanded, setWorkspacesExpanded, retainKeys: () => {} } as never}
@@ -845,13 +850,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -947,6 +952,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
@@ -958,13 +964,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={archiveSession}
+          cleanupSessions={async (ids) => { for (const id of ids) await archiveSession(id) }}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -1067,6 +1073,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
@@ -1078,13 +1085,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={archiveSession}
+          cleanupSessions={async (ids) => { for (const id of ids) await archiveSession(id) }}
           insertSessionBefore={async () => {}}
           createWorkspace={async () => ({} as never)}
           listDirectory={async () => ({} as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -1211,6 +1218,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
@@ -1222,13 +1230,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={createWorkspace}
           listDirectory={async () => ({ path: '/home/user', entries: [], crumbs: [] } as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )
@@ -1311,6 +1319,7 @@ describe('row interaction contracts', () => {
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
+          useSessionPendingInteraction={((selector: (value: Map<never, never>) => unknown) => selector(emptyPending)) as never}
           useWorkspaces={useWorkspaces as never}
           useStore={useStore as never}
           actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
@@ -1322,13 +1331,13 @@ describe('row interaction contracts', () => {
           deleteWorkspace={async () => {}}
           insertWorkspaceBefore={async () => {}}
           archiveSession={async () => {}}
+          cleanupSessions={async () => {}}
           insertSessionBefore={async () => {}}
           createWorkspace={createWorkspace}
           listDirectory={async () => ({ path: '/home/user', entries: [], crumbs: [] } as never)}
           createDirectory={async () => ''}
           searchSessions={async () => ({ items: [], hasMore: false })}
           searchResultLimit={20}
-          useHostDescription={(() => ({})) as never}
           t={((key: string) => key) as never}
         />,
       )

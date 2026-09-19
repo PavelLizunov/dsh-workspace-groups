@@ -36,7 +36,10 @@ import {
   type SidebarFilter,
   type StatusScope,
 } from './tree-filter.ts'
-import type { SessionId, SessionListState, SessionSearchResultItem, SessionSummary, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { CLEANUP_DAYS_PRESETS, DEFAULT_CLEANUP_DAYS, findOldSessionsToArchive } from './session-cleanup.ts'
 import {
   displayCategoryKeys,
@@ -265,6 +268,7 @@ export function GroupsBrowser({
   wide,
   expandSidebar,
   useSessions,
+  useSessionPendingInteraction,
   useWorkspaces,
   useStore,
   actions,
@@ -276,6 +280,7 @@ export function GroupsBrowser({
   deleteWorkspace,
   insertWorkspaceBefore,
   archiveSession,
+  cleanupSessions,
   insertSessionBefore,
   createWorkspace,
   listDirectory,
@@ -356,6 +361,7 @@ export function GroupsBrowser({
   const workspaceExpansion = useStore(s => s.workspaceExpansion)
 
   const list = useSessions(s => s)
+  const pendingInteractions = useSessionPendingInteraction(s => s)
   const current = list.current
   const now = useMemo(() => Date.now(), [list])
   const currentWorkspaceKey = current === undefined
@@ -485,9 +491,9 @@ export function GroupsBrowser({
 
   const canonicalTree = useMemo(
     () => normalizedQuery === ''
-      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual)
+      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions)
       : EMPTY_WORKSPACE_TREE,
-    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery],
+    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery, pendingInteractions],
   )
   const filterResult = useMemo(
     () => isFilterActive
@@ -753,24 +759,24 @@ export function GroupsBrowser({
     const targetWs = cleanupTarget.workspaceId !== undefined
       ? workspaces.find(w => w.workspaceId === cleanupTarget.workspaceId)
       : undefined
+    if (cleanupTarget.workspaceId !== undefined && targetWs === undefined) return []
     const allSessions = list.ids.map(id => list.byId[id]).filter((s): s is SessionSummary => s !== undefined)
     return findOldSessionsToArchive(allSessions, {
+      pendingInteractions,
       days: cleanupDays,
       now,
       currentSessionId: list.current,
       archivedSessionIds,
       targetWorkspaceSessionIds: targetWs?.sessionIds,
     })
-  }, [cleanupTarget, cleanupDays, workspaces, list, now, archivedSessionIds])
+  }, [cleanupTarget, cleanupDays, workspaces, list, now, archivedSessionIds, pendingInteractions])
 
   const onCleanupConfirm = async () => {
     if (cleanupBusy || cleanupCandidates.length === 0) return
     setCleanupBusy(true)
     setCleanupError(null)
     try {
-      for (const session of cleanupCandidates) {
-        await archiveSession(session.id)
-      }
+      await cleanupSessions(cleanupCandidates.map(session => session.id), cleanupDays, cleanupTarget?.workspaceId)
       setCleanupTarget(null)
     } catch (reason: unknown) {
       setCleanupError(reason instanceof Error ? reason.message : String(reason))
@@ -1437,6 +1443,7 @@ export function GroupsBrowser({
           )}
           {normalizedQuery !== '' ? (
             <SearchBody
+              pendingInteractions={pendingInteractions}
               list={list}
               workspaces={workspaces}
               config={config}
@@ -2349,7 +2356,8 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+function SearchBody({ pendingInteractions, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+  pendingInteractions: SessionPendingInteractionSnapshot
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -2382,8 +2390,8 @@ function SearchBody({ list, workspaces, config, archivedSessionIds, query, remot
     [list, workspaces, config, query, archivedSessionIds, currentRemote, resultLimit],
   )
   const searchTree = useMemo(
-    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession),
-    [list, workspaces, config, matches, archivedSessionIds, manual],
+    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession, pendingInteractions),
+    [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions],
   )
   const filteredSearch = useMemo(
     () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now()),

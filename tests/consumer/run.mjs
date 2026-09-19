@@ -57,8 +57,10 @@ try {
   if (hostModule.name !== 'dsh-workspace-groups' || !Array.isArray(hostModule.inject) || typeof hostModule.apply !== 'function') {
     throw new Error('installed host export contract invalid')
   }
+  if (!hostModule.inject.includes('connection')) throw new Error('installed host must require native request authentication')
+  execFileSync(process.execPath, [path.join(rootDir, 'tests/consumer/loader.mjs'), path.join(tempDir, 'node_modules/dsh-workspace-groups/lib/client.js')], { cwd: rootDir, stdio: 'inherit' })
   const packageJson = JSON.parse(fs.readFileSync(path.join(tempDir, 'node_modules/dsh-workspace-groups/package.json'), 'utf8'))
-  for (const required of ['README.md', 'README_ZH.md', 'workspace-groups.example.yaml', 'cordis.patch.yml', 'lib/client.js']) {
+  for (const required of ['README.md', 'README_ZH.md', 'README_RU.md', 'workspace-groups.example.yaml', 'cordis.patch.yml', 'lib/client.js']) {
     if (!fs.existsSync(path.join(tempDir, 'node_modules/dsh-workspace-groups', required))) throw new Error(`installed package missing ${required}`)
   }
   if (packageJson.exports?.['./client']?.default !== './lib/client.js') throw new Error('client export is missing')

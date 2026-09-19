@@ -2,7 +2,8 @@
  * Attention derivation and aggregation for sessions, workspaces, and categories.
  * Priority hierarchy: error > warning > ongoing > done.
  */
-import type { PendingInteractionStatus } from '@deepseek-ai/dsh-client-runtime/client'
+/** Navigation presentation recognizes the three built-in pending interaction kinds. */
+export type PendingInteractionStatus = 'approval' | 'plan-review' | 'question'
 import type { SessionAttentionReason } from '../core/attention.ts'
 
 export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done'

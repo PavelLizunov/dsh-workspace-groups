@@ -8,7 +8,7 @@ import {
   isImeComposing,
   resolveNewFolderTarget,
 } from '../src/client/DirectoryBrowser.tsx'
-import type { DirectoryEntry } from '@deepseek-ai/dsh-client-runtime/client'
+import type { DirectoryEntry } from '@deepseek-ai/dsh-api-remotes/client'
 
 describe('filterDirectoryEntries', () => {
   const sampleEntries: DirectoryEntry[] = [

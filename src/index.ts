@@ -38,8 +38,8 @@ import {
 /** Plugin identity for cordis.yml rows. */
 export const name = 'dsh-workspace-groups'
 
-/** Services required before mounting: the webserver route. */
-export const inject = ['webServer']
+/** Routes mount only while native request authentication and the webserver are available. */
+export const inject = ['webServer', 'connection']
 
 /** Cap on the PUT body: the overlay is tiny; anything bigger is a client bug. */
 const MAX_MANUAL_BODY_BYTES = 64 * 1024
@@ -160,14 +160,15 @@ export function apply(ctx: GroupsContext): void {
   } | undefined
   ctx.inject(['settings'], (injected) => {
     const settings = (injected as GroupsSettingsContext).settings
-    settings.register(FILTER_SETTINGS_NAMESPACE, FILTER_PREFERENCES_SCHEMA, { applies: 'live' })
+    const scope = settings.register(FILTER_SETTINGS_NAMESPACE, FILTER_PREFERENCES_SCHEMA, { applies: 'live' })
     filterSettings = {
-      get: () => parseSidebarFilterPreferences(settings.get(FILTER_SETTINGS_NAMESPACE)),
+      get: () => parseSidebarFilterPreferences(scope.get()),
       update: async (filter) => {
-        await settings.update(FILTER_SETTINGS_NAMESPACE, filter)
-        return parseSidebarFilterPreferences(settings.get(FILTER_SETTINGS_NAMESPACE))
+        await scope.update(filter)
+        return parseSidebarFilterPreferences(scope.get())
       },
     }
+    injected.effect(() => () => { filterSettings = undefined }, 'workspace-groups: release settings scope')
   })
   ctx.inject(['sessionProjections'], (injected) => {
     (injected as GroupsSessionProjectionsContext).sessionProjections.register(workspaceGroupsAttentionProjectionDefinition)
@@ -179,6 +180,11 @@ export function apply(ctx: GroupsContext): void {
     kind: 'exact',
     path: '/workspace-groups/config',
     handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req)
+      if (rejection !== undefined) {
+        writeError(res, rejection, rejection === 401 ? 'unauthorized' : 'forbidden')
+        return
+      }
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         writeError(res, 405, 'method not allowed')
         return
@@ -209,6 +215,11 @@ export function apply(ctx: GroupsContext): void {
     kind: 'exact',
     path: '/workspace-groups/preferences',
     handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req)
+      if (rejection !== undefined) {
+        writeError(res, rejection, rejection === 401 ? 'unauthorized' : 'forbidden')
+        return
+      }
       if (req.method === 'GET') {
         writeJson(res, 200, { filter: filterSettings?.get() ?? DEFAULT_SIDEBAR_FILTER })
         return
@@ -241,6 +252,11 @@ export function apply(ctx: GroupsContext): void {
     kind: 'exact',
     path: '/workspace-groups/manual',
     handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req)
+      if (rejection !== undefined) {
+        writeError(res, rejection, rejection === 401 ? 'unauthorized' : 'forbidden')
+        return
+      }
       if (req.method !== 'PUT') {
         writeError(res, 405, 'method not allowed')
         return

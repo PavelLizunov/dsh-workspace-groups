@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 const runtimeMocks = vi.hoisted(() => ({
   indexSubagentDescendants: vi.fn(() => new Map()),
 }))
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => runtimeMocks)
+vi.mock('../src/client/subagent-lineage.ts', () => runtimeMocks)
 
 import { deriveGroups, deriveSearchGroups, deriveSearchMatches, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion } from '../src/client/tree.ts'
 import { generateScaleSnapshot, type ScaleSnapshot } from './scale-fixtures.ts'

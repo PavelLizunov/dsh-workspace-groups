@@ -1,9 +1,12 @@
-import type { SessionId, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 
 export const DEFAULT_CLEANUP_DAYS = 30
 export const CLEANUP_DAYS_PRESETS = [7, 14, 30, 60, 90] as const
 
 export interface CleanupFilterOptions {
+  pendingInteractions: SessionPendingInteractionSnapshot
   days: number
   now: number
   currentSessionId?: SessionId | undefined
@@ -29,7 +32,7 @@ export function findOldSessionsToArchive(
     if (session.origin === 'subagent') return false
     if (session.blank) return false
     if (session.running) return false
-    if (session.pendingInteraction !== undefined) return false
+    if (options.pendingInteractions.has(session.id)) return false
     if (currentSessionId !== undefined && session.id === currentSessionId) return false
     if (archivedSet.has(session.id)) return false
     if (workspaceSet !== null && !workspaceSet.has(session.id)) return false
