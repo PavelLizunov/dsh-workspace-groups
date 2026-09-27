@@ -10,6 +10,7 @@ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { indexSubagentDescendants, type SubagentDescendantSummary } from './subagent-lineage.ts'
 import type { PendingInteractionStatus } from './tree-attention.ts'
+import type { SessionCompletionObservation } from './store-core.ts'
 import { readAttentionProjection, type SessionAttentionReason } from '../core/attention.ts'
 import {
   effectiveCategories,
@@ -142,23 +143,46 @@ export function sessionNode(
   pinned?: boolean,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   color?: string | null,
+  completedOverride?: boolean,
 ): SessionNode {
   const kind = pendingInteractions.get(s.id)?.kind
   const pendingInteraction = kind === 'approval' || kind === 'plan-review' || kind === 'question' ? kind : undefined
   const projection = readAttentionProjection(s.projectionValues)
+  const runningSubagentCount = descendants.get(s.id)?.runningCount ?? 0
   return {
     id: s.id,
     title: sessionTitle(s),
     blank: s.blank,
     running: s.running,
-    runningSubagentCount: descendants.get(s.id)?.runningCount ?? 0,
-    completed: s.completed === true,
+    runningSubagentCount,
+    completed: (!s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
     updatedAt: s.updatedAt,
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
     ...(projection.reason === null ? {} : { projectionReason: projection.reason }),
     ...(pinned ? { pinned: true } : {}),
     ...(typeof color === 'string' && color !== '' ? { color } : {}),
   }
+}
+
+/** Collect completion/running observations for visible non-blank sessions. */
+export function deriveCompletionObservations(
+  list: SessionListState,
+  archivedSessionIds: readonly SessionId[],
+): SessionCompletionObservation[] {
+  const archived = new Set(archivedSessionIds)
+  const descendants = indexSubagentDescendants(list.byId)
+  const observations: SessionCompletionObservation[] = []
+  for (const id of list.ids) {
+    const summary = list.byId[id]
+    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
+    const runningSubagentCount = descendants.get(id)?.runningCount ?? 0
+    observations.push({
+      id,
+      running: summary.running || runningSubagentCount > 0,
+      completed: summary.completed === true,
+    })
+  }
+  return observations
 }
 
 /** Visible sessions of one workspace in its stored account order, with pinned sessions at the top. */
@@ -171,6 +195,7 @@ function workspaceSessions(
   onSession?: (session: SessionNode) => void,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   colors?: Record<string, string | null>,
+  completedSessions?: Readonly<Record<string, boolean>>,
 ): SessionNode[] {
   const pinnedSet = new Set(pinnedIds ?? [])
   const visibleMap = new Map<SessionId, SessionNode>()
@@ -178,7 +203,8 @@ function workspaceSessions(
     const summary = list.byId[id]
     if (summary === undefined) continue // account may lead the list pull; appears when the summary lands
     if (!sessionVisible(summary, list.current, archived)) continue
-    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id])
+    const completedOverride = id !== list.current && completedSessions?.[id] === true
+    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride)
     visibleMap.set(id, node)
   }
 
@@ -211,6 +237,7 @@ export function deriveWorkspaceTree(
   config: GroupsConfig,
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  completedSessions?: Readonly<Record<string, boolean>>,
 ): WorkspaceTree {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
@@ -243,7 +270,7 @@ export function deriveWorkspaceTree(
 
   const workspaceNode = (workspace: WorkspaceView): WorkspaceGroupNode => {
     const pinnedIds = manual.pinnedSessions?.[workspace.workspaceId]
-    const sessions = workspaceSessions(list, workspace, archived, descendants, pinnedIds, countSession, pendingInteractions, manual.colors)
+    const sessions = workspaceSessions(list, workspace, archived, descendants, pinnedIds, countSession, pendingInteractions, manual.colors, completedSessions)
     const attention = aggregateAttention(sessions)
     return {
       workspaceId: workspace.workspaceId,
@@ -322,9 +349,10 @@ export function deriveGroups(
   view: GroupsTreeView,
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  completedSessions?: Readonly<Record<string, boolean>>,
 ): CategoryNode[] {
   return [...projectTreeExpansion(
-    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions),
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions),
     view,
   ).categories]
 }
@@ -338,9 +366,10 @@ export function deriveTopLevel(
   view: GroupsTreeView,
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  completedSessions?: Readonly<Record<string, boolean>>,
 ): WorkspaceGroupNode[] {
   return [...projectTreeExpansion(
-    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions),
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions),
     view,
   ).topLevel]
 }

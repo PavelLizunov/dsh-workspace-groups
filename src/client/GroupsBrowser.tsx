@@ -55,7 +55,7 @@ import type { GroupsBrowserProps } from './contract.ts'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
-import { deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
+import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
@@ -359,6 +359,12 @@ export function GroupsBrowser({
   const archivedSessionIds = useWorkspaces(state => state.archivedSessionIds)
   const categoryExpansion = useStore(s => s.categoryExpansion)
   const workspaceExpansion = useStore(s => s.workspaceExpansion)
+  const completedSessions = useStore(s => s.completedSessions)
+  const runningSessions = useStore(s => s.runningSessions)
+  const effectiveCompletedSessions = useMemo(() => {
+    if (runningSessions === undefined || Object.keys(runningSessions).length === 0) return completedSessions
+    return { ...runningSessions, ...completedSessions }
+  }, [completedSessions, runningSessions])
 
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
@@ -367,6 +373,10 @@ export function GroupsBrowser({
   const currentWorkspaceKey = current === undefined
     ? undefined
     : (workspaces.find(w => w.sessionIds.includes(current as SessionId))?.workspaceId as string | undefined)
+  const handleOpenSession = useCallback((sessionId: SessionId) => {
+    actions.clearCompletedSession?.(sessionId)
+    open(sessionId)
+  }, [actions, open])
 
   // Auto-expand the category + workspace containing the current session, but
   // ONLY when the user has never touched that key (`Object.hasOwn`): a
@@ -392,6 +402,15 @@ export function GroupsBrowser({
       workspaces.map(w => w.workspaceId as string),
     )
   }, [actions, config, manual, workspacePhase, workspaces])
+
+  // Persist unread completed sessions and running-to-idle transitions across reloads.
+  useEffect(() => {
+    if (list.phase !== 'ready' || workspacePhase !== 'ready') return
+    actions.reconcileSessionCompletion?.(
+      deriveCompletionObservations(list, archivedSessionIds),
+      current,
+    )
+  }, [actions, archivedSessionIds, current, list, workspacePhase])
 
   const [query, setQuery] = useState('')
   const [searchExpanded, setSearchExpanded] = useState(false)
@@ -491,9 +510,9 @@ export function GroupsBrowser({
 
   const canonicalTree = useMemo(
     () => normalizedQuery === ''
-      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions)
+      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, effectiveCompletedSessions)
       : EMPTY_WORKSPACE_TREE,
-    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery, pendingInteractions],
+    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery, pendingInteractions, effectiveCompletedSessions],
   )
   const filterResult = useMemo(
     () => isFilterActive
@@ -1444,6 +1463,7 @@ export function GroupsBrowser({
           {normalizedQuery !== '' ? (
             <SearchBody
               pendingInteractions={pendingInteractions}
+              completedSessions={effectiveCompletedSessions}
               list={list}
               workspaces={workspaces}
               config={config}
@@ -1453,7 +1473,7 @@ export function GroupsBrowser({
               resultLimit={searchResultLimit}
               current={current}
               now={now}
-              open={open}
+              open={handleOpenSession}
               manual={manual}
               t={t}
               startSession={startSession}
@@ -1528,7 +1548,7 @@ export function GroupsBrowser({
                     }
                   }}
                   onNewSession={startSession}
-                  onOpen={open}
+                  onOpen={handleOpenSession}
                   onRenameRequest={(workspaceId, title) => {
                     setRenameTarget({ workspaceId, currentTitle: title })
                     setRenameDraft(title)
@@ -1615,7 +1635,7 @@ export function GroupsBrowser({
                     }
                   }}
                   onNewSession={startSession}
-                  onOpen={open}
+                  onOpen={handleOpenSession}
                   onRenameRequest={(workspaceId, title) => {
                     setRenameTarget({ workspaceId, currentTitle: title })
                     setRenameDraft(title)
@@ -2356,8 +2376,9 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ pendingInteractions, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+function SearchBody({ pendingInteractions, completedSessions, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
   pendingInteractions: SessionPendingInteractionSnapshot
+  completedSessions?: Readonly<Record<string, boolean>> | undefined
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -2390,8 +2411,8 @@ function SearchBody({ pendingInteractions, list, workspaces, config, archivedSes
     [list, workspaces, config, query, archivedSessionIds, currentRemote, resultLimit],
   )
   const searchTree = useMemo(
-    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession, pendingInteractions),
-    [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions],
+    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession, pendingInteractions, completedSessions),
+    [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions, completedSessions],
   )
   const filteredSearch = useMemo(
     () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now()),

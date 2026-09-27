@@ -17,7 +17,7 @@ vi.mock('../src/client/subagent-lineage.ts', () => runtimeMocks)
 
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import { deriveGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
+import { deriveCompletionObservations, deriveGroups, deriveSearchGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
 
@@ -411,5 +411,32 @@ describe('aggregated attention state derivation', () => {
     const wsNode = cat.workspaces.find(w => w.workspaceId === 'ws-1')!
     expect(wsNode.sessions.find(s => s.id === 's1')?.color).toBeUndefined()
     expect(wsNode.sessions.find(s => s.id === 's2')?.color).toBe('orange')
+  })
+
+  it('restores done attention and counts from persisted completedSessions across reloads', () => {
+    const ws = workspace('ws-1', '/Users/zcol/Project/SomePlugin', 'DSH Plugin', ['s1', 's2', 's3'])
+    const list = listState([ws], 's3')
+    const persistedCompleted = { s1: true, s2: true, s3: true }
+
+    const tree = deriveWorkspaceTree(list, [ws], [], CONFIG, { categories: [], assignments: {} }, new Map(), persistedCompleted)
+    const cat = tree.categories.find(g => g.label === 'DSH Plugins')!
+    const wsNode = cat.workspaces.find(w => w.workspaceId === 'ws-1')!
+    expect(wsNode.sessions.find(s => s.id === 's1')?.completed).toBe(true)
+    expect(wsNode.sessions.find(s => s.id === 's2')?.completed).toBe(true)
+    // Current session s3 never shows as unread completed
+    expect(wsNode.sessions.find(s => s.id === 's3')?.completed).toBe(false)
+    expect(wsNode.attention).toBe('done')
+    expect(cat.attention).toBe('done')
+    expect(tree.counts).toEqual({ all: 3, warning: 0, ongoing: 0, done: 2 })
+
+    const search = deriveSearchGroups(list, [ws], CONFIG, new Set(['s1', 's3'] as never), [], { categories: [], assignments: {} }, undefined, new Map(), persistedCompleted)
+    const searchSessions = search.categories[0]!.workspaces[0]!.sessions
+    expect(searchSessions.find(s => s.id === 's1')?.completed).toBe(true)
+    expect(searchSessions.find(s => s.id === 's3')?.completed).toBe(false)
+
+    expect(deriveCompletionObservations(list, ['s2' as never])).toEqual([
+      { id: 's1', running: false, completed: false },
+      { id: 's3', running: false, completed: false },
+    ])
   })
 })

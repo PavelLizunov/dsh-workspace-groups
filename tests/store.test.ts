@@ -11,6 +11,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   captureExpansionSnapshot,
+  clearCompletedSessionImpl,
+  reconcileSessionCompletionImpl,
   retainKeysImpl,
   restoreExpansionSnapshotImpl,
   setCategoriesExpandedImpl,
@@ -119,5 +121,65 @@ describe('groups view store expansion semantics', () => {
     setWorkspaceExpandedImpl(state, 'ws-gone', false)
     retainKeysImpl(state, [], ['ws-kept'])
     expect(state.workspaceExpansion).toEqual({})
+  })
+
+  it('preserves unread completed sessions across reload when controller completed resets to false', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: {},
+      workspaceExpansion: {},
+      completedSessions: { s1: true, s2: true, s3: true },
+      runningSessions: {},
+    }
+    reconcileSessionCompletionImpl(
+      state,
+      [
+        { id: 's1', running: false, completed: false },
+        { id: 's2', running: false, completed: false },
+        { id: 's3', running: false, completed: false },
+        { id: 's4', running: false, completed: false },
+      ],
+      's4',
+    )
+    expect(state.completedSessions).toEqual({ s1: true, s2: true, s3: true })
+  })
+
+  it('promotes sessions that were running before reload and finished during reload', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: {},
+      workspaceExpansion: {},
+      completedSessions: { s1: true },
+      runningSessions: { s2: true, sCurrent: true },
+    }
+    reconcileSessionCompletionImpl(
+      state,
+      [
+        { id: 's1', running: false, completed: false },
+        { id: 's2', running: false, completed: false },
+        { id: 'sCurrent', running: false, completed: false },
+      ],
+      'sCurrent',
+    )
+    expect(state.completedSessions).toEqual({ s1: true, s2: true })
+    expect(state.runningSessions).toEqual({})
+  })
+
+  it('clears completed session when selected, re-run, or removed, and upgrades legacy state', () => {
+    const state: GroupsViewState = {
+      categoryExpansion: {},
+      workspaceExpansion: {},
+    }
+    reconcileSessionCompletionImpl(
+      state,
+      [
+        { id: 's1', running: false, completed: true },
+        { id: 's2', running: true, completed: false },
+      ],
+      undefined,
+    )
+    expect(state.completedSessions).toEqual({ s1: true })
+    expect(state.runningSessions).toEqual({ s2: true })
+
+    clearCompletedSessionImpl(state, 's1')
+    expect(state.completedSessions).toEqual({})
   })
 })

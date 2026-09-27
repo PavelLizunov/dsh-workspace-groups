@@ -133,6 +133,7 @@ export function deriveSearchGroups(
   manual: ManualGroups,
   snippetsBySession?: ReadonlyMap<SessionId, string>,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  completedSessions?: Readonly<Record<string, boolean>>,
 ): SearchTree {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
@@ -155,7 +156,8 @@ export function deriveSearchGroups(
       if (summary === undefined || !matchedIds.has(id)) continue
       if (!sessionVisible(summary, list.current, archived)) continue
       const isPinned = pinnedSet.has(id)
-      const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id])
+      const completedOverride = id !== list.current && completedSessions?.[id] === true
+      const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id], completedOverride)
       const snippet = snippetsBySession?.get(id)
       matchedMap.set(id, {
         ...node,

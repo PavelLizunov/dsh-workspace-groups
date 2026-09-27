@@ -17,6 +17,16 @@ export interface GroupsViewState {
   categoryExpansion: Record<string, boolean>
   /** Workspace folder expansion keyed by workspace id (absent = never touched). */
   workspaceExpansion: Record<string, boolean>
+  /** Unread completed session reminders keyed by session id (survives page reloads). */
+  completedSessions?: Record<string, boolean>
+  /** Last-observed running sessions keyed by session id (catches turns finishing during reload). */
+  runningSessions?: Record<string, boolean>
+}
+
+export interface SessionCompletionObservation {
+  id: string
+  running: boolean
+  completed: boolean
 }
 
 export interface ExpansionSnapshot {
@@ -84,3 +94,58 @@ export function retainKeysImpl(
     Object.entries(state.workspaceExpansion).filter(([key]) => allowedWorkspaces.has(key)),
   )
 }
+
+function sameBooleanMap(a: Record<string, boolean> | undefined, b: Record<string, boolean>): boolean {
+  const left = a ?? {}
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(b)
+  if (leftKeys.length !== rightKeys.length) return false
+  for (const key of rightKeys) {
+    if (left[key] !== b[key]) return false
+  }
+  return true
+}
+
+/** Clear one session's persisted completion reminder when opened/selected. */
+export function clearCompletedSessionImpl(state: GroupsViewState, sessionId: string): void {
+  if (state.completedSessions?.[sessionId] !== true) return
+  const next = { ...state.completedSessions }
+  delete next[sessionId]
+  state.completedSessions = next
+}
+
+/**
+ * Reconcile persisted unread-completion reminders and running-session tracking
+ * against a ready session list snapshot. Preserves unread completion across
+ * page reloads and promotes sessions that were running before reload and
+ * finished before the reloaded list arrived.
+ */
+export function reconcileSessionCompletionImpl(
+  state: GroupsViewState,
+  sessions: readonly SessionCompletionObservation[],
+  currentSessionId?: string,
+): void {
+  const prevCompleted = state.completedSessions ?? {}
+  const prevRunning = state.runningSessions ?? {}
+  const nextCompleted: Record<string, boolean> = {}
+  const nextRunning: Record<string, boolean> = {}
+
+  for (const session of sessions) {
+    if (session.running) {
+      nextRunning[session.id] = true
+      continue
+    }
+    if (session.id === currentSessionId) continue
+    if (prevCompleted[session.id] === true || session.completed || prevRunning[session.id] === true) {
+      nextCompleted[session.id] = true
+    }
+  }
+
+  if (!sameBooleanMap(state.completedSessions, nextCompleted)) {
+    state.completedSessions = nextCompleted
+  }
+  if (!sameBooleanMap(state.runningSessions, nextRunning)) {
+    state.runningSessions = nextRunning
+  }
+}
+

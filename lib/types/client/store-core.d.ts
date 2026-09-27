@@ -16,6 +16,15 @@ export interface GroupsViewState {
     categoryExpansion: Record<string, boolean>;
     /** Workspace folder expansion keyed by workspace id (absent = never touched). */
     workspaceExpansion: Record<string, boolean>;
+    /** Unread completed session reminders keyed by session id (survives page reloads). */
+    completedSessions?: Record<string, boolean>;
+    /** Last-observed running sessions keyed by session id (catches turns finishing during reload). */
+    runningSessions?: Record<string, boolean>;
+}
+export interface SessionCompletionObservation {
+    id: string;
+    running: boolean;
+    completed: boolean;
 }
 export interface ExpansionSnapshot {
     categories: Record<string, boolean>;
@@ -35,3 +44,12 @@ export declare function captureExpansionSnapshot(state: GroupsViewState): Expans
 export declare function restoreExpansionSnapshotImpl(state: GroupsViewState, snapshot: ExpansionSnapshot, touchedCategories: readonly string[], touchedWorkspaces: readonly string[]): void;
 /** Drop expansion keys that no longer exist (renames/deletes/config edits). */
 export declare function retainKeysImpl(state: GroupsViewState, categoryKeys: readonly string[], workspaceKeys: readonly string[]): void;
+/** Clear one session's persisted completion reminder when opened/selected. */
+export declare function clearCompletedSessionImpl(state: GroupsViewState, sessionId: string): void;
+/**
+ * Reconcile persisted unread-completion reminders and running-session tracking
+ * against a ready session list snapshot. Preserves unread completion across
+ * page reloads and promotes sessions that were running before reload and
+ * finished before the reloaded list arrived.
+ */
+export declare function reconcileSessionCompletionImpl(state: GroupsViewState, sessions: readonly SessionCompletionObservation[], currentSessionId?: string): void;
