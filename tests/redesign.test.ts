@@ -302,6 +302,7 @@ describe('redesign source contracts: styles.css', () => {
     expect(stylesSource).toMatch(/\.wgSessionToggleBtn\b/)
     expect(stylesSource).toMatch(/\.wgStatusScopeBar\b/)
     expect(stylesSource).toMatch(/\.wgStatusScopeBtn\b/)
+    expect(stylesSource).toMatch(/\.wgFilterBar\s*\{[^}]*flex-wrap:\s*wrap/s)
   })
 })
 
