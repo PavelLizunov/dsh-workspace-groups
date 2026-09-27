@@ -373,10 +373,6 @@ export function GroupsBrowser({
   const currentWorkspaceKey = current === undefined
     ? undefined
     : (workspaces.find(w => w.sessionIds.includes(current as SessionId))?.workspaceId as string | undefined)
-  const handleOpenSession = useCallback((sessionId: SessionId) => {
-    actions.clearCompletedSession?.(sessionId)
-    open(sessionId)
-  }, [actions, open])
 
   // Auto-expand the category + workspace containing the current session, but
   // ONLY when the user has never touched that key (`Object.hasOwn`): a
@@ -424,7 +420,28 @@ export function GroupsBrowser({
   const isFilterActive = sidebarFilterActive(filter)
   const [filterCategoryExpansion, setFilterCategoryExpansion] = useState<Record<string, boolean>>({})
   const [filterWorkspaceExpansion, setFilterWorkspaceExpansion] = useState<Record<string, boolean>>({})
+  const [filterRetainedSessions, setFilterRetainedSessions] = useState<ReadonlySet<string>>(() => new Set())
   const [searchCounts, setSearchCounts] = useState<FilterCounts | null>(null)
+  const handleOpenSession = useCallback((sessionId: SessionId) => {
+    if (isFilterActive && filter.status !== 'all') {
+      setFilterRetainedSessions((previous) => {
+        if (previous.has(sessionId)) return previous
+        const next = new Set(previous)
+        next.add(sessionId)
+        return next
+      })
+      const wsKey = workspaces.find(w => w.sessionIds.includes(sessionId))?.workspaceId as string | undefined
+      const catKey = categoriesForCurrent(config, workspaces, sessionId, manual)
+      if (catKey !== undefined) {
+        setFilterCategoryExpansion(previous => previous[catKey] === true ? previous : { ...previous, [catKey]: true })
+      }
+      if (wsKey !== undefined) {
+        setFilterWorkspaceExpansion(previous => previous[wsKey] === true ? previous : { ...previous, [wsKey]: true })
+      }
+    }
+    actions.clearCompletedSession?.(sessionId)
+    open(sessionId)
+  }, [actions, config, filter.status, isFilterActive, manual, open, workspaces])
   useEffect(() => {
     let cancelled = false
     fetchFilterPreferences().then((saved) => {
@@ -435,6 +452,7 @@ export function GroupsBrowser({
   const updateFilter = useCallback((next: SidebarFilter) => {
     filterDirty.current = true
     setFilter(next)
+    setFilterRetainedSessions(previous => previous.size === 0 ? previous : new Set())
     setManualError(null)
     const write = filterSaveQueue.current.then(() => saveFilterPreferences(next))
     filterSaveQueue.current = write.catch((reason: unknown) => {
@@ -454,6 +472,7 @@ export function GroupsBrowser({
     updateFilter(DEFAULT_SIDEBAR_FILTER)
     setFilterCategoryExpansion({})
     setFilterWorkspaceExpansion({})
+    setFilterRetainedSessions(previous => previous.size === 0 ? previous : new Set())
   }, [updateFilter])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
@@ -516,9 +535,9 @@ export function GroupsBrowser({
   )
   const filterResult = useMemo(
     () => isFilterActive
-      ? applySidebarFilter(canonicalTree.categories, canonicalTree.topLevel, filter, manual.colors, Date.now())
+      ? applySidebarFilter(canonicalTree.categories, canonicalTree.topLevel, filter, manual.colors, Date.now(), filterRetainedSessions)
       : canonicalTree,
-    [canonicalTree, filter, isFilterActive, manual.colors],
+    [canonicalTree, filter, filterRetainedSessions, isFilterActive, manual.colors],
   )
   const idleTree = useMemo(
     () => projectTreeExpansion(canonicalTree, { expandedCategories, expandedWorkspaces }),
@@ -1464,6 +1483,7 @@ export function GroupsBrowser({
             <SearchBody
               pendingInteractions={pendingInteractions}
               completedSessions={effectiveCompletedSessions}
+              retainedSessionIds={filterRetainedSessions}
               list={list}
               workspaces={workspaces}
               config={config}
@@ -2376,9 +2396,10 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ pendingInteractions, completedSessions, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+function SearchBody({ pendingInteractions, completedSessions, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
   pendingInteractions: SessionPendingInteractionSnapshot
   completedSessions?: Readonly<Record<string, boolean>> | undefined
+  retainedSessionIds?: ReadonlySet<string> | undefined
   list: SessionListState
   workspaces: readonly WorkspaceView[]
   config: GroupsConfig
@@ -2415,8 +2436,8 @@ function SearchBody({ pendingInteractions, completedSessions, list, workspaces, 
     [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions, completedSessions],
   )
   const filteredSearch = useMemo(
-    () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now()),
-    [searchTree, filter, manual.colors],
+    () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now(), retainedSessionIds),
+    [searchTree, filter, manual.colors, retainedSessionIds],
   )
 
   useEffect(() => {

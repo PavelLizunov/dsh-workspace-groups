@@ -316,4 +316,21 @@ describe('applySidebarFilter - hiding empty nodes and immutability', () => {
     expect(cat).toEqual(origCat)
     expect(ws).toEqual(origWs)
   })
+
+  it('retains a session read in the New (done) filter along with its parent workspace and category while decrementing counts.done', () => {
+    const sRead = createSession('s-read', { completed: false })
+    const sUnread = createSession('s-unread', { completed: true })
+    const wsRead = createWorkspace('ws-read', [sRead], { containsCurrent: true })
+    const wsUnread = createWorkspace('ws-unread', [sUnread])
+    const cat = createCategory('cat-work', [wsRead, wsUnread], { containsCurrent: true })
+
+    const filter: SidebarFilter = { status: 'done', recency: 'all', color: null }
+    const result = applySidebarFilter([cat], [], filter, {}, NOW, new Set(['s-read']))
+
+    expect(result.counts).toEqual({ all: 2, warning: 0, ongoing: 0, done: 1 })
+    expect(result.categories).toHaveLength(1)
+    expect(result.categories[0]!.workspaces.map(w => w.workspaceId)).toEqual(['ws-read', 'ws-unread'])
+    expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-read'])
+    expect(result.categories[0]!.workspaces[0]!.attention).toBeUndefined()
+  })
 })

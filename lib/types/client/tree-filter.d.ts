@@ -15,7 +15,7 @@ export interface FilterCounts {
     done: number;
 }
 export declare function sidebarFilterActive(filter: SidebarFilter): boolean;
-export declare function applySidebarFilter(categories: readonly CategoryNode[], topLevel: readonly WorkspaceGroupNode[], filter: SidebarFilter, colors: Record<string, string | null> | undefined, now: number): {
+export declare function applySidebarFilter(categories: readonly CategoryNode[], topLevel: readonly WorkspaceGroupNode[], filter: SidebarFilter, colors: Record<string, string | null> | undefined, now: number, retainedSessionIds?: ReadonlySet<string>): {
     categories: CategoryNode[];
     topLevel: WorkspaceGroupNode[];
     counts: FilterCounts;

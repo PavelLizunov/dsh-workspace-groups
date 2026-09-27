@@ -83,6 +83,7 @@ export function applySidebarFilter(
   filter: SidebarFilter,
   colors: Record<string, string | null> | undefined,
   now: number,
+  retainedSessionIds?: ReadonlySet<string>,
 ): {
   categories: CategoryNode[]
   topLevel: WorkspaceGroupNode[]
@@ -169,6 +170,7 @@ export function applySidebarFilter(
 
       const matchesStatus = filter.status === 'all'
         || (filter.status === 'warning' ? (state === 'warning' || state === 'error') : state === filter.status)
+        || retainedSessionIds?.has(session.id) === true
       if (!matchesStatus) continue
 
       matchedSessions.push(session)
