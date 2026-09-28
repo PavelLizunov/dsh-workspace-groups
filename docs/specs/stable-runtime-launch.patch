@@ -1,0 +1,13 @@
+--- a/dsh-tui-trial/production-v3/start-shared.sh
++++ b/dsh-tui-trial/production-v3/start-shared.sh
+@@ -5,7 +5,9 @@
+ base="$(dirname -- "$(readlink -f -- "$0")")"
+ : "${DSH_SHARED_PROFILE:?set the staged installed profile name}"
+ : "${DSH_SHARED_NODE:?set the exact existing Node executable}"
+-: "${DSH_SHARED_CLI:?set the exact existing DSH CLI path}"
++# Select the release through a stable pointer, not a versioned systemd value.
++: "${DSH_RELEASE_ROOT:=$HOME/.dsh-releases/current}"
++DSH_SHARED_CLI="$DSH_RELEASE_ROOT/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"
+ : "${DSH_SHARED_RUNTIME:=${DSH_HOME:-$HOME/.dsh}/shared-ui}"
+ [[ "$DSH_SHARED_PROFILE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo 'Invalid profile name' >&2; exit 1; }
+ [[ -x "$DSH_SHARED_NODE" && -f "$DSH_SHARED_CLI" ]] || { echo 'Missing exact runtime executable' >&2; exit 1; }

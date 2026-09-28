@@ -29,5 +29,20 @@ The sidebar currently renders every durable `error`, `interrupted`, or `max-toke
 - UI visual design, contrast and new controls: N/A (no visual/control changes).
 - Interactive verification: PASS for the changed click/navigation path in jsdom with mocked platform services; NOT VERIFIED in the installed GUI.
 
-## Remaining deployment step
-The repository fix is ready for separately approved deployment and verification of the exact served client bundle. It does not retroactively update the installed plugin. Acknowledgment uses `updatedAt` plus reason because the current projection supplies no error event ID: metadata updates may re-show Error, and identical reason/timestamp events without an observed intervening reset cannot be distinguished.
+## Approved deployment: 2026-09-28
+The user subsequently authorized both the installed Error fix and the stable launch path, without a DSH restart or a broad verification campaign.
+
+- Actual runtime and installed plugin: **0.2.0-rc.1**, despite legacy directory/profile names. The repository's 0.1.5 build must NOT be copied over the installed client.
+- Rebuilt the client from commit `103ac4926633c8a66766603a0bf174a4d1a399d5` plus installed sourcemap compatibility sources, preserving `mainSessionId`, `sessionStatus`, `completionUnread`, `uiWorkspace.openSession`, and Medium icon exports. [Compatibility source patch](error-client-020-compatibility.patch) applies to that commit and reproduces the build input; it is not a completed migration of package metadata/types/tests to 0.2.0.
+- Build command in the isolated source directory: `./node_modules/.bin/tsdown --filter dsh-workspace-groups/client` (exit 0). Published only `client.js` and its source map by atomic replacement. Installed Host bundle and package manifest hashes remain unchanged; version stays 0.2.0-rc.1.
+- Observed the live SSE `rebuilt` event: revision `c277692c0548` became `f789614dbb2f`. Retrieved the new served artifact and verified exact equality with the installed code plus the documented combo/source-map wrapper. New client SHA256: `f103dd94c78bfa41d78d2446aa59a2c805da46d6441410e27c9735d74ac481e5`.
+- Private rollback: `/var/lib/dsh/.dsh/backups/error-stable-runtime-20260928T214730Z/` (original client/map, launcher and hash receipt). The original profile tarball remains unchanged; reinstalling it would remove this hotfix. The deployed source map and compatibility patch preserve its source.
+- No dev:web watcher was running. The installed client-HMR polling transport nevertheless observed the explicit artifact publication. Browser receipt/remount and click behavior are NOT VERIFIED; this is not a promise of automatic browser completion.
+
+## Stable launch path
+Created `/var/lib/dsh/.dsh-releases/current` pointing at the active release without moving the directory. Applied [launcher patch](stable-runtime-launch.patch) to the existing user-owned production launcher. It now derives its CLI from `DSH_RELEASE_ROOT`, default `$HOME/.dsh-releases/current`, ignoring obsolete `DSH_SHARED_CLI` environment values. Node/profile/locking/shutdown behavior is unchanged.
+
+`bash -n` passed; the stable link resolves to the existing CLI. Service MainPID remained **1215155**. No DSH or systemd reload/restart was performed. The current process argv necessarily retains the original path until a separately authorized future restart. Root-owned systemd drop-ins still contain old values: they could not be edited by this user and sudo is unavailable under no_new_privs. They are no longer used by the revised launcher; their cleanup is explicitly outstanding. The launcher directory has no GitHub remote; its task-owned diff is backed up here rather than committing unrelated scripts.
+
+## Limits
+Acknowledgment uses `updatedAt` plus reason because the current projection supplies no error event ID: metadata updates may re-show Error, and identical reason/timestamp events without an observed intervening reset cannot be distinguished. Installed GUI interaction, next process startup, independent review and a full 0.2.0 repository migration were not exercised or claimed.

@@ -1,0 +1,695 @@
+--- a/src/client/ColorMenu.tsx
++++ b/src/client/ColorMenu.tsx
+@@ -2,7 +2,7 @@
+  * Color palette menu for groups, workspaces, and sessions.
+  */
+ import { useState } from 'react'
+-import { IconEditOutline16, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
++import { IconEditOutlineMedium, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+ import { COLOR_PRESETS, type T } from './row-utils.ts'
+ 
+ export interface ColorMenuProps {
+@@ -44,7 +44,7 @@
+           onKeyDown={(event) => { event.stopPropagation() }}
+         >
+           <span className="wgCategoryIcon">
+-            <IconEditOutline16 />
++            <IconEditOutlineMedium />
+             {color && <span className="wgColorDot" data-color={color} />}
+           </span>
+         </button>
+--- a/src/client/DirectoryBrowser.tsx
++++ b/src/client/DirectoryBrowser.tsx
+@@ -1,11 +1,11 @@
+ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+ import {
+   Button,
+-  IconChevronRightOutline14,
+-  IconEditOutline16,
+-  IconFolderClose16,
+-  IconRefreshOutline14,
+-  IconWarningOutline16,
++  IconChevronRightOutlineMedium,
++  IconEditOutlineMedium,
++  IconFolderCloseMedium,
++  IconRefreshOutlineMedium,
++  IconWarningOutlineMedium,
+   Modal,
+ } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
+@@ -288,7 +288,7 @@
+             <div className="wgDirectoryCrumbs" aria-label={strings.title}>
+               {formattedCrumbs.map((crumb, index) => (
+                 <span key={crumb.path} className="wgDirectoryCrumbPart">
+-                  {index > 0 && <IconChevronRightOutline14 size={12} />}
++                  {index > 0 && <IconChevronRightOutlineMedium size={12} />}
+                   <button
+                     type="button"
+                     disabled={busy || creating || crumb.path === listing?.path}
+@@ -315,7 +315,7 @@
+                   setEditingPath(true)
+                 }}
+               >
+-                <IconEditOutline16 size={14} />
++                <IconEditOutlineMedium size={14} />
+               </button>
+ 
+               <button
+@@ -326,7 +326,7 @@
+                 disabled={busy || creating || loading}
+                 onClick={() => { navigate(currentPath.current ?? listing?.path) }}
+               >
+-                <IconRefreshOutline14 size={14} />
++                <IconRefreshOutlineMedium size={14} />
+               </button>
+             </div>
+           )}
+@@ -342,7 +342,7 @@
+ 
+         {listing !== null && listing.truncated && (
+           <div className="wgDirectoryTruncated" role="status">
+-            <IconWarningOutline16 size={14} />
++            <IconWarningOutlineMedium size={14} />
+             <span>{strings.truncated ?? 'Listing truncated — too many directory entries'}</span>
+           </div>
+         )}
+@@ -360,9 +360,9 @@
+                 onClick={() => { setSelected(entry) }}
+                 onDoubleClick={() => { navigate(entry.path) }}
+               >
+-                <IconFolderClose16 size={16} />
++                <IconFolderCloseMedium size={16} />
+                 <span>{entry.name}</span>
+-                <IconChevronRightOutline14 size={12} />
++                <IconChevronRightOutlineMedium size={12} />
+               </button>
+             ))}
+           </div>
+--- a/src/client/GroupsBrowser.tsx
++++ b/src/client/GroupsBrowser.tsx
+@@ -1,3 +1,4 @@
++import { mainSessionId } from './session-status.ts'
+ /**
+  * The workspace-groups browsing region filling the sidebar shell's
+  * `sidebar.workspaces` hole: section header (title + right-aligned search +
+@@ -17,11 +18,11 @@
+ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+ import {
+   Button,
+-  IconCloseFill14,
+-  IconEllipsisOutline16,
+-  IconFolderOpenOutline16,
+-  IconProjectAddOutline16,
+-  IconSearchOutline16,
++  IconCloseFillMedium,
++  IconEllipsisOutlineMedium,
++  IconFolderOpenOutlineMedium,
++  IconProjectAddOutlineMedium,
++  IconSearchOutlineMedium,
+   Menu,
+   Modal,
+   Tooltip,
+@@ -39,7 +40,7 @@
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
++import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+ import { CLEANUP_DAYS_PRESETS, DEFAULT_CLEANUP_DAYS, findOldSessionsToArchive } from './session-cleanup.ts'
+ import {
+   displayCategoryKeys,
+@@ -268,7 +269,7 @@
+   wide,
+   expandSidebar,
+   useSessions,
+-  useSessionPendingInteraction,
++  useSessionStatus,
+   useWorkspaces,
+   useStore,
+   actions,
+@@ -368,8 +369,8 @@
+   }, [completedSessions, runningSessions])
+ 
+   const list = useSessions(s => s)
+-  const pendingInteractions = useSessionPendingInteraction(s => s)
+-  const current = list.current
++  const pendingInteractions = useSessionStatus(s => s)
++  const current = mainSessionId(list)
+   const now = useMemo(() => Date.now(), [list])
+   const currentWorkspaceKey = current === undefined
+     ? undefined
+@@ -404,10 +405,10 @@
+   useEffect(() => {
+     if (list.phase !== 'ready' || workspacePhase !== 'ready') return
+     actions.reconcileSessionCompletion?.(
+-      deriveCompletionObservations(list, archivedSessionIds),
++      deriveCompletionObservations(list, archivedSessionIds, pendingInteractions),
+       current,
+     )
+-  }, [actions, archivedSessionIds, current, list, workspacePhase])
++  }, [actions, archivedSessionIds, current, list, pendingInteractions, workspacePhase])
+ 
+   const [query, setQuery] = useState('')
+   const [searchExpanded, setSearchExpanded] = useState(false)
+@@ -804,7 +805,7 @@
+       pendingInteractions,
+       days: cleanupDays,
+       now,
+-      currentSessionId: list.current,
++      currentSessionId: mainSessionId(list),
+       archivedSessionIds,
+       targetWorkspaceSessionIds: targetWs?.sessionIds,
+     })
+@@ -1276,7 +1277,7 @@
+               aria-label={t('search')}
+               onClick={() => { setSearchExpanded(true) }}
+             >
+-              <IconSearchOutline16 size={searchExpanded ? 11 : 14} />
++              <IconSearchOutlineMedium size={searchExpanded ? 11 : 14} />
+             </button>
+             {searchExpanded && (
+               <input
+@@ -1307,7 +1308,7 @@
+                   setSearchExpanded(false)
+                 }}
+               >
+-                <IconCloseFill14 />
++                <IconCloseFillMedium />
+               </button>
+             )}
+           </div>
+@@ -1342,7 +1343,7 @@
+                     aria-label={t('tree.actions')}
+                     onClick={() => { setHeaderMenuOpen(v => !v) }}
+                   >
+-                    <IconEllipsisOutline16 size={16} />
++                    <IconEllipsisOutlineMedium size={16} />
+                   </button>
+                 </Tooltip>
+               )}
+@@ -1360,7 +1361,7 @@
+                   setGroupDialog({ mode: 'create' })
+                 }}
+               >
+-                <IconFolderOpenOutline16 size={16} />
++                <IconFolderOpenOutlineMedium size={16} />
+               </button>
+             </Tooltip>
+           )}
+@@ -1372,7 +1373,7 @@
+               disabled={adding}
+               onClick={addWorkspace}
+             >
+-              <IconProjectAddOutline16 size={wide ? 16 : 18} />
++              <IconProjectAddOutlineMedium size={wide ? 16 : 18} />
+             </button>
+           </Tooltip>
+         </div>
+@@ -1387,7 +1388,7 @@
+               aria-label={t('search')}
+               onClick={() => { setSearchExpanded(true); expandSidebar() }}
+             >
+-              <IconSearchOutline16 size={18} />
++              <IconSearchOutlineMedium size={18} />
+             </button>
+           </Tooltip>
+         </div>
+@@ -2399,7 +2400,7 @@
+  * the idle tree, so search keeps the same folder hierarchy the user is used to.
+  */
+ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+-  pendingInteractions: SessionPendingInteractionSnapshot
++  pendingInteractions: SessionStatusSnapshot
+   completedSessions?: Readonly<Record<string, boolean>> | undefined
+   acknowledgedErrors?: Readonly<Record<string, string>> | undefined
+   retainedSessionIds?: ReadonlySet<string> | undefined
+--- a/src/client/index.ts
++++ b/src/client/index.ts
+@@ -21,6 +21,7 @@
+ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+ import { findOldSessionsToArchive } from './session-cleanup.ts'
++import { mainSessionId } from './session-status.ts'
+ // Type-only: pulls the locale plugin's Context merge (ctx.locale).
+ import type {} from '@deepseek-ai/dsh-client-locale/client'
+ import type { GroupsBrowserInjected } from './contract.ts'
+@@ -58,7 +59,7 @@
+ 
+   const browserInjected = (): GroupsBrowserInjected => ({
+     startSession: (workspaceId) => { ctx.uiWorkspace.startSession(workspaceId) },
+-    open: (sessionId) => { ctx.sessions.open(sessionId) },
++    open: (sessionId) => { ctx.uiWorkspace.openSession(sessionId) },
+     searchSessions,
+     searchResultLimit: ctx.sessions.searchResultLimit,
+     renameSession: async (sessionId, title) => {
+@@ -69,7 +70,7 @@
+     },
+     forkSession: async (sessionId) => {
+       const childId = await ctx.sessions.fork({ sessionId, increaseTitle: true })
+-      ctx.sessions.open(childId)
++      ctx.uiWorkspace.openSession(childId)
+     },
+     renameWorkspace: async (workspaceId, title) => { await ctx.workspaces.rename(workspaceId, title) },
+     deleteWorkspace: async (workspaceId) => { await ctx.workspaces.delete(workspaceId) },
+@@ -86,10 +87,10 @@
+         const session = sessions.byId[sessionId]
+         if (session === undefined) continue
+         const eligible = findOldSessionsToArchive([session], {
+-          days, now: Date.now(), currentSessionId: sessions.current,
++          days, now: Date.now(), currentSessionId: mainSessionId(sessions),
+           archivedSessionIds: workspaceSnapshot.archivedSessionIds,
+           targetWorkspaceSessionIds: workspace?.sessionIds,
+-          pendingInteractions: ctx.uiSession.pendingInteractions.getSnapshot(),
++          pendingInteractions: ctx.uiSession.sessionStatus.getSnapshot(),
+         })
+         if (eligible.length !== 0) await ctx.uiWorkspace.archiveSession(sessionId)
+       }
+--- a/src/client/rows.tsx
++++ b/src/client/rows.tsx
+@@ -10,17 +10,17 @@
+  */
+ import { useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
+ import {
+-  IconArchiveOutline20,
+-  IconBranchOutline16,
+-  IconEditOutline16,
+-  IconEllipsisOutline16,
+-  IconFolderClose16,
+-  IconFolderOpen16,
+-  IconFolderOpenOutline16,
+-  IconPlusOutline16,
+-  IconProjectAddOutline16,
+-  IconTriangleRightFill14,
+-  IconTrashOutline16,
++  IconArchiveOutlineMedium,
++  IconBranchOutlineMedium,
++  IconEditOutlineMedium,
++  IconEllipsisOutlineMedium,
++  IconFolderCloseMedium,
++  IconFolderOpenMedium,
++  IconFolderOpenOutlineMedium,
++  IconPlusOutlineMedium,
++  IconProjectAddOutlineMedium,
++  IconTriangleRightFillMedium,
++  IconTrashOutlineMedium,
+   Menu,
+   StateDot,
+ } from '@deepseek-ai/dsh-client-ui-primitives'
+@@ -102,13 +102,13 @@
+   const manageable = (onRename !== undefined && onDelete !== undefined) || onExpandEntire !== undefined || onCollapseEntire !== undefined || onAddWorkspace !== undefined
+ 
+   const menuItems = useMemo(() => [
+-    ...(onAddWorkspace !== undefined ? [{ id: 'addWorkspace', label: t('group.addWorkspace'), icon: <IconProjectAddOutline16 /> }] : []),
++    ...(onAddWorkspace !== undefined ? [{ id: 'addWorkspace', label: t('group.addWorkspace'), icon: <IconProjectAddOutlineMedium /> }] : []),
+     ...(onExpandEntire !== undefined ? [{ id: 'expandEntire', label: t('group.expandEntire') }] : []),
+     ...(onCollapseEntire !== undefined ? [{ id: 'collapseEntire', label: t('group.collapseEntire') }] : []),
+     ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
+     ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
+-    ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> }] : []),
+-    ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
++    ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutlineMedium /> }] : []),
++    ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutlineMedium />, danger: true }] : []),
+   ], [onAddWorkspace, onExpandEntire, onCollapseEntire, onMoveUp, onMoveDown, onRename, onDelete, t, canMoveUp, isFirst, canMoveDown, isLast])
+ 
+   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+@@ -145,10 +145,10 @@
+           toggleEntire()
+         }}
+       >
+-        <IconTriangleRightFill14 />
++        <IconTriangleRightFillMedium />
+       </span>
+       <span className="wgCategoryIcon" data-wg-row-icon="group">
+-        {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
++        {node.expanded ? <IconFolderOpenMedium /> : <IconFolderCloseMedium />}
+         {color && <span className="wgColorDot" data-color={color} />}
+       </span>
+       <span className="wgCategoryLabel">{node.label}</span>
+@@ -204,7 +204,7 @@
+                   onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+                   onKeyDown={(e) => { e.stopPropagation() }}
+                 >
+-                  <IconEllipsisOutline16 />
++                  <IconEllipsisOutlineMedium />
+                 </button>
+               )}
+             />
+@@ -219,7 +219,7 @@
+               onClick={(e) => { e.stopPropagation(); onAddWorkspace() }}
+               onKeyDown={(e) => { e.stopPropagation() }}
+             >
+-              <IconProjectAddOutline16 />
++              <IconProjectAddOutlineMedium />
+             </button>
+           )}
+         </span>
+@@ -308,7 +308,7 @@
+       ? [{
+           id: 'moveToGroup',
+           label: t('workspace.moveToGroup'),
+-          icon: <IconFolderOpenOutline16 size={16} />,
++          icon: <IconFolderOpenOutlineMedium size={16} />,
+           submenu: moveTargets.map(target => ({
+             id: `moveTo:${target.key}`,
+             label: target.label,
+@@ -316,13 +316,13 @@
+           })),
+         }]
+       : canMoveOut && onMoveOut !== undefined
+-        ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
++        ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutlineMedium size={16} /> }]
+         : []),
+-    ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
+-    ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
+-    ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutline20 size={16} /> }] : []),
+-    ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
+-    ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
++    ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpenMedium size={16} /> }] : []),
++    ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutlineMedium size={16} /> }] : []),
++    ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutlineMedium size={16} /> }] : []),
++    ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutlineMedium /> }] : []),
++    ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutlineMedium />, danger: true }] : []),
+   ], [onMoveUp, onMoveDown, t, canMoveUp, isFirst, canMoveDown, isLast, moveTargets, onMoveTo, canMoveOut, onMoveOut, onOpenFolder, onCopyPath, onCleanup, onRename, onDelete])
+ 
+   const onDragStart = (event: DragEvent): void => {
+@@ -362,12 +362,12 @@
+         onDragStart={draggable ? onDragStart : undefined}
+       >
+         <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
+-          <IconTriangleRightFill14 />
++          <IconTriangleRightFillMedium />
+         </span>
+         <span className="wgCategoryIcon" data-wg-row-icon="project">
+           {/* Project rows use the project glyph (same as the official workspace
+               browser) so groups (folder glyph) and projects stay distinguishable. */}
+-          <IconProjectAddOutline16 />
++          <IconProjectAddOutlineMedium />
+           {color && <span className="wgColorDot" data-color={color} />}
+         </span>
+         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
+@@ -406,7 +406,7 @@
+               onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+               onKeyDown={(e) => { e.stopPropagation() }}
+             >
+-              <IconEllipsisOutline16 />
++              <IconEllipsisOutlineMedium />
+             </button>
+           )}
+         />}
+@@ -418,7 +418,7 @@
+           onClick={(e) => { e.stopPropagation(); onNewSession() }}
+           onKeyDown={(e) => { e.stopPropagation() }}
+         >
+-          <IconPlusOutline16 />
++          <IconPlusOutlineMedium />
+         </button>}
+       </span>}
+     </div>
+@@ -443,7 +443,7 @@
+   'aria-setsize'?: number
+ }
+ 
+-export function IconPin16({ size = 16, className }: { size?: number; className?: string }) {
++export function IconPinMedium({ size = 16, className }: { size?: number; className?: string }) {
+   return (
+     <svg
+       width={size}
+@@ -463,7 +463,7 @@
+   )
+ }
+ 
+-export function IconPinOff16({ size = 16, className }: { size?: number; className?: string }) {
++export function IconPinOffMedium({ size = 16, className }: { size?: number; className?: string }) {
+   return (
+     <svg
+       width={size}
+@@ -514,12 +514,12 @@
+     ...(onPinToggle !== undefined ? [{
+       id: 'pinToggle',
+       label: node.pinned ? t('session.unpin') : t('session.pin'),
+-      icon: node.pinned ? <IconPinOff16 size={16} /> : <IconPin16 size={16} />,
++      icon: node.pinned ? <IconPinOffMedium size={16} /> : <IconPinMedium size={16} />,
+       disabled: actionBusy,
+     }] : []),
+-    ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> }] : []),
+-    ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 />, disabled: actionBusy }] : []),
+-    ...(onArchive !== undefined ? [{ id: 'archive', label: t('session.archive'), icon: <IconArchiveOutline20 size={16} />, disabled: actionBusy }] : []),
++    ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutlineMedium /> }] : []),
++    ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutlineMedium />, disabled: actionBusy }] : []),
++    ...(onArchive !== undefined ? [{ id: 'archive', label: t('session.archive'), icon: <IconArchiveOutlineMedium size={16} />, disabled: actionBusy }] : []),
+   ], [node.pinned, onPinToggle, onRename, onFork, onArchive, t, actionBusy])
+ 
+   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+@@ -550,7 +550,7 @@
+       <span className="wgSessionTitle">{node.title}</span>
+       {node.pinned && (
+         <span className="wgSessionPinned" title={t('session.pinned')} aria-label={t('session.pinned')}>
+-          <IconPin16 size={12} />
++          <IconPinMedium size={12} />
+         </span>
+       )}
+       {pillLabel !== undefined && (
+@@ -584,7 +584,7 @@
+                 onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
+                 onKeyDown={(e) => { e.stopPropagation() }}
+               >
+-                <IconEllipsisOutline16 />
++                <IconEllipsisOutlineMedium />
+               </button>
+             )}
+           />}
+--- a/src/client/session-cleanup.ts
++++ b/src/client/session-cleanup.ts
+@@ -1,12 +1,12 @@
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
++import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+ 
+ export const DEFAULT_CLEANUP_DAYS = 30
+ export const CLEANUP_DAYS_PRESETS = [7, 14, 30, 60, 90] as const
+ 
+ export interface CleanupFilterOptions {
+-  pendingInteractions: SessionPendingInteractionSnapshot
++  pendingInteractions: SessionStatusSnapshot
+   days: number
+   now: number
+   currentSessionId?: SessionId | undefined
+@@ -32,7 +32,7 @@
+     if (session.origin === 'subagent') return false
+     if (session.blank) return false
+     if (session.running) return false
+-    if (options.pendingInteractions.has(session.id)) return false
++    if (options.pendingInteractions.get(session.id)?.pendingInteraction !== undefined || options.pendingInteractions.get(session.id)?.running === true) return false
+     if (currentSessionId !== undefined && session.id === currentSessionId) return false
+     if (archivedSet.has(session.id)) return false
+     if (workspaceSet !== null && !workspaceSet.has(session.id)) return false
+--- /dev/null
++++ b/src/client/session-status.ts
+@@ -0,0 +1,7 @@
++import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++
++/** Navigation is owned by uiWorkspace; mainView retention identifies its selection. */
++export function mainSessionId(list: SessionListState): SessionId | undefined {
++  return Object.values(list.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
++}
+--- a/src/client/tree-search.ts
++++ b/src/client/tree-search.ts
+@@ -1,10 +1,11 @@
++import { mainSessionId } from './session-status.ts'
+ /**
+  * Three-level tree search matching and pruned search tree derivation.
+  */
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+ import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
++import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+ import { indexSubagentDescendants } from './subagent-lineage.ts'
+ import { effectiveCategories, resolveCategory } from '../core/matcher.ts'
+ import type { GroupsConfig, ManualGroups } from '../core/types.ts'
+@@ -49,6 +50,7 @@
+ ): SearchMatchSet {
+   const q = query.trim().toLowerCase()
+   if (q === '') return { matchedIds: new Set(), snippetsBySession: new Map(), hasMore: false }
++  const current = mainSessionId(list)
+   const archived = new Set(archivedSessionIds)
+ 
+   const workspaceBySession = new Map<SessionId, WorkspaceView>()
+@@ -63,7 +65,7 @@
+   const local: SessionSummary[] = []
+   for (const id of list.ids) {
+     const summary = list.byId[id]
+-    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
++    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived)) continue
+     if (
+       sessionTitle(summary).toLowerCase().includes(q)
+       || labelOf(summary).toLowerCase().includes(q)
+@@ -83,7 +85,7 @@
+   for (const summary of local) include(summary)
+   for (const item of content.items) {
+     const summary = list.byId[item.sessionId]
+-    if (summary !== undefined && !summary.blank && sessionVisible(summary, list.current, archived)) include(summary)
++    if (summary !== undefined && !summary.blank && sessionVisible(summary, current, archived)) include(summary)
+   }
+ 
+   const snippets = new Map<SessionId, string>()
+@@ -132,10 +134,11 @@
+   archivedSessionIds: readonly SessionId[],
+   manual: ManualGroups,
+   snippetsBySession?: ReadonlyMap<SessionId, string>,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   completedSessions?: Readonly<Record<string, boolean>>,
+   acknowledgedErrors?: Readonly<Record<string, string>>,
+ ): SearchTree {
++  const current = mainSessionId(list)
+   const archived = new Set(archivedSessionIds)
+   const descendants = indexSubagentDescendants(list.byId)
+ 
+@@ -155,10 +158,10 @@
+     for (const id of workspace.sessionIds) {
+       const summary = list.byId[id]
+       if (summary === undefined || !matchedIds.has(id)) continue
+-      if (!sessionVisible(summary, list.current, archived)) continue
++      if (!sessionVisible(summary, current, archived)) continue
+       const isPinned = pinnedSet.has(id)
+-      const completedOverride = id !== list.current && completedSessions?.[id] === true
+-      const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id], completedOverride, acknowledgedErrors?.[id], id === list.current)
++      const completedOverride = id !== current && completedSessions?.[id] === true
++      const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id], completedOverride, acknowledgedErrors?.[id], id === current)
+       const snippet = snippetsBySession?.get(id)
+       matchedMap.set(id, {
+         ...node,
+--- a/src/client/tree.ts
++++ b/src/client/tree.ts
+@@ -1,3 +1,4 @@
++import { mainSessionId } from './session-status.ts'
+ /**
+  * Derives the three-level workspace-groups tree: category folder → workspace folder →
+  * session row. Pure derivation — all inputs are snapshots; the renderer never
+@@ -7,7 +8,7 @@
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
++import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+ import { indexSubagentDescendants, type SubagentDescendantSummary } from './subagent-lineage.ts'
+ import type { PendingInteractionStatus } from './tree-attention.ts'
+ import type { SessionCompletionObservation } from './store-core.ts'
+@@ -142,13 +143,13 @@
+   s: SessionSummary,
+   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
+   pinned?: boolean,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   color?: string | null,
+   completedOverride?: boolean,
+   acknowledgedError?: string,
+   selected = false,
+ ): SessionNode {
+-  const kind = pendingInteractions.get(s.id)?.kind
++  const kind = pendingInteractions.get(s.id)?.pendingInteraction?.kind
+   const pendingInteraction = kind === 'approval' || kind === 'plan-review' || kind === 'question' ? kind : undefined
+   const projection = readAttentionProjection(s.projectionValues)
+   const errorRevision = errorAttentionRevision(projection.reason, s.updatedAt)
+@@ -160,7 +161,7 @@
+     blank: s.blank,
+     running: s.running,
+     runningSubagentCount,
+-    completed: (!selected && !errorViewed && !s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
++    completed: (!selected && !errorViewed && !s.running && runningSubagentCount === 0) && (pendingInteractions.get(s.id)?.completionUnread === true || completedOverride === true),
+     updatedAt: s.updatedAt,
+     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
+     ...(projection.reason === null || errorViewed ? {} : { projectionReason: projection.reason }),
+@@ -173,20 +174,22 @@
+ export function deriveCompletionObservations(
+   list: SessionListState,
+   archivedSessionIds: readonly SessionId[],
++  statuses: SessionStatusSnapshot = new Map(),
+ ): SessionCompletionObservation[] {
++  const current = mainSessionId(list)
+   const archived = new Set(archivedSessionIds)
+   const descendants = indexSubagentDescendants(list.byId)
+   const observations: SessionCompletionObservation[] = []
+   for (const id of list.ids) {
+     const summary = list.byId[id]
+-    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
++    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived)) continue
+     const runningSubagentCount = descendants.get(id)?.runningCount ?? 0
+     const errorRevision = errorAttentionRevision(readAttentionProjection(summary.projectionValues).reason, summary.updatedAt)
+     observations.push({
+       id,
+       ...(errorRevision === undefined ? {} : { errorRevision }),
+       running: summary.running || runningSubagentCount > 0,
+-      completed: summary.completed === true,
++      completed: statuses.get(id)?.completionUnread === true,
+     })
+   }
+   return observations
+@@ -200,19 +203,20 @@
+   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
+   pinnedIds?: readonly string[],
+   onSession?: (session: SessionNode) => void,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   colors?: Record<string, string | null>,
+   completedSessions?: Readonly<Record<string, boolean>>,
+   acknowledgedErrors?: Readonly<Record<string, string>>,
+ ): SessionNode[] {
++  const current = mainSessionId(list)
+   const pinnedSet = new Set(pinnedIds ?? [])
+   const visibleMap = new Map<SessionId, SessionNode>()
+   for (const id of workspace.sessionIds) {
+     const summary = list.byId[id]
+     if (summary === undefined) continue // account may lead the list pull; appears when the summary lands
+-    if (!sessionVisible(summary, list.current, archived)) continue
+-    const completedOverride = id !== list.current && completedSessions?.[id] === true
+-    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride, acknowledgedErrors?.[id], id === list.current)
++    if (!sessionVisible(summary, current, archived)) continue
++    const completedOverride = id !== current && completedSessions?.[id] === true
++    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride, acknowledgedErrors?.[id], id === current)
+     visibleMap.set(id, node)
+   }
+ 
+@@ -244,10 +248,11 @@
+   archivedSessionIds: readonly SessionId[],
+   config: GroupsConfig,
+   manual: ManualGroups,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   completedSessions?: Readonly<Record<string, boolean>>,
+   acknowledgedErrors?: Readonly<Record<string, string>>,
+ ): WorkspaceTree {
++  const current = mainSessionId(list)
+   const archived = new Set(archivedSessionIds)
+   const descendants = indexSubagentDescendants(list.byId)
+   const categoryKeys = effectiveCategories(config, manual).map(({ key }) => key)
+@@ -265,7 +270,7 @@
+   let currentWorkspaceId: WorkspaceId | undefined
+ 
+   for (const workspace of workspaces) {
+-    if (currentWorkspaceId === undefined && list.current !== undefined && workspace.sessionIds.includes(list.current)) {
++    if (currentWorkspaceId === undefined && current !== undefined && workspace.sessionIds.includes(current)) {
+       currentWorkspaceId = workspace.workspaceId
+     }
+     const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title, validCategoryKeys)
+@@ -357,7 +362,7 @@
+   config: GroupsConfig,
+   view: GroupsTreeView,
+   manual: ManualGroups,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   completedSessions?: Readonly<Record<string, boolean>>,
+   acknowledgedErrors?: Readonly<Record<string, string>>,
+ ): CategoryNode[] {
+@@ -375,7 +380,7 @@
+   config: GroupsConfig,
+   view: GroupsTreeView,
+   manual: ManualGroups,
+-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
++  pendingInteractions: SessionStatusSnapshot = new Map(),
+   completedSessions?: Readonly<Record<string, boolean>>,
+   acknowledgedErrors?: Readonly<Record<string, string>>,
+ ): WorkspaceGroupNode[] {
