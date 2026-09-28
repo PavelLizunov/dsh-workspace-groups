@@ -101,14 +101,14 @@ export declare function workspaceLabel(cwd: string | undefined): string;
 export declare function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean;
 /** Blank rows display the localized New Session label (never enters search). */
 export declare function sessionTitle(session: SessionSummary): string;
-export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, pendingInteractions?: SessionPendingInteractionSnapshot, color?: string | null, completedOverride?: boolean): SessionNode;
+export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, pendingInteractions?: SessionPendingInteractionSnapshot, color?: string | null, completedOverride?: boolean, acknowledgedError?: string, selected?: boolean): SessionNode;
 /** Collect completion/running observations for visible non-blank sessions. */
 export declare function deriveCompletionObservations(list: SessionListState, archivedSessionIds: readonly SessionId[]): SessionCompletionObservation[];
 /** Build the fully populated grouped and top-level tree once per list snapshot. */
-export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceTree;
+export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>, acknowledgedErrors?: Readonly<Record<string, string>>): WorkspaceTree;
 /** Apply expansion state without rescanning or rebuilding session summaries. */
 export declare function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTreeView): WorkspaceTree;
 /** Derive grouped branches with the requested expansion state. */
-export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): CategoryNode[];
+export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>, acknowledgedErrors?: Readonly<Record<string, string>>): CategoryNode[];
 /** Derive top-level branches with the requested expansion state. */
-export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceGroupNode[];
+export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>, acknowledgedErrors?: Readonly<Record<string, string>>): WorkspaceGroupNode[];

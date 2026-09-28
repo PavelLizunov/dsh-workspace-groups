@@ -22,6 +22,7 @@ import {
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import {
   type AttentionState,
+  errorAttentionRevision,
   sessionAttention,
   aggregateAttention,
   aggregateCategoryAttention,
@@ -144,10 +145,14 @@ export function sessionNode(
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   color?: string | null,
   completedOverride?: boolean,
+  acknowledgedError?: string,
+  selected = false,
 ): SessionNode {
   const kind = pendingInteractions.get(s.id)?.kind
   const pendingInteraction = kind === 'approval' || kind === 'plan-review' || kind === 'question' ? kind : undefined
   const projection = readAttentionProjection(s.projectionValues)
+  const errorRevision = errorAttentionRevision(projection.reason, s.updatedAt)
+  const errorViewed = errorRevision !== undefined && (selected || acknowledgedError === errorRevision)
   const runningSubagentCount = descendants.get(s.id)?.runningCount ?? 0
   return {
     id: s.id,
@@ -155,10 +160,10 @@ export function sessionNode(
     blank: s.blank,
     running: s.running,
     runningSubagentCount,
-    completed: (!s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
+    completed: (!selected && !errorViewed && !s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
     updatedAt: s.updatedAt,
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
-    ...(projection.reason === null ? {} : { projectionReason: projection.reason }),
+    ...(projection.reason === null || errorViewed ? {} : { projectionReason: projection.reason }),
     ...(pinned ? { pinned: true } : {}),
     ...(typeof color === 'string' && color !== '' ? { color } : {}),
   }
@@ -176,8 +181,10 @@ export function deriveCompletionObservations(
     const summary = list.byId[id]
     if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
     const runningSubagentCount = descendants.get(id)?.runningCount ?? 0
+    const errorRevision = errorAttentionRevision(readAttentionProjection(summary.projectionValues).reason, summary.updatedAt)
     observations.push({
       id,
+      ...(errorRevision === undefined ? {} : { errorRevision }),
       running: summary.running || runningSubagentCount > 0,
       completed: summary.completed === true,
     })
@@ -196,6 +203,7 @@ function workspaceSessions(
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   colors?: Record<string, string | null>,
   completedSessions?: Readonly<Record<string, boolean>>,
+  acknowledgedErrors?: Readonly<Record<string, string>>,
 ): SessionNode[] {
   const pinnedSet = new Set(pinnedIds ?? [])
   const visibleMap = new Map<SessionId, SessionNode>()
@@ -204,7 +212,7 @@ function workspaceSessions(
     if (summary === undefined) continue // account may lead the list pull; appears when the summary lands
     if (!sessionVisible(summary, list.current, archived)) continue
     const completedOverride = id !== list.current && completedSessions?.[id] === true
-    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride)
+    const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride, acknowledgedErrors?.[id], id === list.current)
     visibleMap.set(id, node)
   }
 
@@ -238,6 +246,7 @@ export function deriveWorkspaceTree(
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
+  acknowledgedErrors?: Readonly<Record<string, string>>,
 ): WorkspaceTree {
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
@@ -270,7 +279,7 @@ export function deriveWorkspaceTree(
 
   const workspaceNode = (workspace: WorkspaceView): WorkspaceGroupNode => {
     const pinnedIds = manual.pinnedSessions?.[workspace.workspaceId]
-    const sessions = workspaceSessions(list, workspace, archived, descendants, pinnedIds, countSession, pendingInteractions, manual.colors, completedSessions)
+    const sessions = workspaceSessions(list, workspace, archived, descendants, pinnedIds, countSession, pendingInteractions, manual.colors, completedSessions, acknowledgedErrors)
     const attention = aggregateAttention(sessions)
     return {
       workspaceId: workspace.workspaceId,
@@ -350,9 +359,10 @@ export function deriveGroups(
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
+  acknowledgedErrors?: Readonly<Record<string, string>>,
 ): CategoryNode[] {
   return [...projectTreeExpansion(
-    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions),
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions, acknowledgedErrors),
     view,
   ).categories]
 }
@@ -367,9 +377,10 @@ export function deriveTopLevel(
   manual: ManualGroups,
   pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
+  acknowledgedErrors?: Readonly<Record<string, string>>,
 ): WorkspaceGroupNode[] {
   return [...projectTreeExpansion(
-    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions),
+    deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, completedSessions, acknowledgedErrors),
     view,
   ).topLevel]
 }

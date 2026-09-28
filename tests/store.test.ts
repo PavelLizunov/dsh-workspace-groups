@@ -26,6 +26,29 @@ function freshState(): GroupsViewState {
   return { categoryExpansion: {}, workspaceExpansion: {} }
 }
 
+describe('error acknowledgment reconciliation', () => {
+  it('acknowledges only current errors, keeps stable maps, and prunes absent or changed errors', () => {
+    const state = freshState()
+    const sessions = [
+      { id: 's1', running: false, completed: true, errorRevision: '1:error' },
+      { id: 's2', running: false, completed: true, errorRevision: '2:interrupted' },
+    ]
+    reconcileSessionCompletionImpl(state, sessions, 's1')
+    expect(state.acknowledgedErrors).toEqual({ s1: '1:error' })
+    expect(state.completedSessions).toEqual({ s2: true })
+    const errors = state.acknowledgedErrors
+    reconcileSessionCompletionImpl(state, sessions)
+    expect(state.acknowledgedErrors).toBe(errors)
+    expect(state.completedSessions).toEqual({ s2: true })
+    reconcileSessionCompletionImpl(state, [{ id: 's1', running: true, completed: false }])
+    expect(state.acknowledgedErrors).toEqual({})
+    reconcileSessionCompletionImpl(state, sessions, 's1')
+    reconcileSessionCompletionImpl(state, [])
+    expect(state.acknowledgedErrors).toEqual({})
+    expect(state.completedSessions).toEqual({})
+  })
+})
+
 describe('groups view store expansion semantics', () => {
   it('setCategoryExpanded(true) stores the key as true', () => {
     const state = freshState()

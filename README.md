@@ -54,7 +54,9 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
   same level — **there is no "Uncategorized" bucket**
 - **Visible attention markers**: an amber **Awaiting** pill marks a pending interaction or an
   SDD approval response, while a red **Error** pill marks error, interrupted, and
-  max-token turn endings; collapsed project and group rows bubble up the highest-priority state
+  max-token turn endings; collapsed project and group rows bubble up the highest-priority state.
+  Viewing the session clears Error in this browser and preserves that acknowledgment across reloads.
+  A changed session revision can show Error again; viewing alone does not clear Awaiting.
 - **Bounded session lists & pinned sessions**: expanded projects show five session rows by default (plus the
   selected session and any pinned or color-tagged sessions when needed), with transient **Show all / Collapse** controls.
   Sessions can be pinned or unpinned within a workspace via their `⋯` menu (**Pin session / Unpin session**);

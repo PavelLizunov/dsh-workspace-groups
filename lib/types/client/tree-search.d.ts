@@ -51,4 +51,4 @@ export interface SearchTree {
  * @returns group folders in render order plus top-level matched workspaces,
  * pruned to matched branches only.
  */
-export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): SearchTree;
+export declare function deriveSearchGroups(list: SessionListState, workspaces: readonly WorkspaceView[], config: GroupsConfig, matchedIds: ReadonlySet<SessionId>, archivedSessionIds: readonly SessionId[], manual: ManualGroups, snippetsBySession?: ReadonlyMap<SessionId, string>, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>, acknowledgedErrors?: Readonly<Record<string, string>>): SearchTree;

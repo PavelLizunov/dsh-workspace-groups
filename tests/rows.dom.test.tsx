@@ -42,6 +42,9 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 
 import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 import { GroupsBrowser } from '../src/client/GroupsBrowser.tsx'
+import { clearCompletedSessionImpl, reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 
 const emptyPending = new Map<never, never>()
 const t = ((key: string) => key) as never
@@ -58,6 +61,63 @@ afterEach(() => {
   act(() => { root.unmount() })
   host.remove()
   vi.unstubAllGlobals()
+})
+
+describe('error acknowledgment in GroupsBrowser', () => {
+  it('clears Error on click, persists after navigation/reload, and waits for ready snapshots', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200, headers: new Headers({ etag: 'rev-1' }),
+      json: async () => ({ categories: [], manual: { categories: [], assignments: {} } }),
+    })))
+    let list = {
+      ids: ['s1', 's2'], current: undefined, phase: 'ready', subagentsByParent: {},
+      byId: {
+        s1: { id: 's1', displayTitle: 'Failed session', blank: false, running: false, completed: true, updatedAt: 1, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } } },
+        s2: { id: 's2', displayTitle: 'Other session', blank: false, running: false, updatedAt: 1 },
+      },
+    } as unknown as SessionListState
+    const workspaces = { phase: 'ready', archivedSessionIds: [], items: [{ workspaceId: 'w1', path: '/tmp', title: 'Project', createdAt: '2026-01-01', sessionIds: ['s1', 's2'] }] }
+    let view: GroupsViewState = { categoryExpansion: {}, workspaceExpansion: { w1: true } }
+    const reconcile = vi.fn((sessions, current) => {
+      reconcileSessionCompletionImpl(view, sessions, current)
+    })
+    const actions = {
+      setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {},
+      clearCompletedSession: (id: string) => clearCompletedSessionImpl(view, id),
+      reconcileSessionCompletion: reconcile,
+    }
+    const render = () => root.render(<GroupsBrowser
+      wide expandSidebar={() => {}}
+      useSessions={((select: (s: SessionListState) => unknown) => select(list)) as never}
+      useSessionPendingInteraction={((select: (s: typeof emptyPending) => unknown) => select(emptyPending)) as never}
+      useWorkspaces={((select: (s: typeof workspaces) => unknown) => select(workspaces)) as never}
+      useStore={((select: (s: GroupsViewState) => unknown) => select(view)) as never}
+      actions={actions as never} startSession={() => {}}
+      open={id => { list = { ...list, current: id }; render() }}
+      renameSession={async () => {}} forkSession={async () => {}} renameWorkspace={async () => {}}
+      deleteWorkspace={async () => {}} insertWorkspaceBefore={async () => {}} archiveSession={async () => {}}
+      cleanupSessions={async () => {}} insertSessionBefore={async () => {}} createWorkspace={async () => { throw new Error('not used') }}
+      listDirectory={async () => ({ path: '/tmp', entries: [], crumbs: [] }) as never}
+      createDirectory={async () => ''} searchSessions={async () => ({ items: [], hasMore: false })}
+      searchResultLimit={20} t={t}
+    />)
+    await act(async () => { render() })
+    expect(host.querySelector('.wgSessionPill[data-status="error"]')).not.toBeNull()
+    await act(async () => { host.querySelector<HTMLElement>('.wgSessionRow[aria-label^="Failed session"]')!.click() })
+    expect(host.querySelector('.wgSessionPill')).toBeNull()
+    expect(view.acknowledgedErrors).toEqual({ s1: '1:error' })
+    await act(async () => { host.querySelector<HTMLElement>('.wgSessionRow[aria-label^="Other session"]')!.click() })
+    expect(host.querySelector('[data-state-dot="error"]')).toBeNull()
+    expect(host.querySelector('[data-state-dot="done"]')).toBeNull()
+    view = JSON.parse(JSON.stringify(view)) as GroupsViewState
+    await act(async () => { root.unmount(); root = createRoot(host); render() })
+    expect(host.querySelector('.wgSessionPill')).toBeNull()
+    reconcile.mockClear()
+    list = { ...list, phase: 'pending', ids: [], byId: {} } as SessionListState
+    await act(async () => { render() })
+    expect(reconcile).not.toHaveBeenCalled()
+    expect(view.acknowledgedErrors).toEqual({ s1: '1:error' })
+  })
 })
 
 describe('row interaction contracts', () => {

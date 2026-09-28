@@ -359,6 +359,7 @@ export function GroupsBrowser({
   const archivedSessionIds = useWorkspaces(state => state.archivedSessionIds)
   const categoryExpansion = useStore(s => s.categoryExpansion)
   const workspaceExpansion = useStore(s => s.workspaceExpansion)
+  const acknowledgedErrors = useStore(s => s.acknowledgedErrors)
   const completedSessions = useStore(s => s.completedSessions)
   const runningSessions = useStore(s => s.runningSessions)
   const effectiveCompletedSessions = useMemo(() => {
@@ -399,7 +400,7 @@ export function GroupsBrowser({
     )
   }, [actions, config, manual, workspacePhase, workspaces])
 
-  // Persist unread completed sessions and running-to-idle transitions across reloads.
+  // Persist completion reminders, running transitions, and viewed error revisions.
   useEffect(() => {
     if (list.phase !== 'ready' || workspacePhase !== 'ready') return
     actions.reconcileSessionCompletion?.(
@@ -529,9 +530,9 @@ export function GroupsBrowser({
 
   const canonicalTree = useMemo(
     () => normalizedQuery === ''
-      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, effectiveCompletedSessions)
+      ? deriveWorkspaceTree(list, workspaces, archivedSessionIds, config, manual, pendingInteractions, effectiveCompletedSessions, acknowledgedErrors)
       : EMPTY_WORKSPACE_TREE,
-    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery, pendingInteractions, effectiveCompletedSessions],
+    [list, workspaces, archivedSessionIds, config, manual, normalizedQuery, pendingInteractions, effectiveCompletedSessions, acknowledgedErrors],
   )
   const filterResult = useMemo(
     () => isFilterActive
@@ -1483,6 +1484,7 @@ export function GroupsBrowser({
             <SearchBody
               pendingInteractions={pendingInteractions}
               completedSessions={effectiveCompletedSessions}
+              acknowledgedErrors={acknowledgedErrors}
               retainedSessionIds={filterRetainedSessions}
               list={list}
               workspaces={workspaces}
@@ -2396,9 +2398,10 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ pendingInteractions, completedSessions, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
   pendingInteractions: SessionPendingInteractionSnapshot
   completedSessions?: Readonly<Record<string, boolean>> | undefined
+  acknowledgedErrors?: Readonly<Record<string, string>> | undefined
   retainedSessionIds?: ReadonlySet<string> | undefined
   list: SessionListState
   workspaces: readonly WorkspaceView[]
@@ -2432,8 +2435,8 @@ function SearchBody({ pendingInteractions, completedSessions, retainedSessionIds
     [list, workspaces, config, query, archivedSessionIds, currentRemote, resultLimit],
   )
   const searchTree = useMemo(
-    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession, pendingInteractions, completedSessions),
-    [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions, completedSessions],
+    () => deriveSearchGroups(list, workspaces, config, matches.matchedIds, archivedSessionIds, manual, matches.snippetsBySession, pendingInteractions, completedSessions, acknowledgedErrors),
+    [list, workspaces, config, matches, archivedSessionIds, manual, pendingInteractions, completedSessions, acknowledgedErrors],
   )
   const filteredSearch = useMemo(
     () => applySidebarFilter(searchTree.categories, searchTree.topLevel, filter, manual.colors, Date.now(), retainedSessionIds),

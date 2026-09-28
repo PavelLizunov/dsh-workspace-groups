@@ -21,12 +21,15 @@ export interface GroupsViewState {
   completedSessions?: Record<string, boolean>
   /** Last-observed running sessions keyed by session id (catches turns finishing during reload). */
   runningSessions?: Record<string, boolean>
+  /** Viewed terminal error revisions, independent of the durable Host projection. */
+  acknowledgedErrors?: Record<string, string>
 }
 
 export interface SessionCompletionObservation {
   id: string
   running: boolean
   completed: boolean
+  errorRevision?: string
 }
 
 export interface ExpansionSnapshot {
@@ -118,7 +121,8 @@ export function clearCompletedSessionImpl(state: GroupsViewState, sessionId: str
  * Reconcile persisted unread-completion reminders and running-session tracking
  * against a ready session list snapshot. Preserves unread completion across
  * page reloads and promotes sessions that were running before reload and
- * finished before the reloaded list arrived.
+ * finished before the reloaded list arrived. Also acknowledges the current
+ * terminal error revision and drops acknowledgments for removed/changed errors.
  */
 export function reconcileSessionCompletionImpl(
   state: GroupsViewState,
@@ -129,18 +133,29 @@ export function reconcileSessionCompletionImpl(
   const prevRunning = state.runningSessions ?? {}
   const nextCompleted: Record<string, boolean> = {}
   const nextRunning: Record<string, boolean> = {}
+  const prevErrors = state.acknowledgedErrors ?? {}
+  const nextErrors: Record<string, string> = {}
 
   for (const session of sessions) {
+    if (session.errorRevision !== undefined && (
+      session.id === currentSessionId || prevErrors[session.id] === session.errorRevision
+    )) {
+      nextErrors[session.id] = session.errorRevision
+    }
     if (session.running) {
       nextRunning[session.id] = true
       continue
     }
-    if (session.id === currentSessionId) continue
+    if (session.id === currentSessionId || nextErrors[session.id] !== undefined) continue
     if (prevCompleted[session.id] === true || session.completed || prevRunning[session.id] === true) {
       nextCompleted[session.id] = true
     }
   }
 
+  if (Object.keys(prevErrors).length !== Object.keys(nextErrors).length
+    || Object.keys(nextErrors).some(id => prevErrors[id] !== nextErrors[id])) {
+    state.acknowledgedErrors = nextErrors
+  }
   if (!sameBooleanMap(state.completedSessions, nextCompleted)) {
     state.completedSessions = nextCompleted
   }

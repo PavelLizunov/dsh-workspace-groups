@@ -8,6 +8,13 @@ import type { SessionAttentionReason } from '../core/attention.ts'
 
 export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done'
 
+/** Identify an observed terminal error without changing the durable Host projection. */
+export function errorAttentionRevision(reason: SessionAttentionReason, updatedAt: number): string | undefined {
+  return reason === 'error' || reason === 'interrupted' || reason === 'max-tokens'
+    ? `${updatedAt}:${reason}`
+    : undefined
+}
+
 /** Minimal fields needed to derive a session's attention badge. */
 export interface SessionAttentionInput {
   pendingInteraction?: PendingInteractionStatus

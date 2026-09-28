@@ -6,6 +6,8 @@
 export type PendingInteractionStatus = 'approval' | 'plan-review' | 'question';
 import type { SessionAttentionReason } from '../core/attention.js';
 export type AttentionState = 'error' | 'warning' | 'ongoing' | 'done';
+/** Identify an observed terminal error without changing the durable Host projection. */
+export declare function errorAttentionRevision(reason: SessionAttentionReason, updatedAt: number): string | undefined;
 /** Minimal fields needed to derive a session's attention badge. */
 export interface SessionAttentionInput {
     pendingInteraction?: PendingInteractionStatus;

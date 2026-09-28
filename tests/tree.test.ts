@@ -20,6 +20,8 @@ import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/cl
 import { deriveCompletionObservations, deriveGroups, deriveSearchGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
+import { reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
+import { applySidebarFilter, DEFAULT_SIDEBAR_FILTER } from '../src/client/tree-filter.ts'
 
 const CONFIG: GroupsConfig = {
   categories: [
@@ -60,6 +62,65 @@ function listState(workspaces: WorkspaceView[], current?: string): SessionListSt
 }
 
 const VIEW = { expandedCategories: [], expandedWorkspaces: [] }
+
+it('clears terminal error attention for the selected session in normal and search trees', () => {
+  const workspaces = [workspace('ws-a', '/tmp/Plugin', 'Plugin', ['s1'])]
+  const list = listState(workspaces, 's1')
+  list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, completed: true, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } } } as SessionSummary
+  const manual = { categories: [], assignments: {} }
+  const tree = deriveWorkspaceTree(list, workspaces, [], CONFIG, manual, new Map(), { s1: true })
+  expect(tree.categories[0]?.attention).toBeUndefined()
+  expect(tree.counts).toEqual({ all: 1, warning: 0, ongoing: 0, done: 0 })
+  const search = deriveSearchGroups(list, workspaces, CONFIG, new Set(list.ids), [], manual)
+  expect(sessionAttention(search.categories[0]!.workspaces[0]!.sessions[0]!)).toBeUndefined()
+})
+
+describe('viewed error attention', () => {
+  it.each(['error', 'interrupted', 'max-tokens'] as const)('persists acknowledgment of %s and shows a newer error', (reason) => {
+    const workspaces = [workspace('ws-a', '/tmp/Plugin', 'Plugin', ['s1', 's2'])]
+    let list = listState(workspaces)
+    list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, completed: true, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason } } } as SessionSummary
+    const manual = { categories: [], assignments: {} }
+    let view: GroupsViewState = { categoryExpansion: {}, workspaceExpansion: {} }
+    const derive = () => deriveWorkspaceTree(list, workspaces, [], CONFIG, manual, new Map(), view.completedSessions, view.acknowledgedErrors)
+    expect(derive().counts.warning).toBe(1)
+    list = { ...list, current: 's1' as never }
+    reconcileSessionCompletionImpl(view, deriveCompletionObservations(list, []), list.current)
+    view = JSON.parse(JSON.stringify(view)) as GroupsViewState
+    list = { ...list, current: 's2' as never }
+    reconcileSessionCompletionImpl(view, deriveCompletionObservations(list, []), list.current)
+    const tree = derive()
+    expect(tree.counts).toEqual({ all: 2, warning: 0, ongoing: 0, done: 0 })
+    expect(projectTreeExpansion(tree, VIEW).categories[0]?.attention).toBeUndefined()
+    const search = deriveSearchGroups(list, workspaces, CONFIG, new Set(list.ids), [], manual, undefined, new Map(), view.completedSessions, view.acknowledgedErrors)
+    const filtered = applySidebarFilter(search.categories, search.topLevel, { ...DEFAULT_SIDEBAR_FILTER, status: 'warning' }, {}, Date.now())
+    expect(filtered.counts.warning).toBe(0)
+    expect(filtered.categories).toEqual([])
+    const retained = applySidebarFilter(search.categories, search.topLevel, { ...DEFAULT_SIDEBAR_FILTER, status: 'warning' }, {}, Date.now(), new Set(['s1']))
+    expect(retained.categories[0]?.workspaces[0]?.sessions.map(s => s.id)).toEqual(['s1'])
+    expect(retained.counts.warning).toBe(0)
+    expect(deriveCompletionObservations(list, [list.ids[0]!]).map(s => s.id)).toEqual(['s2'])
+    list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, updatedAt: list.byId[list.ids[0]!]!.updatedAt + 1 }
+    expect(derive().counts.warning).toBe(1)
+    reconcileSessionCompletionImpl(view, deriveCompletionObservations(list, []), list.current)
+    expect(view.acknowledgedErrors).toEqual({})
+    expect(derive().counts.warning).toBe(1)
+  })
+
+  it('keeps real pending interactions and SDD requests after viewing', () => {
+    const workspaces = [workspace('ws-a', '/tmp/Plugin', 'Plugin', ['s1'])]
+    const list = listState(workspaces, 's1')
+    const manual = { categories: [], assignments: {} }
+    for (const reason of ['error', 'awaiting-user'] as const) {
+      list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason } } } as SessionSummary
+      for (const kind of ['approval', 'question', 'plan-review'] as const) {
+        const pending = new Map([[list.ids[0]!, { kind }]]) as never
+        expect(deriveWorkspaceTree(list, workspaces, [], CONFIG, manual, pending).counts.warning).toBe(1)
+      }
+    }
+    expect(deriveWorkspaceTree(list, workspaces, [], CONFIG, manual).counts.warning).toBe(1)
+  })
+})
 
 describe('workspaceLabel', () => {
   it('uses an English fallback when cwd is missing', () => {
