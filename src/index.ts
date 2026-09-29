@@ -96,6 +96,8 @@ const MIXED_TOP_LEVEL_MANUAL_FIELDS = [
   'renamed',
   'hidden',
   'colors',
+  'groupIcons',
+  'workspaceIcons',
   'pinnedSessions',
 ] as const
 

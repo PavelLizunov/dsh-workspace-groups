@@ -33,6 +33,8 @@ import {
   type T,
   type WorkspaceMoveTarget,
 } from './row-utils.ts'
+import { isFolderIconId, type FolderIconId } from '../core/icons.ts'
+import { FolderIcon } from './FolderIcon.tsx'
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts'
 
 export * from './row-utils.ts'
@@ -52,6 +54,8 @@ export interface CategoryRowProps extends RowDropProps {
   onDelete?: () => void
   color?: string | null | undefined
   onSetColor?: ((color: string | null) => void) | undefined
+  icon?: FolderIconId | undefined
+  onChooseIcon?: (() => void) | undefined
   /** Group reorder source; the row becomes draggable only when provided. */
   onDragStartCategory?: (event: DragEvent) => void
   onMoveUp?: () => void
@@ -81,6 +85,8 @@ export function CategoryRow({
   onDelete,
   color,
   onSetColor,
+  icon,
+  onChooseIcon,
   dropActive = false,
   insertLine,
   onRowDragOver,
@@ -99,9 +105,10 @@ export function CategoryRow({
 }: CategoryRowProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const count = node.workspaces.length
-  const manageable = (onRename !== undefined && onDelete !== undefined) || onExpandEntire !== undefined || onCollapseEntire !== undefined || onAddWorkspace !== undefined
+  const manageable = onChooseIcon !== undefined || (onRename !== undefined && onDelete !== undefined) || onExpandEntire !== undefined || onCollapseEntire !== undefined || onAddWorkspace !== undefined
 
   const menuItems = useMemo(() => [
+    ...(onChooseIcon !== undefined ? [{ id: 'chooseIcon', label: t('icon.title') }] : []),
     ...(onAddWorkspace !== undefined ? [{ id: 'addWorkspace', label: t('group.addWorkspace'), icon: <IconProjectAddOutline16 /> }] : []),
     ...(onExpandEntire !== undefined ? [{ id: 'expandEntire', label: t('group.expandEntire') }] : []),
     ...(onCollapseEntire !== undefined ? [{ id: 'collapseEntire', label: t('group.collapseEntire') }] : []),
@@ -109,7 +116,7 @@ export function CategoryRow({
     ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
-  ], [onAddWorkspace, onExpandEntire, onCollapseEntire, onMoveUp, onMoveDown, onRename, onDelete, t, canMoveUp, isFirst, canMoveDown, isLast])
+  ], [onChooseIcon, onAddWorkspace, onExpandEntire, onCollapseEntire, onMoveUp, onMoveDown, onRename, onDelete, t, canMoveUp, isFirst, canMoveDown, isLast])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (onToggle === undefined || event.target !== event.currentTarget) return
@@ -148,7 +155,7 @@ export function CategoryRow({
         <IconTriangleRightFill14 />
       </span>
       <span className="wgCategoryIcon" data-wg-row-icon="group">
-        {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+        {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
         {color && <span className="wgColorDot" data-color={color} />}
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
@@ -185,6 +192,7 @@ export function CategoryRow({
               items={menuItems}
               onSelect={(id) => {
                 setMenuOpen(false)
+                if (id === 'chooseIcon') onChooseIcon?.()
                 if (id === 'addWorkspace') onAddWorkspace?.()
                 if (id === 'expandEntire') onExpandEntire?.()
                 if (id === 'collapseEntire') onCollapseEntire?.()
@@ -239,6 +247,8 @@ export interface WorkspaceRowProps extends RowDropProps {
   onCleanup?: (() => void) | undefined
   color?: string | null | undefined
   onSetColor?: ((color: string | null) => void) | undefined
+  icon?: FolderIconId | undefined
+  onChooseIcon?: (() => void) | undefined
   /** Project currently sits inside a group — offer "move out of group". */
   canMoveOut?: boolean
   onMoveOut?: () => void
@@ -275,6 +285,8 @@ export function WorkspaceRow({
   onCleanup,
   color,
   onSetColor,
+  icon,
+  onChooseIcon,
   canMoveOut = false,
   onMoveOut,
   moveTargets,
@@ -302,6 +314,7 @@ export function WorkspaceRow({
   const [menuOpen, setMenuOpen] = useState(false)
 
   const menuItems = useMemo(() => [
+    ...(onChooseIcon !== undefined ? [{ id: 'chooseIcon', label: t('icon.title') }] : []),
     ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('workspace.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
     ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('workspace.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
     ...(moveTargets !== undefined && onMoveTo !== undefined
@@ -323,7 +336,7 @@ export function WorkspaceRow({
     ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutline20 size={16} /> }] : []),
     ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
     ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
-  ], [onMoveUp, onMoveDown, t, canMoveUp, isFirst, canMoveDown, isLast, moveTargets, onMoveTo, canMoveOut, onMoveOut, onOpenFolder, onCopyPath, onCleanup, onRename, onDelete])
+  ], [onChooseIcon, onMoveUp, onMoveDown, t, canMoveUp, isFirst, canMoveDown, isLast, moveTargets, onMoveTo, canMoveOut, onMoveOut, onOpenFolder, onCopyPath, onCleanup, onRename, onDelete])
 
   const onDragStart = (event: DragEvent): void => {
     event.dataTransfer.setData(DND_WORKSPACE_TYPE, node.workspaceId)
@@ -365,9 +378,7 @@ export function WorkspaceRow({
           <IconTriangleRightFill14 />
         </span>
         <span className="wgCategoryIcon" data-wg-row-icon="project">
-          {/* Project rows use the project glyph (same as the official workspace
-              browser) so groups (folder glyph) and projects stay distinguishable. */}
-          <IconProjectAddOutline16 />
+          {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : <IconProjectAddOutline16 />}
           {color && <span className="wgColorDot" data-color={color} />}
         </span>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
@@ -387,6 +398,7 @@ export function WorkspaceRow({
             setMenuOpen(false)
             if (id === 'moveUp') onMoveUp?.()
             if (id === 'moveDown') onMoveDown?.()
+            if (id === 'chooseIcon') onChooseIcon?.()
             if (id === 'openFolder') onOpenFolder?.()
             if (id === 'copyPath') onCopyPath?.()
             if (id === 'cleanup') onCleanup?.()

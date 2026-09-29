@@ -90,6 +90,21 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     expect(registered[0]).toMatchObject({ key: 'workspaceGroupsAttention', stateVersion: 1 })
   })
 
+  it('persists icon namespaces and rejects invalid artwork IDs through the real route', async () => {
+    const initial = await (await fetch(`${baseUrl}/workspace-groups/config`)).json()
+    const manual = { categories: ['Group'], assignments: {}, groupIcons: { Group: 'book' }, workspaceIcons: { w1: 'server' } }
+    const put = (value: unknown, expectedRevision: string) => fetch(`${baseUrl}/workspace-groups/manual`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manual: value, expectedRevision }),
+    })
+    const saved = await put(manual, initial.revision)
+    expect(saved.status).toBe(200)
+    const restored = await (await fetch(`${baseUrl}/workspace-groups/config`)).json()
+    expect(restored.manual.groupIcons).toEqual({ Group: 'book' })
+    expect(restored.manual.workspaceIcons).toEqual({ w1: 'server' })
+    expect((await put({ ...manual, workspaceIcons: { w1: '<svg>' } }, restored.revision)).status).toBe(400)
+    expect((await put({ ...manual, groupIcons: {} }, initial.revision)).status).toBe(409)
+  })
+
   it('GET /workspace-groups/config includes revision and ETag header', async () => {
     const res = await fetch(`${baseUrl}/workspace-groups/config`)
     expect(res.status).toBe(200)

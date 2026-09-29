@@ -5,6 +5,7 @@
  */
 
 import { moveAfter, moveBefore, orderedWorkspaceIds } from '../core/matcher.ts'
+import type { FolderIconId, FolderIconScope } from '../core/icons.ts'
 import { TOP_LEVEL_ORDER_KEY, type ManualGroups } from '../core/types.ts'
 
 export interface MoveWorkspaceParams {
@@ -82,8 +83,15 @@ export function removeGroup(
     }
   }
 
+  const groupIcons = manual.groupIcons ? { ...manual.groupIcons } : undefined
+  if (groupIcons) {
+    delete groupIcons[groupName]
+    if (originalRuleName !== undefined) delete groupIcons[originalRuleName]
+  }
+
   return {
     ...manual,
+    ...(groupIcons === undefined ? {} : { groupIcons }),
     categories,
     assignments,
     workspaceOrder,
@@ -123,8 +131,12 @@ export function removeWorkspace(
     delete pinnedSessions[workspaceId]
   }
 
+  const workspaceIcons = manual.workspaceIcons ? { ...manual.workspaceIcons } : undefined
+  if (workspaceIcons) delete workspaceIcons[workspaceId]
+
   return {
     ...manual,
+    ...(workspaceIcons === undefined ? {} : { workspaceIcons }),
     assignments,
     workspaceOrder,
     ...(colors !== undefined ? { colors } : {}),
@@ -237,8 +249,15 @@ export function renameGroup(
     delete colors[oldName]
   }
 
+  const groupIcons = manual.groupIcons ? { ...manual.groupIcons } : undefined
+  if (groupIcons && Object.hasOwn(groupIcons, oldName)) {
+    Object.defineProperty(groupIcons, newName, { value: groupIcons[oldName]!, writable: true, enumerable: true, configurable: true })
+    delete groupIcons[oldName]
+  }
+
   return {
     ...manual,
+    ...(groupIcons === undefined ? {} : { groupIcons }),
     categories,
     assignments,
     workspaceOrder,
@@ -246,6 +265,15 @@ export function renameGroup(
     ...(renamed !== undefined ? { renamed } : {}),
     ...(colors !== undefined ? { colors } : {}),
   }
+}
+
+/** Set or reset a folder icon without mixing group names and workspace ids. */
+export function setFolderIcon(manual: ManualGroups, scope: FolderIconScope, key: string, icon: FolderIconId | null): ManualGroups {
+  const field = scope === 'group' ? 'groupIcons' : 'workspaceIcons'
+  const icons = { ...manual[field] }
+  if (icon === null) delete icons[key]
+  else Object.defineProperty(icons, key, { value: icon, writable: true, enumerable: true, configurable: true })
+  return { ...manual, [field]: icons }
 }
 
 /**

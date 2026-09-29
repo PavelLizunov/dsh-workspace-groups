@@ -66,6 +66,12 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
   the eight presets. The same compact portal menu works in search results. Color-tagged sessions stay in the
   five-row preview, and the Finder color filter matches a group, project, or any session tagged with that color.
 
+### Folder icons and semantic titles
+
+Use **Choose icon** in a group or workspace `⋯` menu to select one of 24 bundled Tabler Outline SVG icons or restore the default. Icons also appear in search, retain the color dot, survive reloads and group renames, and are stored in separate `groupIcons` / `workspaceIcons` overlay maps. No external image requests or uploaded SVG are used. Deploy the matching Host and Client together for persistence; an old Host does not support these fields.
+
+An optional [periodic-title companion](packages/periodic-titles/README.md) targets **DSH 0.2.0-rc.1** independently of this sidebar's 0.1.5 compatibility. It generates semantic titles through the native service and revisits them after five new substantive human messages at a completed turn boundary. Manual renames remain pinned; short confirmations do not count. A bounded recent-message selection handles long histories; oversized newest messages or generation failures retain the prior title. Each generation is an auxiliary model request. The companion requires separate installation/profile activation and replacement of the existing title provider; installing the sidebar alone does not enable it.
+
 ### Group management (full lifecycle)
 - **Create groups manually**: the "New group" button in the section header shows the group
   immediately (empty groups render too)

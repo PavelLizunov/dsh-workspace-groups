@@ -3,6 +3,7 @@
  * Kept free of React or runtime state bindings so both client UI actions
  * and unit tests share a single immutable implementation.
  */
+import type { FolderIconId, FolderIconScope } from '../core/icons.js';
 import { type ManualGroups } from '../core/types.js';
 export interface MoveWorkspaceParams {
     workspaceId: string;
@@ -38,6 +39,8 @@ export declare function moveWorkspace(manual: ManualGroups, params: MoveWorkspac
  * Rename group references consistently across categories, categoryOrder, assignments, workspaceOrder, and renamed.
  */
 export declare function renameGroup(manual: ManualGroups, oldName: string, newName: string, options?: RenameGroupOptions): ManualGroups;
+/** Set or reset a folder icon without mixing group names and workspace ids. */
+export declare function setFolderIcon(manual: ManualGroups, scope: FolderIconScope, key: string, icon: FolderIconId | null): ManualGroups;
 /**
  * Set or clear the visual color tag for a group, workspace, or session in the overlay.
  */

@@ -10,6 +10,7 @@
  */
 import { type DragEvent } from 'react';
 import { type RowDropProps, type T, type WorkspaceMoveTarget } from './row-utils.js';
+import { type FolderIconId } from '../core/icons.js';
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.js';
 export * from './row-utils.js';
 export { ColorMenu } from './ColorMenu.tsx';
@@ -27,6 +28,8 @@ export interface CategoryRowProps extends RowDropProps {
     onDelete?: () => void;
     color?: string | null | undefined;
     onSetColor?: ((color: string | null) => void) | undefined;
+    icon?: FolderIconId | undefined;
+    onChooseIcon?: (() => void) | undefined;
     /** Group reorder source; the row becomes draggable only when provided. */
     onDragStartCategory?: (event: DragEvent) => void;
     onMoveUp?: () => void;
@@ -44,7 +47,7 @@ export interface CategoryRowProps extends RowDropProps {
  * groups via overlay renames/hides), draggable source for group reorder and
  * drop target for both workspace moves and group reorders.
  */
-export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onAddWorkspace, onRename, onDelete, color, onSetColor, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: CategoryRowProps): import("react").JSX.Element;
+export declare function CategoryRow({ node, t, onToggle, onExpandEntire, onCollapseEntire, onAddWorkspace, onRename, onDelete, color, onSetColor, icon, onChooseIcon, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onDragStartCategory, onMoveUp, onMoveDown, isFirst, isLast, canMoveUp, canMoveDown, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: CategoryRowProps): import("react").JSX.Element;
 export interface WorkspaceRowProps extends RowDropProps {
     node: WorkspaceGroupNode;
     t: T;
@@ -56,6 +59,8 @@ export interface WorkspaceRowProps extends RowDropProps {
     onCleanup?: (() => void) | undefined;
     color?: string | null | undefined;
     onSetColor?: ((color: string | null) => void) | undefined;
+    icon?: FolderIconId | undefined;
+    onChooseIcon?: (() => void) | undefined;
     /** Project currently sits inside a group — offer "move out of group". */
     canMoveOut?: boolean;
     onMoveOut?: () => void;
@@ -81,7 +86,7 @@ export interface WorkspaceRowProps extends RowDropProps {
     'aria-setsize'?: number;
 }
 /** One workspace folder row inside a category: draggable source + drop target. */
-export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, onCleanup, color, onSetColor, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, draggable, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: WorkspaceRowProps): import("react").JSX.Element;
+export declare function WorkspaceRow({ node, t, onToggle, onNewSession, onRename, onDelete, onCleanup, color, onSetColor, icon, onChooseIcon, canMoveOut, onMoveOut, moveTargets, onMoveTo, onMoveUp, onMoveDown, onOpenFolder, onCopyPath, isFirst, isLast, canMoveUp, canMoveDown, flat, draggable, dropActive, insertLine, onRowDragOver, onRowDragLeave, onRowDrop, onWorkspaceDragStart, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: WorkspaceRowProps): import("react").JSX.Element;
 export interface SessionRowProps {
     node: SessionNode;
     currentId: string | undefined;

@@ -4,6 +4,8 @@
  * browser half (tree derivation) — compile against the same contract.
  */
 
+import type { FolderIconId } from './icons.ts'
+
 /** One classification rule: any rule that matches places the workspace in the category. */
 export interface GroupRule {
   /** Absolute path prefix match (normalized, case-sensitive). */
@@ -89,6 +91,9 @@ export interface ManualGroups {
    * Value is a color preset identifier or CSS color string (or null/absent to clear).
    */
   colors?: Record<string, string | null>
+  /** Separate namespaces prevent a group name from colliding with a workspace id. */
+  groupIcons?: Record<string, FolderIconId>
+  workspaceIcons?: Record<string, FolderIconId>
   /**
    * Pinned session ids per workspace, keyed by workspace id.
    * Pinned sessions render at the top of their workspace in this order.

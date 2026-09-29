@@ -54,8 +54,10 @@ import {
 } from '../core/matcher.ts'
 import { parseSidebarFilterPreferences, TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type GroupsConfig, type ManualGroups } from '../core/types.ts'
 import type { GroupsBrowserProps } from './contract.ts'
+import type { FolderIconId, FolderIconScope } from '../core/icons.ts'
+import { FolderIconPicker } from './FolderIconPicker.tsx'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
-import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setItemColor, togglePinSession } from './overlay-core.ts'
+import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
@@ -70,7 +72,7 @@ const EMPTY_WORKSPACE_TREE: WorkspaceTree = { categories: [], topLevel: [], coun
 type NormalizedManual = Required<ManualGroups>
 
 const EMPTY_MANUAL: NormalizedManual = {
-  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [], colors: {}, pinnedSessions: {},
+  categories: [], assignments: {}, categoryOrder: [], workspaceOrder: {}, renamed: {}, hidden: [], colors: {}, groupIcons: {}, workspaceIcons: {}, pinnedSessions: {},
 }
 
 /** Materialize optional overlay fields so every update is a plain object edit. */
@@ -83,6 +85,8 @@ function normalizeManual(manual: ManualGroups): NormalizedManual {
     renamed: manual.renamed ?? {},
     hidden: manual.hidden ?? [],
     colors: manual.colors ?? {},
+    groupIcons: manual.groupIcons ?? {},
+    workspaceIcons: manual.workspaceIcons ?? {},
     pinnedSessions: manual.pinnedSessions ?? {},
   }
 }
@@ -1244,6 +1248,30 @@ export function GroupsBrowser({
     }
   }
 
+  const [iconTarget, setIconTarget] = useState<{ scope: FolderIconScope; key: string; label: string } | null>(null)
+  const [iconError, setIconError] = useState<string | null>(null)
+  const onChooseIcon = (scope: FolderIconScope, key: string, label: string): void => {
+    setIconError(null)
+    setIconTarget({ scope, key, label })
+  }
+  const saveFolderIcon = async (icon: FolderIconId | null): Promise<void> => {
+    if (iconTarget === null || manualSaving) return
+    setManualSaving(true)
+    try {
+      const next = normalizeManual(setFolderIcon(manual, iconTarget.scope, iconTarget.key, icon))
+      const { revision: nextRevision } = await saveManualOverlay(next, revision)
+      setManual(next)
+      setRevision(nextRevision)
+      setIconTarget(null)
+      setIconError(null)
+    } catch (reason) {
+      setIconError(isConflictError(reason) ? t('manual.conflictError') : t('manual.saveError'))
+      if (isConflictError(reason)) void reloadConfig(true)
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   const onSessionPinToggle = async (workspaceId: WorkspaceId, sessionId: SessionId): Promise<void> => {
     if (manualSaving) return
     setManualSaving(true)
@@ -1526,6 +1554,7 @@ export function GroupsBrowser({
               onSessionPinToggle={onSessionPinToggle}
               sessionActionBusy={sessionActionBusy}
               onSetItemColor={onSetItemColor}
+              onChooseIcon={onChooseIcon}
             />
           ) : (
             <div className="wgList" role="tree" aria-label={t('section.workspaces')} onKeyDown={handleTreeKeyDown} onFocusCapture={handleTreeFocus}>
@@ -1623,6 +1652,7 @@ export function GroupsBrowser({
                   onAddWorkspace={() => { addWorkspace(category.key) }}
                   manual={manual}
                   onSetItemColor={onSetItemColor}
+                  onChooseIcon={onChooseIcon}
                 />
               ))}
               <div
@@ -1690,6 +1720,7 @@ export function GroupsBrowser({
                   onCopyPath={onCopyPath}
                   manual={manual}
                   onSetItemColor={onSetItemColor}
+                  onChooseIcon={onChooseIcon}
                 />
               )}
             </div>
@@ -1706,6 +1737,10 @@ export function GroupsBrowser({
       )}
 
       {/* Group create / rename dialog */}
+      {iconTarget !== null && <FolderIconPicker open label={iconTarget.label}
+        icon={(iconTarget.scope === 'group' ? manual.groupIcons : manual.workspaceIcons)[iconTarget.key]}
+        busy={manualSaving} error={iconError} t={t}
+        onSelect={(icon) => { void saveFolderIcon(icon) }} onClose={() => { setIconTarget(null) }} />}
       <Modal
         open={groupDialog !== null}
         onClose={() => { if (!groupBusy) { groupGeneration.current += 1; setGroupDialog(null); setGroupError(null) } }}
@@ -2140,7 +2175,7 @@ function WorkspaceSessions({
 }
 
 /** One category section: header row + expanded workspace folders. */
-function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onAddWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor }: {
+function CategorySection({ category, categoryIndex, totalRootItems, current, now, t, dragIndicator, onDragOverRow, onDragLeaveRow, onDropRow, onDragStartCategory, onDragStartWorkspace, onToggleCategory, onExpandEntire, onCollapseEntire, onAddWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onGroupRename, onGroupDelete, onMoveOut, onMoveTo, moveTargetsFor, canMoveOut, onMoveGroupUp, onMoveGroupDown, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, isFirstGroup, isLastGroup, manual, onSetItemColor, onChooseIcon }: {
   category: CategoryNode
   categoryIndex: number
   totalRootItems: number
@@ -2185,6 +2220,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
   isLastGroup: boolean
   manual: ManualGroups
   onSetItemColor: (itemKey: string, color: string | null) => void
+  onChooseIcon: (scope: FolderIconScope, key: string, label: string) => void
 }) {
   const categoryLine = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'category' && dragIndicator.row.key === category.key
     ? (dragIndicator.before ? 'before' : 'after')
@@ -2204,6 +2240,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
         onAddWorkspace={onAddWorkspace}
         onRename={onGroupRename}
         onDelete={onGroupDelete}
+        icon={manual.groupIcons?.[category.key]}
+        onChooseIcon={() => { onChooseIcon('group', category.key, category.label) }}
         color={manual.colors?.[category.key]}
         onSetColor={(color) => { void onSetItemColor(category.key, color) }}
         onDragStartCategory={onDragStartCategory}
@@ -2234,6 +2272,8 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
                 onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
                 onCleanup={() => { onCleanupRequest(workspace.workspaceId, workspace.label) }}
+                icon={manual.workspaceIcons?.[workspace.workspaceId]}
+                onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
                 color={manual.colors?.[workspace.workspaceId]}
                 onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 canMoveOut={canMoveOut(workspace.workspaceId)}
@@ -2292,7 +2332,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
  *   last row);
  * - an empty top level shows a standalone line under the last group folder.
  */
-function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor }: {
+function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, t, dragging, dragIndicator, topLevelRef, onDragOverRow, onDragOverTopLevelArea, onDragLeaveRow, onDropRow, onDragStartWorkspace, onToggleWorkspace, onNewSession, onOpen, onRenameRequest, onDeleteRequest, onCleanupRequest, onSessionRename, onSessionArchive, onFork, onSessionPinToggle, sessionActionBusy, onMoveTo, moveTargetsFor, onMoveWorkspaceUp, onMoveWorkspaceDown, onOpenFolder, onCopyPath, manual, onSetItemColor, onChooseIcon }: {
   topLevel: readonly WorkspaceGroupNode[]
   totalGroups: number
   totalRootItems: number
@@ -2327,6 +2367,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
   onCopyPath: (path: string) => void
   manual: ManualGroups
   onSetItemColor: (itemKey: string, color: string | null) => void
+  onChooseIcon: (scope: FolderIconScope, key: string, label: string) => void
 }) {
   const emptyLineActive = dragIndicator?.mode === 'line' && dragIndicator.row.kind === 'topLevel' && dragIndicator.row.key === topLevelRef.key
   return (
@@ -2363,6 +2404,8 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
             onRename={() => { onRenameRequest(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onDeleteRequest(workspace.workspaceId, workspace.label) }}
             onCleanup={() => { onCleanupRequest(workspace.workspaceId, workspace.label) }}
+            icon={manual.workspaceIcons?.[workspace.workspaceId]}
+            onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
             color={manual.colors?.[workspace.workspaceId]}
             onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
             moveTargets={moveTargetsFor(workspace.workspaceId)}
@@ -2404,7 +2447,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
+function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor, onChooseIcon }: {
   pendingInteractions: SessionPendingInteractionSnapshot
   completedSessions?: Readonly<Record<string, boolean>> | undefined
   acknowledgedErrors?: Readonly<Record<string, string>> | undefined
@@ -2434,6 +2477,7 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
   onSessionPinToggle?: ((workspaceId: WorkspaceId, sessionId: SessionId) => void) | undefined
   sessionActionBusy: boolean
   onSetItemColor: (itemKey: string, color: string | null) => void
+  onChooseIcon: (scope: FolderIconScope, key: string, label: string) => void
 }) {
   const currentRemote = remote.query === query ? remote : { query, status: 'loading' as const, items: [], hasMore: false }
   const matches = useMemo(
@@ -2468,6 +2512,8 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
             aria-level={1}
             aria-posinset={idx + 1}
             aria-setsize={totalRootItems}
+            icon={manual.groupIcons?.[category.key]}
+            onChooseIcon={() => { onChooseIcon('group', category.key, category.label) }}
             color={manual.colors?.[category.key]}
             onSetColor={(color) => { void onSetItemColor(category.key, color) }}
           />
@@ -2484,6 +2530,8 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
                   onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
                   onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
                   onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
+                  icon={manual.workspaceIcons?.[workspace.workspaceId]}
+                  onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
                   color={manual.colors?.[workspace.workspaceId]}
                   onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 />
@@ -2520,6 +2568,8 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
             onRename={() => { onWorkspaceRename(workspace.workspaceId, workspace.label) }}
             onDelete={() => { onWorkspaceDelete(workspace.workspaceId, workspace.label) }}
             onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
+            icon={manual.workspaceIcons?.[workspace.workspaceId]}
+            onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
             color={manual.colors?.[workspace.workspaceId]}
             onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
           />

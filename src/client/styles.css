@@ -1,6 +1,45 @@
 /* dsh-workspace-groups browser styles. Plain CSS injected by the plugin's
    apply (via the ?inline virtual module) — no CSS Modules toolchain needed. */
 
+.wgIconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+  max-width: 440px;
+  margin-bottom: 16px;
+}
+
+.wgIconChoice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 60px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--dsw-alias-label-primary, inherit);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wgIconChoice:hover,
+.wgIconChoice[aria-pressed="true"] {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.12));
+  border-color: currentColor;
+}
+
+.wgIconChoice:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9);
+  outline-offset: 1px;
+}
+
+.wgIconChoice:disabled { opacity: 0.5; cursor: wait; }
+
 .wgRoot {
   display: flex;
   flex-direction: column;

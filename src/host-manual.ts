@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { homedir } from 'node:os'
+import { isFolderIconId, type FolderIconId } from './core/icons.ts'
 import { ruleDisplayName } from './core/matcher.ts'
 import { TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL, type ManualGroups } from './core/types.ts'
 
@@ -142,6 +143,17 @@ export function parseManualGroups(raw: unknown): ManualGroups {
     }
     manual.colors = colors
   }
+  for (const field of ['groupIcons', 'workspaceIcons'] as const) {
+    const raw = source[field]
+    if (raw === undefined) continue
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error(`workspace-groups.manual.json: ${field} must be a mapping`)
+    const entries: [string, FolderIconId][] = []
+    for (const [key, icon] of Object.entries(raw)) {
+      if (key.trim() === '' || !isFolderIconId(icon)) throw new Error(`workspace-groups.manual.json: invalid ${field} entry`)
+      entries.push([key, icon])
+    }
+    manual[field] = Object.fromEntries(entries)
+  }
   if (source.pinnedSessions !== undefined) {
     if (typeof source.pinnedSessions !== 'object' || source.pinnedSessions === null || Array.isArray(source.pinnedSessions)) {
       throw new Error('workspace-groups.manual.json: pinnedSessions must be a mapping')
@@ -213,6 +225,9 @@ export function validateManualGroups(manual: ManualGroups, ruleCategoryNames: re
     if (!allowed.has(key) || key === UNCATEGORIZED_LABEL) {
       throw new Error(`workspace-groups.manual.json: workspaceOrder references unknown category "${key}"`)
     }
+  }
+  for (const key of Object.keys(manual.groupIcons ?? {})) {
+    if (!allowed.has(key) || key === UNCATEGORIZED_LABEL) throw new Error(`workspace-groups.manual.json: groupIcons references unknown category "${key}"`)
   }
   for (const original of Object.keys(manual.renamed ?? {})) {
     if (!ruleNames.has(original)) {

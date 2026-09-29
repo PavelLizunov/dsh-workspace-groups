@@ -2,6 +2,7 @@
  * Locale dictionaries for the workspace-groups browser. The namespace is
  * `workspaceGroups` (independent from ui-workspace's `workspace` namespace).
  */
+import type { FolderIconId } from '../core/icons.ts'
 import type { LocaleDictOf } from '@deepseek-ai/dsh-client-ui-slots'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -12,6 +13,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Dictionary keys of the workspaceGroups namespace (single source of truth). */
 export type WorkspaceGroupsKey =
+  | `icon.${FolderIconId}`
+  | 'icon.title'
+  | 'icon.reset'
   | 'section.workspaces'
   | 'section.sessions'
   | 'search'

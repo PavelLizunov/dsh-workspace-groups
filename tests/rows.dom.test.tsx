@@ -42,6 +42,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 
 import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 import { GroupsBrowser } from '../src/client/GroupsBrowser.tsx'
+import { FolderIconPicker } from '../src/client/FolderIconPicker.tsx'
 import { acknowledgeSessionErrorImpl, clearCompletedSessionImpl, reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
@@ -61,6 +62,48 @@ afterEach(() => {
   act(() => { root.unmount() })
   host.remove()
   vi.unstubAllGlobals()
+})
+
+describe('folder icon persistence in GroupsBrowser', () => {
+  it('chooses, persists, reloads and resets a workspace icon through the real handler', async () => {
+    let manual: Record<string, unknown> = { categories: [], assignments: {} }
+    const saves: unknown[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(init.body as string)
+        manual = body.manual
+        saves.push(manual)
+      }
+      return { ok: true, status: 200, headers: new Headers({ etag: `rev-${saves.length}` }), json: async () => ({ categories: [], manual, revision: `rev-${saves.length}` }) }
+    }))
+    const list = { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {} }
+    const workspaces = { phase: 'ready', archivedSessionIds: [], items: [{ workspaceId: 'w1', path: '/tmp', title: 'Project', createdAt: '2026-01-01', sessionIds: [] }] }
+    const view = { categoryExpansion: {}, workspaceExpansion: {} }
+    const render = () => root.render(<GroupsBrowser wide expandSidebar={() => {}}
+      useSessions={((select: (s: typeof list) => unknown) => select(list)) as never}
+      useSessionPendingInteraction={((select: (s: typeof emptyPending) => unknown) => select(emptyPending)) as never}
+      useWorkspaces={((select: (s: typeof workspaces) => unknown) => select(workspaces)) as never}
+      useStore={((select: (s: typeof view) => unknown) => select(view)) as never}
+      actions={{ setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {} } as never}
+      startSession={() => {}} open={() => {}} renameSession={async () => {}} forkSession={async () => {}} renameWorkspace={async () => {}}
+      deleteWorkspace={async () => {}} insertWorkspaceBefore={async () => {}} archiveSession={async () => {}}
+      cleanupSessions={async () => {}} insertSessionBefore={async () => {}} createWorkspace={async () => { throw new Error('unused') }}
+      listDirectory={async () => ({ path: '/tmp', entries: [], crumbs: [] }) as never} createDirectory={async () => ''}
+      searchSessions={async () => ({ items: [], hasMore: false })} searchResultLimit={20} t={t} />)
+    const choose = () => Array.from(host.querySelectorAll('.wgProjectRow button')).find(button => button.textContent === 'icon.title') as HTMLButtonElement
+    await act(async () => { render() })
+    await act(async () => { choose().click() })
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="icon.server"]')!.click() })
+    expect(manual.workspaceIcons).toEqual({ w1: 'server' })
+    expect(host.querySelector('.wgProjectRow [data-wg-folder-icon="server"]')).not.toBeNull()
+    await act(async () => { root.unmount(); root = createRoot(host); render() })
+    expect(host.querySelector('.wgProjectRow [data-wg-folder-icon="server"]')).not.toBeNull()
+    await act(async () => { choose().click() })
+    await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'icon.reset')!.click() })
+    expect(manual.workspaceIcons).toEqual({})
+    expect(host.querySelector('.wgProjectRow [data-wg-folder-icon]')).toBeNull()
+    expect(saves).toHaveLength(2)
+  })
 })
 
 describe('error acknowledgment in GroupsBrowser', () => {
@@ -134,6 +177,35 @@ describe('error acknowledgment in GroupsBrowser', () => {
 })
 
 describe('row interaction contracts', () => {
+  it('offers labelled icon choices, selection state, reset, and busy protection', () => {
+    const select = vi.fn()
+    const render = (busy = false) => root.render(<FolderIconPicker open label="Project" icon="book" busy={busy} error={null} onSelect={select} onClose={() => {}} t={t} />)
+    act(() => render())
+    expect(host.querySelectorAll('.wgIconChoice')).toHaveLength(24)
+    expect(host.querySelector('button[aria-label="icon.book"]')?.getAttribute('aria-pressed')).toBe('true')
+    act(() => { host.querySelector<HTMLButtonElement>('button[aria-label="icon.server"]')!.click() })
+    expect(select).toHaveBeenLastCalledWith('server')
+    act(() => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'icon.reset')!.click() })
+    expect(select).toHaveBeenLastCalledWith(null)
+    act(() => render(true))
+    expect(host.querySelector<HTMLButtonElement>('button[aria-label="icon.server"]')!.disabled).toBe(true)
+  })
+  it('shows chosen folder icons without hiding colors or attention and opens their picker action', () => {
+    const choose = vi.fn()
+    act(() => root.render(<CategoryRow node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [], attention: 'error' }}
+      icon="book" color="blue" onChooseIcon={choose} t={t} />))
+    expect(host.querySelector('[data-wg-folder-icon="book"]')).not.toBeNull()
+    expect(host.querySelector('.wgColorDot[data-color="blue"]')).not.toBeNull()
+    expect(host.querySelector('[data-state-dot="error"]')).not.toBeNull()
+    act(() => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'icon.title')!.click() })
+    expect(choose).toHaveBeenCalledTimes(1)
+    act(() => root.render(<WorkspaceRow node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: false, containsCurrent: false, sessions: [] }}
+      icon="server" onChooseIcon={choose} t={t} />))
+    expect(host.querySelector('[data-wg-folder-icon="server"]')).not.toBeNull()
+    act(() => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'icon.title')!.click() })
+    expect(choose).toHaveBeenCalledTimes(2)
+  })
+
   it('shows a session dot only for pending, running, or unviewed completion states', () => {
     const idle = { running: false, runningSubagentCount: 0, completed: false }
     expect(sessionDotState(idle)).toBeUndefined()
