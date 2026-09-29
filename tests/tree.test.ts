@@ -20,7 +20,7 @@ import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/cl
 import { deriveCompletionObservations, deriveGroups, deriveSearchGroups, deriveTopLevel, deriveWorkspaceTree, projectTreeExpansion, sessionAttention, workspaceLabel } from '../src/client/tree.ts'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 import type { GroupsConfig, ManualGroups } from '../src/core/types.ts'
-import { reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
+import { acknowledgeSessionErrorImpl, reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
 import { applySidebarFilter, DEFAULT_SIDEBAR_FILTER } from '../src/client/tree-filter.ts'
 
 const CONFIG: GroupsConfig = {
@@ -63,16 +63,16 @@ function listState(workspaces: WorkspaceView[], current?: string): SessionListSt
 
 const VIEW = { expandedCategories: [], expandedWorkspaces: [] }
 
-it('clears terminal error attention for the selected session in normal and search trees', () => {
+it.each(['error', 'interrupted', 'max-tokens'] as const)('preserves restored selected %s attention in normal and search trees', (reason) => {
   const workspaces = [workspace('ws-a', '/tmp/Plugin', 'Plugin', ['s1'])]
   const list = listState(workspaces, 's1')
-  list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, completed: true, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } } } as SessionSummary
+  list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, completed: true, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason } } } as SessionSummary
   const manual = { categories: [], assignments: {} }
   const tree = deriveWorkspaceTree(list, workspaces, [], CONFIG, manual, new Map(), { s1: true })
-  expect(tree.categories[0]?.attention).toBeUndefined()
-  expect(tree.counts).toEqual({ all: 1, warning: 0, ongoing: 0, done: 0 })
+  expect(tree.categories[0]?.attention).toBe('error')
+  expect(tree.counts).toEqual({ all: 1, warning: 1, ongoing: 0, done: 0 })
   const search = deriveSearchGroups(list, workspaces, CONFIG, new Set(list.ids), [], manual)
-  expect(sessionAttention(search.categories[0]!.workspaces[0]!.sessions[0]!)).toBeUndefined()
+  expect(sessionAttention(search.categories[0]!.workspaces[0]!.sessions[0]!)).toBe('error')
 })
 
 describe('viewed error attention', () => {
@@ -85,6 +85,7 @@ describe('viewed error attention', () => {
     const derive = () => deriveWorkspaceTree(list, workspaces, [], CONFIG, manual, new Map(), view.completedSessions, view.acknowledgedErrors)
     expect(derive().counts.warning).toBe(1)
     list = { ...list, current: 's1' as never }
+    acknowledgeSessionErrorImpl(view, 's1', `${list.byId[list.ids[0]!]!.updatedAt}:${reason}`)
     reconcileSessionCompletionImpl(view, deriveCompletionObservations(list, []), list.current)
     view = JSON.parse(JSON.stringify(view)) as GroupsViewState
     list = { ...list, current: 's2' as never }
@@ -100,6 +101,7 @@ describe('viewed error attention', () => {
     expect(retained.categories[0]?.workspaces[0]?.sessions.map(s => s.id)).toEqual(['s1'])
     expect(retained.counts.warning).toBe(0)
     expect(deriveCompletionObservations(list, [list.ids[0]!]).map(s => s.id)).toEqual(['s2'])
+    list = { ...list, current: 's1' as never }
     list.byId[list.ids[0]!] = { ...list.byId[list.ids[0]!]!, updatedAt: list.byId[list.ids[0]!]!.updatedAt + 1 }
     expect(derive().counts.warning).toBe(1)
     reconcileSessionCompletionImpl(view, deriveCompletionObservations(list, []), list.current)

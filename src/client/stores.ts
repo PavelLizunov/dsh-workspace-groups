@@ -12,6 +12,7 @@
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 import {
+  acknowledgeSessionErrorImpl,
   clearCompletedSessionImpl,
   reconcileSessionCompletionImpl,
   retainKeysImpl,
@@ -31,6 +32,7 @@ type GroupsViewActions = {
   setWorkspacesExpanded: typeof setWorkspacesExpandedImpl
   restoreExpansionSnapshot: typeof restoreExpansionSnapshotImpl
   retainKeys: typeof retainKeysImpl
+  acknowledgeSessionError: typeof acknowledgeSessionErrorImpl
   clearCompletedSession: typeof clearCompletedSessionImpl
   reconcileSessionCompletion: typeof reconcileSessionCompletionImpl
 }
@@ -50,6 +52,7 @@ export function createGroupsViewStore(): EngineStoreHandle<GroupsViewState, Grou
       setWorkspacesExpanded: setWorkspacesExpandedImpl,
       restoreExpansionSnapshot: restoreExpansionSnapshotImpl,
       retainKeys: retainKeysImpl,
+      acknowledgeSessionError: acknowledgeSessionErrorImpl,
       clearCompletedSession: clearCompletedSessionImpl,
       reconcileSessionCompletion: reconcileSessionCompletionImpl,
     },

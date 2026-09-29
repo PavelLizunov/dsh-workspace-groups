@@ -49,11 +49,13 @@ export declare function restoreExpansionSnapshotImpl(state: GroupsViewState, sna
 export declare function retainKeysImpl(state: GroupsViewState, categoryKeys: readonly string[], workspaceKeys: readonly string[]): void;
 /** Clear one session's persisted completion reminder when opened/selected. */
 export declare function clearCompletedSessionImpl(state: GroupsViewState, sessionId: string): void;
+/** Acknowledge only the error revision observed when the user explicitly opens a row. */
+export declare function acknowledgeSessionErrorImpl(state: GroupsViewState, sessionId: string, errorRevision: string): void;
 /**
  * Reconcile persisted unread-completion reminders and running-session tracking
  * against a ready session list snapshot. Preserves unread completion across
  * page reloads and promotes sessions that were running before reload and
- * finished before the reloaded list arrived. Also acknowledges the current
- * terminal error revision and drops acknowledgments for removed/changed errors.
+ * finished before the reloaded list arrived. Retains explicit error acknowledgments
+ * and drops them for removed/changed errors; selection alone never acknowledges.
  */
 export declare function reconcileSessionCompletionImpl(state: GroupsViewState, sessions: readonly SessionCompletionObservation[], currentSessionId?: string): void;

@@ -40,6 +40,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import { readAttentionProjection } from '../core/attention.ts'
+import { errorAttentionRevision } from './tree-attention.ts'
 import { CLEANUP_DAYS_PRESETS, DEFAULT_CLEANUP_DAYS, findOldSessionsToArchive } from './session-cleanup.ts'
 import {
   displayCategoryKeys,
@@ -400,7 +402,7 @@ export function GroupsBrowser({
     )
   }, [actions, config, manual, workspacePhase, workspaces])
 
-  // Persist completion reminders, running transitions, and viewed error revisions.
+  // Persist completion reminders/running transitions and prune stale error acknowledgments.
   useEffect(() => {
     if (list.phase !== 'ready' || workspacePhase !== 'ready') return
     actions.reconcileSessionCompletion?.(
@@ -440,9 +442,13 @@ export function GroupsBrowser({
         setFilterWorkspaceExpansion(previous => previous[wsKey] === true ? previous : { ...previous, [wsKey]: true })
       }
     }
-    actions.clearCompletedSession?.(sessionId)
+    const summary = list.byId[sessionId]
+    const errorRevision = summary === undefined ? undefined
+      : errorAttentionRevision(readAttentionProjection(summary.projectionValues).reason, summary.updatedAt)
     open(sessionId)
-  }, [actions, config, filter.status, isFilterActive, manual, open, workspaces])
+    if (errorRevision !== undefined) actions.acknowledgeSessionError(sessionId, errorRevision)
+    actions.clearCompletedSession?.(sessionId)
+  }, [actions, config, filter.status, isFilterActive, list.byId, manual, open, workspaces])
   useEffect(() => {
     let cancelled = false
     fetchFilterPreferences().then((saved) => {

@@ -42,7 +42,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 
 import { CategoryRow, DND_WORKSPACE_TYPE, SessionRow, WorkspaceRow, sessionDotState } from '../src/client/rows.tsx'
 import { GroupsBrowser } from '../src/client/GroupsBrowser.tsx'
-import { clearCompletedSessionImpl, reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
+import { acknowledgeSessionErrorImpl, clearCompletedSessionImpl, reconcileSessionCompletionImpl, type GroupsViewState } from '../src/client/store-core.ts'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { ATTENTION_PROJECTION_KEY } from '../src/core/attention.ts'
 
@@ -70,7 +70,7 @@ describe('error acknowledgment in GroupsBrowser', () => {
       json: async () => ({ categories: [], manual: { categories: [], assignments: {} } }),
     })))
     let list = {
-      ids: ['s1', 's2'], current: undefined, phase: 'ready', subagentsByParent: {},
+      ids: ['s1', 's2'], current: 's1', phase: 'ready', subagentsByParent: {},
       byId: {
         s1: { id: 's1', displayTitle: 'Failed session', blank: false, running: false, completed: true, updatedAt: 1, projectionValues: { [ATTENTION_PROJECTION_KEY]: { reason: 'error' } } },
         s2: { id: 's2', displayTitle: 'Other session', blank: false, running: false, updatedAt: 1 },
@@ -83,6 +83,7 @@ describe('error acknowledgment in GroupsBrowser', () => {
     })
     const actions = {
       setCategoryExpanded: () => {}, setWorkspaceExpanded: () => {}, retainKeys: () => {},
+      acknowledgeSessionError: (id: string, revision: string) => acknowledgeSessionErrorImpl(view, id, revision),
       clearCompletedSession: (id: string) => clearCompletedSessionImpl(view, id),
       reconcileSessionCompletion: reconcile,
     }
@@ -103,9 +104,21 @@ describe('error acknowledgment in GroupsBrowser', () => {
     />)
     await act(async () => { render() })
     expect(host.querySelector('.wgSessionPill[data-status="error"]')).not.toBeNull()
+    expect(view.acknowledgedErrors).toBeUndefined()
+    view = JSON.parse(JSON.stringify(view)) as GroupsViewState
+    await act(async () => { root.unmount(); root = createRoot(host); render() })
+    expect(host.querySelector('.wgSessionPill[data-status="error"]')).not.toBeNull()
+    expect(view.acknowledgedErrors).toBeUndefined()
     await act(async () => { host.querySelector<HTMLElement>('.wgSessionRow[aria-label^="Failed session"]')!.click() })
     expect(host.querySelector('.wgSessionPill')).toBeNull()
     expect(view.acknowledgedErrors).toEqual({ s1: '1:error' })
+    list = { ...list, byId: { ...list.byId, s1: { ...list.byId['s1' as never]!, updatedAt: 2 } } } as SessionListState
+    await act(async () => { render() })
+    expect(host.querySelector('.wgSessionPill[data-status="error"]')).not.toBeNull()
+    expect(view.acknowledgedErrors).toEqual({})
+    await act(async () => { host.querySelector<HTMLElement>('.wgSessionRow[aria-label^="Failed session"]')!.click() })
+    expect(host.querySelector('.wgSessionPill')).toBeNull()
+    expect(view.acknowledgedErrors).toEqual({ s1: '2:error' })
     await act(async () => { host.querySelector<HTMLElement>('.wgSessionRow[aria-label^="Other session"]')!.click() })
     expect(host.querySelector('[data-state-dot="error"]')).toBeNull()
     expect(host.querySelector('[data-state-dot="done"]')).toBeNull()
@@ -116,7 +129,7 @@ describe('error acknowledgment in GroupsBrowser', () => {
     list = { ...list, phase: 'pending', ids: [], byId: {} } as SessionListState
     await act(async () => { render() })
     expect(reconcile).not.toHaveBeenCalled()
-    expect(view.acknowledgedErrors).toEqual({ s1: '1:error' })
+    expect(view.acknowledgedErrors).toEqual({ s1: '2:error' })
   })
 })
 

@@ -117,12 +117,20 @@ export function clearCompletedSessionImpl(state: GroupsViewState, sessionId: str
   state.completedSessions = next
 }
 
+/** Acknowledge only the error revision observed when the user explicitly opens a row. */
+export function acknowledgeSessionErrorImpl(state: GroupsViewState, sessionId: string, errorRevision: string): void {
+  if (state.acknowledgedErrors?.[sessionId] !== errorRevision) {
+    state.acknowledgedErrors = { ...state.acknowledgedErrors, [sessionId]: errorRevision }
+  }
+  clearCompletedSessionImpl(state, sessionId)
+}
+
 /**
  * Reconcile persisted unread-completion reminders and running-session tracking
  * against a ready session list snapshot. Preserves unread completion across
  * page reloads and promotes sessions that were running before reload and
- * finished before the reloaded list arrived. Also acknowledges the current
- * terminal error revision and drops acknowledgments for removed/changed errors.
+ * finished before the reloaded list arrived. Retains explicit error acknowledgments
+ * and drops them for removed/changed errors; selection alone never acknowledges.
  */
 export function reconcileSessionCompletionImpl(
   state: GroupsViewState,
@@ -137,9 +145,7 @@ export function reconcileSessionCompletionImpl(
   const nextErrors: Record<string, string> = {}
 
   for (const session of sessions) {
-    if (session.errorRevision !== undefined && (
-      session.id === currentSessionId || prevErrors[session.id] === session.errorRevision
-    )) {
+    if (session.errorRevision !== undefined && prevErrors[session.id] === session.errorRevision) {
       nextErrors[session.id] = session.errorRevision
     }
     if (session.running) {

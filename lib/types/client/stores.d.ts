@@ -11,7 +11,7 @@
  * this file only binds them through defineStore.
  */
 import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-store';
-import { clearCompletedSessionImpl, reconcileSessionCompletionImpl, retainKeysImpl, restoreExpansionSnapshotImpl, setCategoriesExpandedImpl, setCategoryExpandedImpl, setWorkspacesExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.js';
+import { acknowledgeSessionErrorImpl, clearCompletedSessionImpl, reconcileSessionCompletionImpl, retainKeysImpl, restoreExpansionSnapshotImpl, setCategoriesExpandedImpl, setCategoryExpandedImpl, setWorkspacesExpandedImpl, setWorkspaceExpandedImpl, type GroupsViewState } from './store-core.js';
 /** Annotation twin of the actions literal below (structural type, satisfies `ActionsDecl`). */
 type GroupsViewActions = {
     setCategoryExpanded: typeof setCategoryExpandedImpl;
@@ -20,6 +20,7 @@ type GroupsViewActions = {
     setWorkspacesExpanded: typeof setWorkspacesExpandedImpl;
     restoreExpansionSnapshot: typeof restoreExpansionSnapshotImpl;
     retainKeys: typeof retainKeysImpl;
+    acknowledgeSessionError: typeof acknowledgeSessionErrorImpl;
     clearCompletedSession: typeof clearCompletedSessionImpl;
     reconcileSessionCompletion: typeof reconcileSessionCompletionImpl;
 };

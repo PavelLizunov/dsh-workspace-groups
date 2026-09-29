@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  acknowledgeSessionErrorImpl,
   captureExpansionSnapshot,
   clearCompletedSessionImpl,
   reconcileSessionCompletionImpl,
@@ -27,13 +28,15 @@ function freshState(): GroupsViewState {
 }
 
 describe('error acknowledgment reconciliation', () => {
-  it('acknowledges only current errors, keeps stable maps, and prunes absent or changed errors', () => {
+  it('requires explicit acknowledgment, keeps stable maps, and prunes absent or changed errors', () => {
     const state = freshState()
     const sessions = [
       { id: 's1', running: false, completed: true, errorRevision: '1:error' },
       { id: 's2', running: false, completed: true, errorRevision: '2:interrupted' },
     ]
     reconcileSessionCompletionImpl(state, sessions, 's1')
+    expect(state.acknowledgedErrors).toBeUndefined()
+    acknowledgeSessionErrorImpl(state, 's1', '1:error')
     expect(state.acknowledgedErrors).toEqual({ s1: '1:error' })
     expect(state.completedSessions).toEqual({ s2: true })
     const errors = state.acknowledgedErrors
@@ -42,7 +45,7 @@ describe('error acknowledgment reconciliation', () => {
     expect(state.completedSessions).toEqual({ s2: true })
     reconcileSessionCompletionImpl(state, [{ id: 's1', running: true, completed: false }])
     expect(state.acknowledgedErrors).toEqual({})
-    reconcileSessionCompletionImpl(state, sessions, 's1')
+    acknowledgeSessionErrorImpl(state, 's1', '1:error')
     reconcileSessionCompletionImpl(state, [])
     expect(state.acknowledgedErrors).toEqual({})
     expect(state.completedSessions).toEqual({})

@@ -152,7 +152,7 @@ export function sessionNode(
   const pendingInteraction = kind === 'approval' || kind === 'plan-review' || kind === 'question' ? kind : undefined
   const projection = readAttentionProjection(s.projectionValues)
   const errorRevision = errorAttentionRevision(projection.reason, s.updatedAt)
-  const errorViewed = errorRevision !== undefined && (selected || acknowledgedError === errorRevision)
+  const errorViewed = errorRevision !== undefined && acknowledgedError === errorRevision
   const runningSubagentCount = descendants.get(s.id)?.runningCount ?? 0
   return {
     id: s.id,
