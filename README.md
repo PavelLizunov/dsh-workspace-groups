@@ -68,7 +68,7 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
 
 ### Folder icons and semantic titles
 
-Use **Choose icon** in a group or workspace `⋯` menu to select one of 24 bundled Tabler Outline SVG icons or restore the default. Icons also appear in search, take the chosen color directly (session rows keep their color dots), survive reloads and group renames, and are stored in separate `groupIcons` / `workspaceIcons` overlay maps. No external image requests or uploaded SVG are used. Deploy the matching Host and Client together for persistence; an old Host does not support these fields.
+Click the group/workspace folder icon itself, or use **Choose icon** in its `⋯` menu to select one of 24 bundled Tabler Outline SVG icons or restore the default. Icons also appear in search, take the chosen color directly (session rows keep their color dots), survive reloads and group renames, and are stored in separate `groupIcons` / `workspaceIcons` overlay maps. No external image requests or uploaded SVG are used. Deploy the matching Host and Client together for persistence; an old Host does not support these fields.
 
 The **Project** dropdown above the tree selects one workspace while retaining its group and combining with search, status, color, and recency. The choice survives refresh; deletion resets it after the workspace list is ready. Duplicate names are distinguished by full paths. Folder expansion is temporary during filtering. Session labels stay compact, with their full title on hover.
 

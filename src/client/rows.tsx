@@ -28,7 +28,6 @@ import { ColorMenu } from './ColorMenu.tsx'
 import {
   DND_WORKSPACE_TYPE,
   sessionDotState,
-  folderIconColor,
   relativeTimeLabel,
   type RowDropProps,
   type T,
@@ -36,6 +35,7 @@ import {
 } from './row-utils.ts'
 import { isFolderIconId, type FolderIconId } from '../core/icons.ts'
 import { FolderIcon } from './FolderIcon.tsx'
+import { FolderIconControl } from './FolderIconControl.tsx'
 import type { CategoryNode, SessionNode, WorkspaceGroupNode } from './tree.ts'
 
 export * from './row-utils.ts'
@@ -155,9 +155,9 @@ export function CategoryRow({
       >
         <IconTriangleRightFill14 />
       </span>
-      <span className="wgCategoryIcon" data-wg-row-icon="group" data-color={color ?? undefined} style={{ color: folderIconColor(color) }}>
+      <FolderIconControl kind="group" color={color} label={`${t('icon.title')}: ${node.label}`} onChoose={onChooseIcon}>
         {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
-      </span>
+      </FolderIconControl>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
       {!node.expanded && node.attention !== undefined && (
@@ -377,9 +377,9 @@ export function WorkspaceRow({
         <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
           <IconTriangleRightFill14 />
         </span>
-        <span className="wgCategoryIcon" data-wg-row-icon="project" data-color={color ?? undefined} style={{ color: folderIconColor(color) }}>
+        <FolderIconControl kind="project" color={color} label={`${t('icon.title')}: ${node.label}`} onChoose={onChooseIcon}>
           {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : <IconProjectAddOutline16 />}
-        </span>
+        </FolderIconControl>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       </span>
       {!node.expanded && node.attention !== undefined && (

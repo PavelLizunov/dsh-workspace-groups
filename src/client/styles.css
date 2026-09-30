@@ -45,11 +45,42 @@
   width: 100%;
   max-width: 100%;
   padding: 6px 8px;
-  color: var(--dsw-alias-label-primary, inherit);
-  background: var(--dsw-alias-interactive-bg-secondary, transparent);
-  border: 1px solid var(--dsw-border-1, rgba(127, 127, 127, 0.35));
+  color: var(--dsw-alias-label-primary, CanvasText);
+  background-color: var(--dsw-alias-bg-layer-1, Canvas);
+  color-scheme: light;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.35));
   border-radius: 6px;
   font: inherit;
+}
+
+body[data-ds-dark-theme] .wgProjectSelect {
+  color-scheme: dark;
+}
+
+.wgProjectSelect option {
+  color: var(--dsw-alias-label-primary, CanvasText);
+  background-color: var(--dsw-alias-bg-layer-1, Canvas);
+}
+
+.wgCategoryIcon.wgFolderIconButton {
+  appearance: none;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wgFolderIconButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.15));
+}
+
+.wgFolderIconButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9);
+  outline-offset: 2px;
 }
 
 .wgProjectSelect:focus-visible {

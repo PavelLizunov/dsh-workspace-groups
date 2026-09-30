@@ -190,6 +190,25 @@ describe('row interaction contracts', () => {
     act(() => render(true))
     expect(host.querySelector<HTMLButtonElement>('button[aria-label="icon.server"]')!.disabled).toBe(true)
   })
+  it('opens folder icon choice directly without expanding the group or workspace', () => {
+    const choose = vi.fn()
+    const toggle = vi.fn()
+    act(() => root.render(<CategoryRow node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [] }}
+      onChooseIcon={choose} onToggle={toggle} t={t} />))
+    const groupIcon = host.querySelector<HTMLButtonElement>('button[data-wg-row-icon="group"]')!
+    expect(groupIcon.getAttribute('aria-label')).toBe('icon.title: Group')
+    act(() => { groupIcon.click() })
+    expect(choose).toHaveBeenCalledTimes(1)
+    expect(toggle).not.toHaveBeenCalled()
+    act(() => { groupIcon.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); groupIcon.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })) })
+    expect(toggle).not.toHaveBeenCalled()
+    act(() => root.render(<WorkspaceRow node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: false, containsCurrent: false, sessions: [] }}
+      onChooseIcon={choose} onToggle={toggle} t={t} />))
+    act(() => { host.querySelector<HTMLButtonElement>('button[data-wg-row-icon="project"]')!.click() })
+    expect(choose).toHaveBeenCalledTimes(2)
+    expect(toggle).not.toHaveBeenCalled()
+  })
+
   it('shows chosen folder icons without hiding colors or attention and opens their picker action', () => {
     const choose = vi.fn()
     act(() => root.render(<CategoryRow node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [], attention: 'error' }}
