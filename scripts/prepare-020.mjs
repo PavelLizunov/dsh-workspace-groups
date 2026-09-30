@@ -37,7 +37,18 @@ change('src/client/index.ts', s => {
   s = s.replaceAll('ctx.sessions.open(', 'ctx.uiWorkspace.openSession(').replaceAll('ctx.uiSession.pendingInteractions', 'ctx.uiSession.sessionStatus')
   return s.replaceAll('currentSessionId: sessions.current', 'currentSessionId: mainSessionId(sessions)')
 })
-fs.writeFileSync(path.join(target, 'src/client/session-status.ts'), `import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'\nimport type { SessionId } from '@deepseek-ai/dsh-session/types'\n/** Selection belongs to uiWorkspace, represented by mainView retention. */\nexport function mainSessionId(list: SessionListState): SessionId | undefined {\n  return Object.values(list.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id\n}\n`)
+fs.writeFileSync(path.join(target, 'src/client/session-status.ts'), `import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+// Session-controller replaces byId on retention changes; cache absent selections too.
+const selections = new WeakMap<SessionListState['byId'], SessionId | undefined>()
+/** Selection belongs to uiWorkspace, represented by mainView retention. */
+export function mainSessionId(list: SessionListState): SessionId | undefined {
+  if (!selections.has(list.byId)) {
+    selections.set(list.byId, Object.values(list.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id)
+  }
+  return selections.get(list.byId)
+}
+`)
 for (const name of ['GroupsBrowser.tsx', 'tree.ts', 'tree-search.ts']) {
   change('src/client/' + name, s => "import { mainSessionId } from './session-status.ts'\n" + s.replaceAll('list.current', 'mainSessionId(list)'))
 }
