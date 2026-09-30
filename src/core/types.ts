@@ -113,29 +113,39 @@ export interface SidebarFilterPreferences {
   status: StatusScope
   recency: RecencyScope
   color: ColorPreset | null
+  /** Empty string means every project. A missing field in older settings means the same. */
+  workspaceId: string
 }
 
 export const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences = {
   status: 'all',
   recency: 'all',
   color: null,
+  workspaceId: '',
 }
 
 /** Whether an untrusted value satisfies the complete persisted filter contract. */
-export function isSidebarFilterPreferences(raw: unknown): raw is SidebarFilterPreferences {
+export function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId'> & { workspaceId?: string } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return false
   const value = raw as Record<string, unknown>
-  if (Object.keys(value).length !== 3 || !Object.hasOwn(value, 'status') || !Object.hasOwn(value, 'recency') || !Object.hasOwn(value, 'color')) return false
+  const keys = Object.keys(value)
+  if (!Object.hasOwn(value, 'status') || !Object.hasOwn(value, 'recency') || !Object.hasOwn(value, 'color')) return false
+  if (keys.some(key => key !== 'status' && key !== 'recency' && key !== 'color' && key !== 'workspaceId')) return false
   return ['all', 'warning', 'ongoing', 'done'].includes(value.status as string)
     && ['all', '24h', '7d', '30d'].includes(value.recency as string)
     && (value.color === null || FILTER_COLOR_PRESETS.includes(value.color as ColorPreset))
+    && (!Object.hasOwn(value, 'workspaceId') || (typeof value.workspaceId === 'string' && value.workspaceId.length <= 512))
 }
 
 /** Fail closed to defaults when a settings response violates the filter contract. */
 export function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPreferences {
-  return isSidebarFilterPreferences(raw)
-    ? { status: raw.status, recency: raw.recency, color: raw.color }
-    : { ...DEFAULT_SIDEBAR_FILTER }
+  if (!isSidebarFilterPreferences(raw)) return { ...DEFAULT_SIDEBAR_FILTER }
+  return {
+    status: raw.status,
+    recency: raw.recency,
+    color: raw.color,
+    workspaceId: raw.workspaceId ?? '',
+  }
 }
 
 /**

@@ -40,6 +40,22 @@
 
 .wgIconChoice:disabled { opacity: 0.5; cursor: wait; }
 
+.wgProjectSelect {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 8px;
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--dsw-alias-interactive-bg-secondary, transparent);
+  border: 1px solid var(--dsw-border-1, rgba(127, 127, 127, 0.35));
+  border-radius: 6px;
+  font: inherit;
+}
+
+.wgProjectSelect:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9);
+}
+
 .wgRoot {
   display: flex;
   flex-direction: column;
@@ -774,7 +790,7 @@
   }
 }
 
-/* Visual color badge indicator for categories and projects */
+/* Visual color badge indicator for sessions */
 .wgColorDot {
   display: inline-block;
   width: 7px;

@@ -195,7 +195,9 @@ describe('row interaction contracts', () => {
     act(() => root.render(<CategoryRow node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [], attention: 'error' }}
       icon="book" color="blue" onChooseIcon={choose} t={t} />))
     expect(host.querySelector('[data-wg-folder-icon="book"]')).not.toBeNull()
-    expect(host.querySelector('.wgColorDot[data-color="blue"]')).not.toBeNull()
+    expect(host.querySelector('[data-wg-row-icon="group"]')?.getAttribute('data-color')).toBe('blue')
+    expect(host.querySelector<HTMLElement>('[data-wg-row-icon="group"]')?.style.color).toBe('rgb(59, 130, 246)')
+    expect(host.querySelector('.wgColorDot')).toBeNull()
     expect(host.querySelector('[data-state-dot="error"]')).not.toBeNull()
     act(() => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'icon.title')!.click() })
     expect(choose).toHaveBeenCalledTimes(1)
@@ -513,8 +515,8 @@ describe('row interaction contracts', () => {
         />,
       )
     })
-    const colorDot = host.querySelector('.wgColorDot')
-    expect(colorDot?.getAttribute('data-color')).toBe('blue')
+    expect(host.querySelector('[data-wg-row-icon="project"]')?.getAttribute('data-color')).toBe('blue')
+    expect(host.querySelector('.wgColorDot')).toBeNull()
 
     let stateDot = host.querySelector('[data-state-dot]')
     expect(stateDot).not.toBeNull()
@@ -530,7 +532,8 @@ describe('row interaction contracts', () => {
         />,
       )
     })
-    expect(host.querySelector('.wgColorDot')?.getAttribute('data-color')).toBe('blue')
+    expect(host.querySelector('[data-wg-row-icon="project"]')?.getAttribute('data-color')).toBe('blue')
+    expect(host.querySelector('.wgColorDot')).toBeNull()
     stateDot = host.querySelector('[data-state-dot]')
     expect(stateDot).toBeNull()
   })
@@ -977,8 +980,7 @@ describe('row interaction contracts', () => {
     const setCategoriesExpanded = vi.fn()
     const setWorkspacesExpanded = vi.fn()
 
-    await act(async () => {
-      root.render(
+    const renderBrowser = () => root.render(
         <GroupsBrowser
           wide={true}
           expandSidebar={() => {}}
@@ -1005,7 +1007,7 @@ describe('row interaction contracts', () => {
           t={((key: string) => key) as never}
         />,
       )
-    })
+    await act(async () => { renderBrowser() })
 
     runtimeMocks.indexSubagentDescendants.mockClear()
     const scopes = Array.from(host.querySelectorAll('.wgStatusScopeBtn'))
@@ -1015,7 +1017,7 @@ describe('row interaction contracts', () => {
       scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await Promise.resolve()
     })
-    expect(filterWrites[0]).toEqual({ status: 'ongoing', recency: '7d', color: 'blue' })
+    expect(filterWrites[0]).toEqual({ status: 'ongoing', recency: '7d', color: 'blue', workspaceId: '' })
     expect(runtimeMocks.indexSubagentDescendants).not.toHaveBeenCalled()
 
     setCategoriesExpanded.mockClear()
@@ -1057,7 +1059,19 @@ describe('row interaction contracts', () => {
       host.querySelector<HTMLButtonElement>('.wgFilterResetBtn')?.click()
       await Promise.resolve()
     })
-    expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null })
+    expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '' })
+    const projectSelect = host.querySelector<HTMLSelectElement>('[aria-label="filter.project"]')!
+    expect(projectSelect.options[1]?.textContent).toContain('W1 · /w1')
+    await act(async () => {
+      projectSelect.value = 'w1'
+      projectSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1' })
+    expect(host.querySelector<HTMLSelectElement>('.wgProjectSelect')?.value).toBe('w1')
+    await act(async () => { workspacesSnapshot.phase = 'loading'; workspacesSnapshot.items = []; renderBrowser() })
+    expect(filterWrites.at(-1)).toHaveProperty('workspaceId', 'w1')
+    await act(async () => { workspacesSnapshot.phase = 'ready'; renderBrowser() })
+    expect(filterWrites.at(-1)).toHaveProperty('workspaceId', '')
 
     vi.unstubAllGlobals()
   })

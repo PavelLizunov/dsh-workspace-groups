@@ -35,3 +35,5 @@ export interface RowDropProps {
     onRowDrop?: (event: DragEvent) => void;
 }
 export declare const COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
+/** Resolve presets or a browser-supported custom CSS color, never a URL/style fragment. */
+export declare function folderIconColor(color: string | null | undefined): string | undefined;

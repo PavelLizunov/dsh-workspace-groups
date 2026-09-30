@@ -252,7 +252,7 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     const initial = await fetch(`${baseUrl}/workspace-groups/preferences`).then(res => res.json())
     expect(initial).toEqual({ filter: DEFAULT_SIDEBAR_FILTER })
 
-    const filter: SidebarFilterPreferences = { status: 'warning', recency: '7d', color: 'blue' }
+    const filter: SidebarFilterPreferences = { status: 'warning', recency: '7d', color: 'blue', workspaceId: '' }
     const put = await fetch(`${baseUrl}/workspace-groups/preferences`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

@@ -49,6 +49,7 @@ const FILTER_PREFERENCES_SCHEMA = Schema.object({
   status: Schema.union(['all', 'warning', 'ongoing', 'done'].map(value => Schema.const(value))).default('all'),
   recency: Schema.union(['all', '24h', '7d', '30d'].map(value => Schema.const(value))).default('all'),
   color: Schema.union([Schema.const(null), ...FILTER_COLOR_PRESETS.map(value => Schema.const(value))]).default(null),
+  workspaceId: Schema.string().default(''),
 })
 
 /** Error with an HTTP status, mapped to a plain-text 4xx/5xx response. */
@@ -148,7 +149,7 @@ function decodePreferencesPutBody(raw: unknown): SidebarFilterPreferences {
   if (Object.keys(value).length !== 1 || !Object.hasOwn(value, 'filter') || !isSidebarFilterPreferences(value.filter)) {
     throw new Error('payload must contain one valid "filter" value')
   }
-  return value.filter
+  return parseSidebarFilterPreferences(value.filter)
 }
 
 /** Plugin body: mount the config snapshot route and persistence routes. */

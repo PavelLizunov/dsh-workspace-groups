@@ -62,3 +62,12 @@ export interface RowDropProps {
 }
 
 export const COLOR_PRESETS = FILTER_COLOR_PRESETS
+
+const PRESET_ICON_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'] as const
+/** Resolve presets or a browser-supported custom CSS color, never a URL/style fragment. */
+export function folderIconColor(color: string | null | undefined): string | undefined {
+  if (!color) return undefined
+  const index = (COLOR_PRESETS as readonly string[]).indexOf(color)
+  if (index !== -1) return PRESET_ICON_COLORS[index]
+  return typeof CSS !== 'undefined' && CSS.supports('color', color) ? color : undefined
+}

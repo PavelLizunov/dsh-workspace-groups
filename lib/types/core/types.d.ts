@@ -105,10 +105,14 @@ export interface SidebarFilterPreferences {
     status: StatusScope;
     recency: RecencyScope;
     color: ColorPreset | null;
+    /** Empty string means every project. A missing field in older settings means the same. */
+    workspaceId: string;
 }
 export declare const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences;
 /** Whether an untrusted value satisfies the complete persisted filter contract. */
-export declare function isSidebarFilterPreferences(raw: unknown): raw is SidebarFilterPreferences;
+export declare function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId'> & {
+    workspaceId?: string;
+};
 /** Fail closed to defaults when a settings response violates the filter contract. */
 export declare function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPreferences;
 /**

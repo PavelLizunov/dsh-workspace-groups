@@ -110,6 +110,8 @@ export const zh: WorkspaceGroupsDict = {
   'icon.heart': '个人',
   'icon.archive': '归档',
   'filter.title': '筛选',
+  'filter.project': '项目',
+  'filter.project.all': '全部项目',
   'filter.statusScope': '按状态筛选',
   'filter.all': '全部',
   'filter.attention': '需要处理',

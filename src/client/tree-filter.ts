@@ -30,7 +30,7 @@ export interface FilterCounts {
 }
 
 export function sidebarFilterActive(filter: SidebarFilter): boolean {
-  return filter.status !== 'all' || filter.recency !== 'all' || filter.color !== null
+  return filter.status !== 'all' || filter.recency !== 'all' || filter.color !== null || filter.workspaceId !== ''
 }
 
 function getRecencyCutoff(recency: RecencyScope, now: number): number {
@@ -92,7 +92,7 @@ export function applySidebarFilter(
   const cutoff = getRecencyCutoff(filter.recency, now)
   const counts: FilterCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
 
-  if (filter.status === 'all' && filter.recency === 'all' && filter.color === null) {
+  if (filter.status === 'all' && filter.recency === 'all' && filter.color === null && filter.workspaceId === '') {
     const expandWorkspace = (workspace: WorkspaceGroupNode): WorkspaceGroupNode => {
       let attention: AttentionState | undefined
       for (const session of workspace.sessions) {
@@ -154,6 +154,7 @@ export function applySidebarFilter(
     workspace: WorkspaceGroupNode,
     categoryKey: string | undefined,
   ): WorkspaceGroupNode | null {
+    if (filter.workspaceId !== '' && (workspace.workspaceId as string) !== filter.workspaceId) return null
     if (!isWorkspaceColorMatched(workspace, categoryKey, filter.color, colors)) {
       return null
     }
@@ -180,7 +181,7 @@ export function applySidebarFilter(
       else if (state === 'done' && matchedAttention === undefined) matchedAttention = 'done'
     }
 
-    if (matchedSessions.length === 0) return null
+    if (matchedSessions.length === 0 && filter.workspaceId !== (workspace.workspaceId as string)) return null
 
     const { attention: _previousAttention, ...workspaceRest } = workspace
     return {

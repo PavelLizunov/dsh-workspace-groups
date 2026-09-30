@@ -28,6 +28,7 @@ import { ColorMenu } from './ColorMenu.tsx'
 import {
   DND_WORKSPACE_TYPE,
   sessionDotState,
+  folderIconColor,
   relativeTimeLabel,
   type RowDropProps,
   type T,
@@ -154,9 +155,8 @@ export function CategoryRow({
       >
         <IconTriangleRightFill14 />
       </span>
-      <span className="wgCategoryIcon" data-wg-row-icon="group">
+      <span className="wgCategoryIcon" data-wg-row-icon="group" data-color={color ?? undefined} style={{ color: folderIconColor(color) }}>
         {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
-        {color && <span className="wgColorDot" data-color={color} />}
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
       <span className="wgCategoryCount">{count}</span>
@@ -377,9 +377,8 @@ export function WorkspaceRow({
         <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
           <IconTriangleRightFill14 />
         </span>
-        <span className="wgCategoryIcon" data-wg-row-icon="project">
+        <span className="wgCategoryIcon" data-wg-row-icon="project" data-color={color ?? undefined} style={{ color: folderIconColor(color) }}>
           {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : <IconProjectAddOutline16 />}
-          {color && <span className="wgColorDot" data-color={color} />}
         </span>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
       </span>
@@ -559,7 +558,7 @@ export function SessionRow({
         {dotState !== undefined && <StateDot state={dotState} />}
         {pingColor && <span className="wgColorDot" data-color={pingColor} />}
       </span>
-      <span className="wgSessionTitle">{node.title}</span>
+      <span className="wgSessionTitle" title={node.title}>{node.title}</span>
       {node.pinned && (
         <span className="wgSessionPinned" title={t('session.pinned')} aria-label={t('session.pinned')}>
           <IconPin16 size={12} />

@@ -59,7 +59,7 @@ import { FolderIconPicker } from './FolderIconPicker.tsx'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
-import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
+import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, workspaceLabel, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
@@ -239,6 +239,7 @@ function SidebarFilterMenu({ filter, onChange, onReset, t }: {
       onSelect={(id) => {
         if (id === 'filter:reset') {
           onReset()
+
         } else if (id.startsWith('color:')) {
           const color = id.slice('color:'.length)
           onChange({ ...filter, color: color === 'none' ? null : color as ColorPreset })
@@ -253,7 +254,7 @@ function SidebarFilterMenu({ filter, onChange, onReset, t }: {
       anchor={(
         <button
           type="button"
-          className={`wgFilterSelectBtn${filter.color !== null || filter.recency !== 'all' ? ' wgFilterSelectBtnActive' : ''}`}
+          className={`wgFilterSelectBtn${filter.color !== null || filter.recency !== 'all' || filter.workspaceId !== '' ? ' wgFilterSelectBtnActive' : ''}`}
           aria-label={t('filter.title')}
           aria-expanded={open}
           onClick={(event) => { event.stopPropagation(); setOpen(value => !value) }}
@@ -485,6 +486,10 @@ export function GroupsBrowser({
     setFilterWorkspaceExpansion({})
     setFilterRetainedSessions(previous => previous.size === 0 ? previous : new Set())
   }, [updateFilter])
+  useEffect(() => {
+    if (workspacePhase !== 'ready' || filter.workspaceId === '' || workspaces.some(workspace => workspace.workspaceId === filter.workspaceId)) return
+    updateFilter({ ...filter, workspaceId: '' })
+  }, [filter, workspacePhase, workspaces, updateFilter])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
 
@@ -564,20 +569,20 @@ export function GroupsBrowser({
   const filteredGroups = useMemo(
     () => filterResult.categories.map(category => ({
       ...category,
-      expanded: filterCategoryExpansion[category.key] ?? categoryExpansion[category.key] ?? false,
+      expanded: filterCategoryExpansion[category.key] ?? (filter.workspaceId !== '' ? true : categoryExpansion[category.key] ?? false),
       workspaces: category.workspaces.map(workspace => ({
         ...workspace,
-        expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? workspaceExpansion[workspace.workspaceId] ?? false,
+        expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? (filter.workspaceId !== '' ? true : workspaceExpansion[workspace.workspaceId] ?? false),
       })),
     })),
-    [filterResult.categories, filterCategoryExpansion, filterWorkspaceExpansion, categoryExpansion, workspaceExpansion],
+    [filterResult.categories, filterCategoryExpansion, filterWorkspaceExpansion, categoryExpansion, workspaceExpansion, filter.workspaceId],
   )
   const filteredTopLevel = useMemo(
     () => filterResult.topLevel.map(workspace => ({
       ...workspace,
-      expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? workspaceExpansion[workspace.workspaceId] ?? false,
+      expanded: filterWorkspaceExpansion[workspace.workspaceId] ?? (filter.workspaceId !== '' ? true : workspaceExpansion[workspace.workspaceId] ?? false),
     })),
-    [filterResult.topLevel, filterWorkspaceExpansion, workspaceExpansion],
+    [filterResult.topLevel, filterWorkspaceExpansion, workspaceExpansion, filter.workspaceId],
   )
   const displayGroups = isFilterActive ? filteredGroups : groups
   const displayTopLevel = isFilterActive ? filteredTopLevel : topLevel
@@ -1469,6 +1474,15 @@ export function GroupsBrowser({
                   <span className="wgCountBadge">{activeCounts.done}</span>
                 </button>
               </div>
+              <select className="wgProjectSelect" aria-label={t('filter.project')} value={filter.workspaceId}
+                onChange={event => { updateFilter({ ...filter, workspaceId: event.target.value }) }}>
+                <option value="">{t('filter.project.all')}</option>
+                {workspaces.map(workspace => (
+                  <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                    {workspace.title || workspaceLabel(workspace.path)} · {workspace.path}
+                  </option>
+                ))}
+              </select>
               <SidebarFilterMenu filter={filter} onChange={updateFilter} onReset={resetFilter} t={t} />
             </div>
             {isFilterActive && (

@@ -110,6 +110,8 @@ export const en: WorkspaceGroupsDict = {
   'icon.heart': 'Personal',
   'icon.archive': 'Archive',
   'filter.title': 'Filter',
+  'filter.project': 'Project',
+  'filter.project.all': 'All projects',
   'filter.statusScope': 'Filter status',
   'filter.all': 'All',
   'filter.attention': 'Needs attention',
