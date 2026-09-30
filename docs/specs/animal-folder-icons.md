@@ -1,0 +1,17 @@
+# Animal and DeepSeek folder icons
+
+## Result
+Add DeepSeek/DSH whale and six outlined animals (cat, dog, fish, butterfly, horse, paw) to existing group/workspace picker. Existing color/direct-click/filter/cache/title behavior preserved. Inline trusted SVG only; no runtime network or dependency. User asks for icons in installed GUI; no restart permitted.
+
+## Sources
+Tabler v3.48.0 MIT for animals; Lobe Icons DeepSeek path at e633956d3612e1a6ddcb5d1caa161aaa6bcd36ce, MIT copyright LobeHub. Keep full licenses/source hashes. DeepSeek mark is brand identification, not claim of affiliation. Render brand as currentColor filled SVG with no outline stroke; animal SVGs remain outlined.
+
+## Applied evidence
+Root pnpm build/verify PASS: 319 tests, 9 existing scale skips; declarations, real loader, consumers and packaged license passed. Compatible source typecheck/build PASS; scoped 19 tests passed, others intentionally unselected. Actual native loader and leaf-replacement isolation passed, with live session/core service fibers preserved. Review: finite allowlist, trusted local SVG geometry, React currentColor fill for whale, retained MIT provenance; no raw HTML, network artwork, credentials or dependency additions. Coordinator review only, not independent.
+
+Mounted user-owned versioned extension `/var/lib/dsh/.dsh/profiles/web-015/extensions/animal-icons-20260930T210238Z/workspace-groups/` with new `workspace-groups-animals` entry/settings namespace, disabled preceding sidebar leaf. Native session/title services and periodic title provider untouched; old file backups plus patch/overlay rollback in `/var/lib/dsh/.dsh/backups/animal-icons-20260930T210238Z/`. Final exact served client revision 831e553eceb3, SHA256 e632b87ab919a4360a59c36daaee314edd068d039901c27784ee48d06dea47ca; Host 3dd6fbf4ec787c8c5a3c07a09635fcff5caba6bb5430c466c91aeb32dad9f217. DSH PID 1578499 started 12:49:04 UTC and service PID 1578481 started 12:49:05 UTC unchanged; no restart.
+
+Live authenticated Playwright PASS: 31 choices, group Cat persisted, workspace DeepSeek/DSH filled whale persisted through reload, direct click and keyboard preserve expansion, selected project retained. Light/dark contrast remained 18.90/15.03. Two sockets across page reload, no closes observed. Narrow test-owned icons and user filter restored. Existing cached helper exactly matches live predecessor; project filter, contrast and other mapped behavior unchanged. DeepSeek blue fill is removed intentionally, so existing user colors apply. Cross-platform mobile/native popup rendering not tested.
+
+## Change and verification
+Expand shared Host/Client allowlist (24 -> 31); separate brand artwork map and test coverage for all IDs. Labels EN/ZH, accessible picker and finite geometry. Picker may scroll within viewport. Legacy IDs unchanged. New IDs require updated Host validation, not just a client file copy. Build compatible source preserving byId WeakMap performance fix; native leaf switch isolation and artifact source diff. Versioned new sidebar leaf with matching settings namespace/filter; disable previous sidebar leaf only, keep title/session/core services intact. Narrow rollback, no restart, actual GUI select whale/save/reload/recolor and valid Host persistence. Root full verification + compatible types/build/loader/scoped tests. README parity, committed generated lib and task branch push. Preserve unrelated files.

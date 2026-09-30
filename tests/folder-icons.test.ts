@@ -3,6 +3,7 @@ import { parseManualGroups, validateManualGroups } from '../src/host-manual.ts'
 import { setFolderIcon, renameGroup, removeGroup, removeWorkspace, moveWorkspace } from '../src/client/overlay-core.ts'
 import { FOLDER_ICON_IDS } from '../src/core/icons.ts'
 import { TABLER_ICONS } from '../src/client/icons/tabler-data.ts'
+import { BRAND_ICONS } from '../src/client/icons/brand-data.ts'
 
 const manual = { categories: ['shared'], assignments: { shared: 'shared' } }
 describe('folder icon persistence', () => {
@@ -24,6 +25,13 @@ describe('folder icon persistence', () => {
     expect(removeWorkspace(selected, 'shared').workspaceIcons).toEqual({})
     expect(removeWorkspace(selected, 'shared').groupIcons).toEqual({ shared: 'book' })
   })
+  it.each(['deepseek', 'cat', 'dog', 'fish', 'butterfly', 'horse', 'paw'] as const)('persists new %s artwork in both namespaces', icon => {
+    const selected = setFolderIcon(setFolderIcon(manual, 'group', 'shared', icon), 'workspace', 'shared', icon)
+    const parsed = parseManualGroups(JSON.parse(JSON.stringify(selected)))
+    expect(parsed.groupIcons?.shared).toBe(icon)
+    expect(parsed.workspaceIcons?.shared).toBe(icon)
+    validateManualGroups(parsed, [])
+  })
   it('accepts legacy data and rejects unknown IDs or malformed maps', () => {
     expect(parseManualGroups(manual)).toEqual(manual)
     for (const invalid of ['<svg onload=alert(1)>', 'https://example.com/icon.svg', null, 1]) {
@@ -41,8 +49,8 @@ describe('folder icon persistence', () => {
     expect(renamed.groupIcons?.['__proto__']).toBe('book')
   })
   it('ships artwork for each allowlisted icon with geometric attributes only', () => {
-    expect(Object.keys(TABLER_ICONS)).toEqual([...FOLDER_ICON_IDS])
-    for (const shapes of Object.values(TABLER_ICONS)) for (const [tag, attributes] of shapes) {
+    expect([...Object.keys(TABLER_ICONS), ...Object.keys(BRAND_ICONS)].sort()).toEqual([...FOLDER_ICON_IDS].sort())
+    for (const shapes of Object.values({ ...TABLER_ICONS, ...BRAND_ICONS })) for (const [tag, attributes] of shapes) {
       expect(['path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse']).toContain(tag)
       expect(Object.keys(attributes).some(key => /^on|href|style/i.test(key))).toBe(false)
     }

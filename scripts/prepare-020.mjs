@@ -3,6 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '..')
 const target = path.resolve(process.argv[2] ?? path.join(root, '.staging/sidebar-020-final'))
+const settingsNamespace = process.argv[3] ?? 'workspace-groups-sidebar'
+if (!/^workspace-groups-[a-z0-9-]+$/.test(settingsNamespace)) throw new Error('Invalid settings namespace')
 if (target === root || fs.existsSync(target)) throw new Error('Choose a new, empty staging path')
 fs.mkdirSync(target, { recursive: true })
 for (const name of ['src', 'tests', 'tsconfig.json', 'tsconfig.client.json', 'tsconfig.build.json', 'tsconfig.test.json', 'tsdown.config.ts', 'vitest.config.ts', 'README.md', 'README_RU.md', 'README_ZH.md', 'LICENSE', 'cordis.patch.yml', 'workspace-groups.example.yaml']) {
@@ -68,7 +70,7 @@ change('src/client/GroupsBrowser.tsx', s => {
 change('src/client/session-cleanup.ts', s => replace(s, 'options.pendingInteractions.has(session.id)', "(options.pendingInteractions.get(session.id)?.pendingInteraction !== undefined || options.pendingInteractions.get(session.id)?.running === true)"))
 change('src/context-types.ts', s => replace(s, `  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): {\n    get(): unknown\n    update(patch: object): Promise<void>\n  }`, '  update(namespace: string, patch: object): Promise<void>'))
 change('src/index.ts', s => {
-  s = replace(s, "const FILTER_SETTINGS_NAMESPACE = 'dsh-workspace-groups'", "const FILTER_SETTINGS_NAMESPACE = 'workspace-groups-sidebar'")
+  s = replace(s, "const FILTER_SETTINGS_NAMESPACE = 'dsh-workspace-groups'", `const FILTER_SETTINGS_NAMESPACE = '${settingsNamespace}'`)
   s = replace(s, '/** Error with an HTTP status', "export const Config = Schema.object({ filter: FILTER_PREFERENCES_SCHEMA.default(DEFAULT_SIDEBAR_FILTER).volatile() })\n\n/** Error with an HTTP status")
   s = replace(s, 'export function apply(ctx: GroupsContext): void', 'export function apply(ctx: GroupsContext, config: { filter: { get(): SidebarFilterPreferences } }): void')
   s = replace(s, "    const scope = settings.register(FILTER_SETTINGS_NAMESPACE, FILTER_PREFERENCES_SCHEMA, { applies: 'live' })\n", '')

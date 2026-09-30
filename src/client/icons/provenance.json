@@ -94,5 +94,35 @@
   "archive": {
     "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/archive.svg",
     "sha256": "a86f8be54c36bbb139cf879f7a77a298874695b33af5736d6c2233144779c57d"
+  },
+  "cat": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/cat.svg",
+    "sha256": "796d2a1e7ca612ecd467afc2629d4ba5cac8d05456bc3a579845aff778552f9d"
+  },
+  "dog": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/dog.svg",
+    "sha256": "9259018a1d84268a543f28ffbf00153f4b06ecc7fe31c2977f54dffd3edc5049"
+  },
+  "fish": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/fish.svg",
+    "sha256": "389afae098f68c0436b82bdcfcb4256b750824989f156f1e0c428071d2775f37"
+  },
+  "butterfly": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/butterfly.svg",
+    "sha256": "e1fb132a00afcdd369a46caa14fd3e816a0b9c90e57df15ef6e4d0afa330c9ca"
+  },
+  "horse": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/horse.svg",
+    "sha256": "9f184c0f85e89a2d5546d12d7d9d8cbd3a7a2c707ead36da78880fb9156feee5"
+  },
+  "paw": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/paw.svg",
+    "sha256": "e67d565c67e6523cb0ef748202ccd33ef853dd6e87da1fe41c19052bc6f1fee4"
+  },
+  "deepseek": {
+    "url": "https://raw.githubusercontent.com/lobehub/lobe-icons/e633956d3612e1a6ddcb5d1caa161aaa6bcd36ce/packages/static-svg/icons/deepseek-color.svg",
+    "sha256": "deba5f98a5c1796e20fcac3149bcd7eb8a32f0bdd04d048819400b1f28bd1439",
+    "license": "MIT (LobeHub)",
+    "adaptation": "currentColor fill instead of fixed blue"
   }
 }
