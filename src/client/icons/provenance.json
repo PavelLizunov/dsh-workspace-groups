@@ -124,5 +124,37 @@
     "sha256": "deba5f98a5c1796e20fcac3149bcd7eb8a32f0bdd04d048819400b1f28bd1439",
     "license": "MIT (LobeHub)",
     "adaptation": "currentColor fill instead of fixed blue"
+  },
+  "microphone": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/microphone.svg",
+    "sha256": "804b6189fea0ae697def236da6790d3ae81e99449cd5c056245c205eb7f333f2"
+  },
+  "wave-sine": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/wave-sine.svg",
+    "sha256": "645bf8e3ed9b6491c667eaa44daee2098ab7718933dd47e7f5cec19cd51a979e"
+  },
+  "brain": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/brain.svg",
+    "sha256": "0517f8f1cd2b0780bc4101252db226f529d86115a598ec79babb3bdf596d3ecd"
+  },
+  "cpu": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/cpu.svg",
+    "sha256": "c170af1d4cf01cd89ba05d88ba0cf236d217bb8a54d749fb7931b914700b197c"
+  },
+  "network": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/network.svg",
+    "sha256": "bc5ca95d7c1fdfb98dfb0cc91c87f3e2faccd9e8263c6d28f19120cd0fde8b3d"
+  },
+  "puzzle": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/puzzle.svg",
+    "sha256": "273a4bc70e666a92a219fe90c856cb4a1b6860705faf54a1f73c693570f99a41"
+  },
+  "chart-line": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/chart-line.svg",
+    "sha256": "0a2ec43a92e585dfc29e515cedaf1fc656c466bab5a6b9e0aa0a56f0c384f88a"
+  },
+  "git-branch": {
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/v3.48.0/icons/outline/git-branch.svg",
+    "sha256": "485a7aef87bd8f711455cc5fad59e4b011b7f02aed9f1c6d5108bece5305b588"
   }
 }

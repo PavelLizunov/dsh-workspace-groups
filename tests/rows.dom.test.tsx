@@ -181,7 +181,12 @@ describe('row interaction contracts', () => {
     const select = vi.fn()
     const render = (busy = false) => root.render(<FolderIconPicker open label="Project" icon="book" busy={busy} error={null} onSelect={select} onClose={() => {}} t={t} />)
     act(() => render())
-    expect(host.querySelectorAll('.wgIconChoice')).toHaveLength(31)
+    expect(host.querySelectorAll('.wgIconChoice')).toHaveLength(39)
+    expect(Array.from(host.querySelectorAll('.wgIconSectionTitle')).map(x => x.textContent)).toEqual([
+      'icon.group.technology', 'icon.group.voice', 'icon.group.development', 'icon.group.documents', 'icon.group.animals', 'icon.group.additional',
+    ])
+    act(() => { host.querySelector<HTMLButtonElement>('button[aria-label="icon.microphone"]')!.click() })
+    expect(select).toHaveBeenLastCalledWith('microphone')
     expect(host.querySelector('button[aria-label="icon.book"]')?.getAttribute('aria-pressed')).toBe('true')
     act(() => { host.querySelector<HTMLButtonElement>('button[aria-label="icon.server"]')!.click() })
     expect(select).toHaveBeenLastCalledWith('server')

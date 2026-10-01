@@ -242,4 +242,88 @@ export declare const TABLER_ICONS: {
     }], readonly ["path", {
         readonly d: "M5.69 12.918c.816 -.352 1.054 -1.719 .536 -3.052c-.436 -1.124 -1.271 -1.866 -2.009 -1.866c-.14 0 -.277 .027 -.407 .082c-.816 .352 -1.054 1.719 -.536 3.052c.436 1.124 1.271 1.866 2.009 1.866c.14 0 .277 -.027 .407 -.082";
     }]];
+    readonly microphone: readonly [readonly ["path", {
+        readonly d: "M9 5a3 3 0 0 1 3 -3a3 3 0 0 1 3 3v5a3 3 0 0 1 -3 3a3 3 0 0 1 -3 -3l0 -5";
+    }], readonly ["path", {
+        readonly d: "M5 10a7 7 0 0 0 14 0";
+    }], readonly ["path", {
+        readonly d: "M8 21l8 0";
+    }], readonly ["path", {
+        readonly d: "M12 17l0 4";
+    }]];
+    readonly "wave-sine": readonly [readonly ["path", {
+        readonly d: "M21 12h-2c-.894 0 -1.662 -.857 -1.761 -2c-.296 -3.45 -.749 -6 -2.749 -6s-2.5 3.582 -2.5 8s-.5 8 -2.5 8s-2.452 -2.547 -2.749 -6c-.1 -1.147 -.867 -2 -1.763 -2h-2";
+    }]];
+    readonly brain: readonly [readonly ["path", {
+        readonly d: "M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8";
+    }], readonly ["path", {
+        readonly d: "M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8";
+    }], readonly ["path", {
+        readonly d: "M17.5 16a3.5 3.5 0 0 0 0 -7h-.5";
+    }], readonly ["path", {
+        readonly d: "M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0";
+    }], readonly ["path", {
+        readonly d: "M6.5 16a3.5 3.5 0 0 1 0 -7h.5";
+    }], readonly ["path", {
+        readonly d: "M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10";
+    }]];
+    readonly cpu: readonly [readonly ["path", {
+        readonly d: "M5 6a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -12";
+    }], readonly ["path", {
+        readonly d: "M9 9h6v6h-6l0 -6";
+    }], readonly ["path", {
+        readonly d: "M3 10h2";
+    }], readonly ["path", {
+        readonly d: "M3 14h2";
+    }], readonly ["path", {
+        readonly d: "M10 3v2";
+    }], readonly ["path", {
+        readonly d: "M14 3v2";
+    }], readonly ["path", {
+        readonly d: "M21 10h-2";
+    }], readonly ["path", {
+        readonly d: "M21 14h-2";
+    }], readonly ["path", {
+        readonly d: "M14 21v-2";
+    }], readonly ["path", {
+        readonly d: "M10 21v-2";
+    }]];
+    readonly network: readonly [readonly ["path", {
+        readonly d: "M6 9a6 6 0 1 0 12 0a6 6 0 0 0 -12 0";
+    }], readonly ["path", {
+        readonly d: "M12 3c1.333 .333 2 2.333 2 6s-.667 5.667 -2 6";
+    }], readonly ["path", {
+        readonly d: "M12 3c-1.333 .333 -2 2.333 -2 6s.667 5.667 2 6";
+    }], readonly ["path", {
+        readonly d: "M6 9h12";
+    }], readonly ["path", {
+        readonly d: "M3 20h7";
+    }], readonly ["path", {
+        readonly d: "M14 20h7";
+    }], readonly ["path", {
+        readonly d: "M10 20a2 2 0 1 0 4 0a2 2 0 0 0 -4 0";
+    }], readonly ["path", {
+        readonly d: "M12 15v3";
+    }]];
+    readonly puzzle: readonly [readonly ["path", {
+        readonly d: "M4 7h3a1 1 0 0 0 1 -1v-1a2 2 0 0 1 4 0v1a1 1 0 0 0 1 1h3a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1h1a2 2 0 0 1 0 4h-1a1 1 0 0 0 -1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-1a2 2 0 0 0 -4 0v1a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h1a2 2 0 0 0 0 -4h-1a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1";
+    }]];
+    readonly "chart-line": readonly [readonly ["path", {
+        readonly d: "M4 19l16 0";
+    }], readonly ["path", {
+        readonly d: "M4 15l4 -6l4 2l4 -5l4 4";
+    }]];
+    readonly "git-branch": readonly [readonly ["path", {
+        readonly d: "M5 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0";
+    }], readonly ["path", {
+        readonly d: "M5 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0";
+    }], readonly ["path", {
+        readonly d: "M15 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0";
+    }], readonly ["path", {
+        readonly d: "M7 8l0 8";
+    }], readonly ["path", {
+        readonly d: "M9 18h6a2 2 0 0 0 2 -2v-5";
+    }], readonly ["path", {
+        readonly d: "M14 14l3 -3l3 3";
+    }]];
 };

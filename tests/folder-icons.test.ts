@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseManualGroups, validateManualGroups } from '../src/host-manual.ts'
 import { setFolderIcon, renameGroup, removeGroup, removeWorkspace, moveWorkspace } from '../src/client/overlay-core.ts'
-import { FOLDER_ICON_IDS } from '../src/core/icons.ts'
+import { FOLDER_ICON_IDS, FOLDER_ICON_GROUPS } from '../src/core/icons.ts'
 import { TABLER_ICONS } from '../src/client/icons/tabler-data.ts'
 import { BRAND_ICONS } from '../src/client/icons/brand-data.ts'
 
@@ -47,6 +47,18 @@ describe('folder icon persistence', () => {
     const renamed = renameGroup(setFolderIcon(manual, 'group', 'shared', 'book'), 'shared', '__proto__')
     expect(Object.hasOwn(renamed.groupIcons!, '__proto__')).toBe(true)
     expect(renamed.groupIcons?.['__proto__']).toBe('book')
+  })
+  it('partitions every icon exactly once into a themed section', () => {
+    const grouped = FOLDER_ICON_GROUPS.flatMap(group => [...group.icons])
+    expect(grouped).toHaveLength(FOLDER_ICON_IDS.length)
+    expect(new Set(grouped).size).toBe(FOLDER_ICON_IDS.length)
+    expect([...grouped].sort()).toEqual([...FOLDER_ICON_IDS].sort())
+  })
+  it.each(['microphone', 'wave-sine', 'brain', 'cpu', 'network', 'puzzle', 'chart-line', 'git-branch'] as const)('validates new topic icon %s in both namespaces', icon => {
+    const result = parseManualGroups({ ...manual, groupIcons: { shared: icon }, workspaceIcons: { shared: icon } })
+    validateManualGroups(result, [])
+    expect(result.groupIcons?.shared).toBe(icon)
+    expect(result.workspaceIcons?.shared).toBe(icon)
   })
   it('ships artwork for each allowlisted icon with geometric attributes only', () => {
     expect([...Object.keys(TABLER_ICONS), ...Object.keys(BRAND_ICONS)].sort()).toEqual([...FOLDER_ICON_IDS].sort())
