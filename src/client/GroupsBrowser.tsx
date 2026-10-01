@@ -1259,11 +1259,11 @@ export function GroupsBrowser({
     setIconError(null)
     setIconTarget({ scope, key, label })
   }
-  const saveFolderIcon = async (icon: FolderIconId | null): Promise<void> => {
+  const saveFolderIcon = async (icon: FolderIconId | null, color: string | null): Promise<void> => {
     if (iconTarget === null || manualSaving) return
     setManualSaving(true)
     try {
-      const next = normalizeManual(setFolderIcon(manual, iconTarget.scope, iconTarget.key, icon))
+      const next = normalizeManual(setItemColor(setFolderIcon(manual, iconTarget.scope, iconTarget.key, icon), iconTarget.key, color))
       const { revision: nextRevision } = await saveManualOverlay(next, revision)
       setManual(next)
       setRevision(nextRevision)
@@ -1751,10 +1751,11 @@ export function GroupsBrowser({
       )}
 
       {/* Group create / rename dialog */}
-      {iconTarget !== null && <FolderIconPicker open label={iconTarget.label}
+      {iconTarget !== null && <FolderIconPicker key={`${iconTarget.scope}:${iconTarget.key}`} open label={iconTarget.label}
         icon={(iconTarget.scope === 'group' ? manual.groupIcons : manual.workspaceIcons)[iconTarget.key]}
+        color={manual.colors[iconTarget.key]}
         busy={manualSaving} error={iconError} t={t}
-        onSelect={(icon) => { void saveFolderIcon(icon) }} onClose={() => { setIconTarget(null) }} />}
+        onSelect={(icon, color) => { void saveFolderIcon(icon, color) }} onClose={() => { setIconTarget(null) }} />}
       <Modal
         open={groupDialog !== null}
         onClose={() => { if (!groupBusy) { groupGeneration.current += 1; setGroupDialog(null); setGroupError(null) } }}

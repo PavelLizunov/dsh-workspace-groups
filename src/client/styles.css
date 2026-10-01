@@ -1,6 +1,55 @@
 /* dsh-workspace-groups browser styles. Plain CSS injected by the plugin's
    apply (via the ?inline virtual module) — no CSS Modules toolchain needed. */
 
+.wgFolderAppearancePreview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.wgFolderAppearancePreview svg { flex: none; }
+
+.wgFolderColorPalette {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  min-width: 0;
+  max-width: 440px;
+}
+
+.wgFolderColorPalette legend {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wgFolderColorChoices { display: flex; flex-wrap: wrap; gap: 6px; }
+.wgFolderColorPalette + .wgIconCatalog { max-height: min(42vh, 320px); }
+
+.wgFolderColorChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.35));
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary, inherit);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wgFolderColorChoice[aria-pressed="true"] { border-color: currentColor; }
+.wgFolderColorChoice:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.12)); }
+.wgFolderColorChoice:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9); outline-offset: 1px; }
+.wgFolderColorChoice:disabled { opacity: 0.5; cursor: wait; }
+.wgFolderColorSwatch { width: 12px; height: 12px; flex: none; border-radius: 50%; }
+
 .wgIconCatalog {
   width: 440px;
   max-width: 100%;

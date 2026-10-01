@@ -85,6 +85,7 @@ export const en: WorkspaceGroupsDict = {
   'color.pink': 'Pink',
   'icon.title': 'Choose icon',
   'icon.reset': 'Use default icon',
+  'icon.save': 'Save',
   'icon.code': 'Code',
   'icon.terminal': 'Terminal',
   'icon.server': 'Server',

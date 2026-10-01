@@ -17,6 +17,7 @@ export type WorkspaceGroupsKey =
   | `icon.group.${FolderIconGroupId}`
   | 'icon.title'
   | 'icon.reset'
+  | 'icon.save'
   | 'section.workspaces'
   | 'section.sessions'
   | 'search'

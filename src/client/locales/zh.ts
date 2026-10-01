@@ -85,6 +85,7 @@ export const zh: WorkspaceGroupsDict = {
   'color.pink': '粉色',
   'icon.title': '选择图标',
   'icon.reset': '使用默认图标',
+  'icon.save': '保存',
   'icon.code': '代码',
   'icon.terminal': '终端',
   'icon.server': '服务器',
