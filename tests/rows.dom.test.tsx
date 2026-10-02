@@ -944,11 +944,23 @@ describe('row interaction contracts', () => {
     expect(treeScroller).not.toBeNull()
     expect(treeScroller?.querySelector('.wgList')).not.toBeNull()
 
-    // Header Menu presence when normalizedQuery === ''
+    // Header Menu and direct Collapse All button presence when normalizedQuery === ''
+    const headerCollapseAllBtn = host.querySelector<HTMLElement>('[aria-label="tree.collapseAll"]')
+    expect(headerCollapseAllBtn).not.toBeNull()
+
     const treeActionsBtn = host.querySelector<HTMLElement>('[aria-label="tree.actions"]')
     expect(treeActionsBtn).not.toBeNull()
 
-    // Test global commands in idle mode
+    // Test direct Collapse All header button in idle mode
+    await act(async () => {
+      headerCollapseAllBtn?.click()
+    })
+    expect(setCategoriesExpanded).toHaveBeenCalledWith(['Dev'], false)
+    expect(setWorkspacesExpanded).toHaveBeenCalledWith(['w1'], false)
+    setCategoriesExpanded.mockClear()
+    setWorkspacesExpanded.mockClear()
+
+    // Test global commands in idle mode via menu
     const menuContainer = treeActionsBtn?.closest('[data-menu-portal]')
     const collapseAllBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.collapseAll')
     const expandGroupsBtn = Array.from(menuContainer?.querySelectorAll('button') ?? []).find(b => b.textContent === 'tree.expandGroups')
@@ -1094,7 +1106,7 @@ describe('row interaction contracts', () => {
     expect(setCategoryExpanded).not.toHaveBeenCalled()
     expect(setWorkspaceExpanded).not.toHaveBeenCalled()
 
-    // Open search input -> tree actions menu should be absent when query is non-empty
+    // Open search input -> tree actions menu and collapse all button should be absent when query is non-empty
     const searchInputBtn = host.querySelector<HTMLElement>('.wgSearch .wgIconButton')!
     await act(async () => {
       searchInputBtn.click()
@@ -1107,6 +1119,7 @@ describe('row interaction contracts', () => {
     })
 
     expect(host.querySelector('[aria-label="tree.actions"]')).toBeNull()
+    expect(host.querySelector('[aria-label="tree.collapseAll"]')).toBeNull()
 
     await act(async () => {
       host.querySelector<HTMLButtonElement>('.wgFilterResetBtn')?.click()

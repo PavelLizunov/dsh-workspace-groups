@@ -196,7 +196,7 @@ body[data-ds-dark-theme] .wgProjectSelect {
 .wgHeaderActions {
   opacity: 1;
   visibility: visible;
-  max-width: 96px;
+  max-width: 128px;
   transition: max-width 0.18s ease, opacity 0.12s ease, transform 0.18s ease, visibility 0s linear;
   flex: none;
   align-items: center;

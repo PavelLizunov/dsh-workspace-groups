@@ -60,7 +60,7 @@ import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, workspaceLabel, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
-import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
+import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
 const SEARCH_DEBOUNCE_MS = 250
@@ -1352,6 +1352,18 @@ export function GroupsBrowser({
           </div>
         )}
         <div className={`wgHeaderActions${wide && searchExpanded ? ' wgHeaderActionsHidden' : ''}`}>
+          {wide && normalizedQuery === '' && (
+            <Tooltip label={t('tree.collapseAll')} side="bottom" delayMs={500}>
+              <button
+                type="button"
+                className="wgIconButton"
+                aria-label={t('tree.collapseAll')}
+                onClick={() => { setTreeExpanded(false, false) }}
+              >
+                <IconCollapseAll16 size={16} />
+              </button>
+            </Tooltip>
+          )}
           {wide && normalizedQuery === '' && (
             <Menu
               open={headerMenuOpen}

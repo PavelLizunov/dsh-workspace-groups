@@ -50,7 +50,7 @@ dsh plugin --profile web add github:PavelLizunov/dsh-workspace-groups
 ### 分组树浏览
 - **分组文件夹 → 项目文件夹 → 会话行**，分组/项目均可折叠；展开状态独立持久化
   （`dsh.workspace.groups.view.v1`，刷新/重启保留）
-- **批量树形控制与快捷键**：提供全局 **折叠全部**、**仅展开分组** 和 **展开全部** 操作；支持单分组递归命令以及按住 **Option 键** (macOS) / **Alt 键** (Windows/Linux) 点击分组折叠/展开箭头，一次性递归折叠或展开该分组及其内部的所有项目文件夹（详见 [BULK_TREE_CONTROLS_SPEC.md](./BULK_TREE_CONTROLS_SPEC.md)）
+- **批量树形控制与快捷键**：区头提供一键 **折叠全部** 按钮，菜单中提供全局 **折叠全部**、**仅展开分组** 和 **展开全部** 操作；支持单分组递归命令以及按住 **Option 键** (macOS) / **Alt 键** (Windows/Linux) 点击分组折叠/展开箭头，一次性递归折叠或展开该分组及其内部的所有项目文件夹（详见 [BULK_TREE_CONTROLS_SPEC.md](./BULK_TREE_CONTROLS_SPEC.md)）
 - **顶层项目行**：不归组的项目（不匹配任何规则、被移出分组、删除分组后回归的）
   直接显示在分组列表之后，与分组平级——**没有「未分类」桶**
 - **醒目的注意状态**：琥珀色 **Awaiting** 标签表示待处理交互或 SDD 审批回复，红色 **Error**

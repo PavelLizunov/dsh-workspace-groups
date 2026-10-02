@@ -373,7 +373,7 @@ describe('redesign source contracts: localization for extra controls and concurr
 
 describe('bulk tree expansion and fixed filter bar source contracts', () => {
   it('defines fixed layout structure in styles.css and GroupsBrowser.tsx', () => {
-    expect(stylesSource).toMatch(/\.wgHeaderActions\s*\{[^}]*max-width:\s*96px;/)
+    expect(stylesSource).toMatch(/\.wgHeaderActions\s*\{[^}]*max-width:\s*128px;/)
     expect(stylesSource).toMatch(/\.wgTreeBody\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/)
     expect(stylesSource).toMatch(/\.wgTreeControls\s*\{[^}]*flex:\s*none;/)
     expect(stylesSource).toMatch(/\.wgTreeScroller\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/)

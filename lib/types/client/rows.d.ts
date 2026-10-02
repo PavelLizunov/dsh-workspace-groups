@@ -112,6 +112,10 @@ export declare function IconPinOff16({ size, className }: {
     size?: number;
     className?: string;
 }): import("react").JSX.Element;
+export declare function IconCollapseAll16({ size, className }: {
+    size?: number;
+    className?: string;
+}): import("react").JSX.Element;
 /** One session leaf row. */
 export declare function SessionRow({ node, currentId, now, t, onOpen, onRename, onFork, onArchive, onPinToggle, color, onSetColor, actionBusy, 'aria-level': ariaLevel, 'aria-posinset': ariaPosinset, 'aria-setsize': ariaSetsize, }: SessionRowProps): import("react").JSX.Element;
 export type { T };

@@ -46,8 +46,8 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
 ### Grouped tree browsing
 - **Group folder → project folder → session row**, both levels collapsible; expansion state
   persists independently (`dsh.workspace.groups.view.v1`, survives refresh/restart)
-- **Bulk tree controls & shortcuts**: global **Collapse all**, **Expand groups only**, and **Expand all**
-  controls manage tree density; per-group recursive commands and **Option-click** (macOS) /
+- **Bulk tree controls & shortcuts**: a dedicated **Collapse all** button in the header toolbar collapses all categories and projects in one click; global **Collapse all**, **Expand groups only**, and **Expand all**
+  in the header menu manage tree density; per-group recursive commands and **Option-click** (macOS) /
   **Alt-click** (Windows/Linux) on a Group disclosure chevron recursively expand or collapse a group and all contained project folders (see [BULK_TREE_CONTROLS_SPEC.md](./BULK_TREE_CONTROLS_SPEC.md))
 - **Top-level project rows**: ungrouped projects (matching no rule, dragged out of a group,
   or returned by a group delete) render as plain rows right after the group folders, at the

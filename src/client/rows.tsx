@@ -496,6 +496,26 @@ export function IconPinOff16({ size = 16, className }: { size?: number; classNam
   )
 }
 
+export function IconCollapseAll16({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M7 11l5 -5l5 5" />
+      <path d="M7 17l5 -5l5 5" />
+    </svg>
+  )
+}
+
 /** One session leaf row. */
 export function SessionRow({
   node,
