@@ -107,11 +107,14 @@ export interface SidebarFilterPreferences {
     color: ColorPreset | null;
     /** Empty string means every project. A missing field in older settings means the same. */
     workspaceId: string;
+    /** Empty means all groups; the reserved top-level key selects ungrouped workspaces. */
+    groupKey: string;
 }
 export declare const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences;
 /** Whether an untrusted value satisfies the complete persisted filter contract. */
-export declare function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId'> & {
+export declare function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId' | 'groupKey'> & {
     workspaceId?: string;
+    groupKey?: string;
 };
 /** Fail closed to defaults when a settings response violates the filter contract. */
 export declare function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPreferences;

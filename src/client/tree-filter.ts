@@ -5,6 +5,7 @@
  */
 import {
   DEFAULT_SIDEBAR_FILTER,
+  TOP_LEVEL_ORDER_KEY,
   type ColorPreset,
   type RecencyScope,
   type SidebarFilterPreferences,
@@ -30,7 +31,7 @@ export interface FilterCounts {
 }
 
 export function sidebarFilterActive(filter: SidebarFilter): boolean {
-  return filter.status !== 'all' || filter.recency !== 'all' || filter.color !== null || filter.workspaceId !== ''
+  return filter.status !== 'all' || filter.recency !== 'all' || filter.color !== null || filter.workspaceId !== '' || filter.groupKey !== ''
 }
 
 function getRecencyCutoff(recency: RecencyScope, now: number): number {
@@ -92,7 +93,7 @@ export function applySidebarFilter(
   const cutoff = getRecencyCutoff(filter.recency, now)
   const counts: FilterCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
 
-  if (filter.status === 'all' && filter.recency === 'all' && filter.color === null && filter.workspaceId === '') {
+  if (filter.status === 'all' && filter.recency === 'all' && filter.color === null && filter.workspaceId === '' && filter.groupKey === '') {
     const expandWorkspace = (workspace: WorkspaceGroupNode): WorkspaceGroupNode => {
       let attention: AttentionState | undefined
       for (const session of workspace.sessions) {
@@ -195,6 +196,7 @@ export function applySidebarFilter(
 
   const filteredCategories: CategoryNode[] = []
   for (const category of categories) {
+    if (filter.groupKey !== '' && category.key !== filter.groupKey) continue
     const matchedWorkspaces: WorkspaceGroupNode[] = []
     for (const workspace of category.workspaces) {
       const matched = filterWorkspace(workspace, category.key)
@@ -212,7 +214,7 @@ export function applySidebarFilter(
   }
 
   const filteredTopLevel: WorkspaceGroupNode[] = []
-  for (const workspace of topLevel) {
+  for (const workspace of filter.groupKey === '' || filter.groupKey === TOP_LEVEL_ORDER_KEY ? topLevel : []) {
     const matched = filterWorkspace(workspace, undefined)
     if (matched !== null) filteredTopLevel.push(matched)
   }

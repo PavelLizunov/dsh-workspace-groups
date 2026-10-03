@@ -18,6 +18,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconArchiveOutline20: () => <span />,
   IconBranchOutline16: () => <span />,
   IconCloseFill14: () => <span />,
+  IconChevronDownOutline14: () => <span />,
   IconEditOutline16: () => <span />,
   IconEllipsisOutline16: () => <span />,
   IconFolderClose16: () => <span />,
@@ -30,11 +31,11 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
   StateDot: ({ state }: { state?: string }) => <span data-state-dot={state ?? ''} />,
-  Menu: ({ anchor, items, onSelect, portal, compact }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void; portal?: boolean; compact?: boolean }) => (
+  Menu: ({ anchor, items, onSelect, portal, compact }: { anchor: React.ReactNode; items: Array<{ id: string; label: React.ReactNode; icon?: React.ReactNode; disabled?: boolean; submenu?: Array<{ id: string; label: React.ReactNode; icon?: React.ReactNode; disabled?: boolean }> }>; onSelect: (id: string) => void; portal?: boolean; compact?: boolean }) => (
     <div data-menu-portal={portal || undefined} data-menu-compact={compact || undefined} data-has-submenu={items.some(item => (item.submenu?.length ?? 0) > 0) || undefined}>
       {anchor}
       {items.flatMap(item => [item, ...(item.submenu ?? [])]).map(item => (
-        <button key={item.id} disabled={item.disabled} onClick={() => onSelect(item.id)}>{item.label}</button>
+        <button key={item.id} disabled={item.disabled} onClick={() => onSelect(item.id)}>{item.icon}{item.label}</button>
       ))}
     </div>
   ),
@@ -224,23 +225,22 @@ describe('row interaction contracts', () => {
     expect(select).not.toHaveBeenCalled()
   })
 
-  it('opens folder icon choice directly without expanding the group or workspace', () => {
+  it('taps folder icons to expand rows without opening the icon editor', () => {
     const choose = vi.fn()
     const toggle = vi.fn()
     act(() => root.render(<CategoryRow node={{ key: 'cat', label: 'Group', expanded: false, containsCurrent: false, workspaces: [] }}
       onChooseIcon={choose} onToggle={toggle} t={t} />))
-    const groupIcon = host.querySelector<HTMLButtonElement>('button[data-wg-row-icon="group"]')!
-    expect(groupIcon.getAttribute('aria-label')).toBe('icon.title: Group')
+    const groupIcon = host.querySelector<HTMLElement>('[data-wg-row-icon="group"]')!
+    expect(groupIcon.tagName).toBe('SPAN')
     act(() => { groupIcon.click() })
-    expect(choose).toHaveBeenCalledTimes(1)
-    expect(toggle).not.toHaveBeenCalled()
-    act(() => { groupIcon.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); groupIcon.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })) })
-    expect(toggle).not.toHaveBeenCalled()
+    expect(toggle).toHaveBeenCalledTimes(1)
+    expect(choose).not.toHaveBeenCalled()
     act(() => root.render(<WorkspaceRow node={{ workspaceId: 'w' as never, path: '/w', label: 'W', createdAt: 0, sessionCount: 0, expanded: false, containsCurrent: false, sessions: [] }}
       onChooseIcon={choose} onToggle={toggle} t={t} />))
-    act(() => { host.querySelector<HTMLButtonElement>('button[data-wg-row-icon="project"]')!.click() })
-    expect(choose).toHaveBeenCalledTimes(2)
-    expect(toggle).not.toHaveBeenCalled()
+    act(() => { host.querySelector<HTMLElement>('[data-wg-row-icon="project"]')!.click() })
+    expect(toggle).toHaveBeenCalledTimes(2)
+    expect(choose).not.toHaveBeenCalled()
+    expect(host.querySelector('button[data-wg-row-icon]')).toBeNull()
   })
 
   it('shows chosen folder icons without hiding colors or attention and opens their picker action', () => {
@@ -1020,7 +1020,7 @@ describe('row interaction contracts', () => {
         status: 200,
         json: async () => ({
           categories: [{ name: 'Dev', rules: [{ pathPrefix: '/w1' }] }],
-          manual: { categories: [], assignments: {}, colors: { Dev: 'blue' } },
+          manual: { categories: ['Empty'], assignments: {}, colors: { Dev: 'blue' }, groupIcons: { Dev: 'book' }, workspaceIcons: { w1: 'deepseek' } },
         }),
         headers: new Headers(),
       }
@@ -1082,7 +1082,7 @@ describe('row interaction contracts', () => {
       scopes[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await Promise.resolve()
     })
-    expect(filterWrites[0]).toEqual({ status: 'ongoing', recency: '7d', color: 'blue', workspaceId: '' })
+    expect(filterWrites[0]).toEqual({ status: 'ongoing', recency: '7d', color: 'blue', workspaceId: '', groupKey: '' })
     expect(runtimeMocks.indexSubagentDescendants).not.toHaveBeenCalled()
 
     setCategoriesExpanded.mockClear()
@@ -1125,15 +1125,35 @@ describe('row interaction contracts', () => {
       host.querySelector<HTMLButtonElement>('.wgFilterResetBtn')?.click()
       await Promise.resolve()
     })
-    expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '' })
-    const projectSelect = host.querySelector<HTMLSelectElement>('[aria-label="filter.project"]')!
-    expect(projectSelect.options[1]?.textContent).toContain('W1 · /w1')
-    await act(async () => {
-      projectSelect.value = 'w1'
-      projectSelect.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1' })
-    expect(host.querySelector<HTMLSelectElement>('.wgProjectSelect')?.value).toBe('w1')
+    expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '', groupKey: '' })
+    const projectSelect = host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!
+    await act(async () => { projectSelect.click() })
+    const workspaceOption = Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'W1')!
+    expect(workspaceOption.textContent).not.toContain('/w1')
+    expect(workspaceOption.querySelector('[data-wg-folder-icon="deepseek"]')).not.toBeNull()
+    await act(async () => { workspaceOption.click() })
+    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: '' })
+    expect(host.querySelector('[aria-label^="filter.project:"]')?.textContent).toBe('W1')
+    const chooseGroup = async (label: string) => {
+      await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.group:"]')!.click() })
+      const option = Array.from(host.querySelectorAll('button')).find(button => button.textContent === label)!
+      if (label === 'Dev') expect(option.querySelector('[data-wg-folder-icon="book"]')).not.toBeNull()
+      await act(async () => { option.click() })
+    }
+    await chooseGroup('Dev')
+    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: 'Dev' })
+    expect(host.querySelector('[aria-label^="filter.group:"] [data-wg-folder-icon="book"]')).not.toBeNull()
+    await chooseGroup('Empty')
+    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '', groupKey: 'Empty' })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!.click() })
+    expect(Array.from(host.querySelectorAll('button')).some(button => button.textContent === 'W1')).toBe(false)
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!.click() })
+    await chooseGroup('section.topLevel')
+    expect(filterWrites.at(-1)).toMatchObject({ groupKey: '__topLevel__' })
+    await chooseGroup('filter.group.all')
+    expect(filterWrites.at(-1)).toMatchObject({ groupKey: '' })
+    await act(async () => { projectSelect.click() })
+    await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'W1')!.click() })
     await act(async () => { workspacesSnapshot.phase = 'loading'; workspacesSnapshot.items = []; renderBrowser() })
     expect(filterWrites.at(-1)).toHaveProperty('workspaceId', 'w1')
     await act(async () => { workspacesSnapshot.phase = 'ready'; renderBrowser() })

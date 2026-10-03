@@ -155,7 +155,7 @@ export function CategoryRow({
       >
         <IconTriangleRightFill14 />
       </span>
-      <FolderIconControl kind="group" color={color} label={`${t('icon.title')}: ${node.label}`} onChoose={onChooseIcon}>
+      <FolderIconControl kind="group" color={color}>
         {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
       </FolderIconControl>
       <span className="wgCategoryLabel">{node.label}</span>
@@ -377,7 +377,7 @@ export function WorkspaceRow({
         <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
           <IconTriangleRightFill14 />
         </span>
-        <FolderIconControl kind="project" color={color} label={`${t('icon.title')}: ${node.label}`} onChoose={onChooseIcon}>
+        <FolderIconControl kind="project" color={color}>
           {isFolderIconId(icon) ? <FolderIcon icon={icon} /> : <IconProjectAddOutline16 />}
         </FolderIconControl>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>

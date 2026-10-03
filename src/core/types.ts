@@ -115,6 +115,8 @@ export interface SidebarFilterPreferences {
   color: ColorPreset | null
   /** Empty string means every project. A missing field in older settings means the same. */
   workspaceId: string
+  /** Empty means all groups; the reserved top-level key selects ungrouped workspaces. */
+  groupKey: string
 }
 
 export const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences = {
@@ -122,19 +124,21 @@ export const DEFAULT_SIDEBAR_FILTER: SidebarFilterPreferences = {
   recency: 'all',
   color: null,
   workspaceId: '',
+  groupKey: '',
 }
 
 /** Whether an untrusted value satisfies the complete persisted filter contract. */
-export function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId'> & { workspaceId?: string } {
+export function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFilterPreferences, 'workspaceId' | 'groupKey'> & { workspaceId?: string; groupKey?: string } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return false
   const value = raw as Record<string, unknown>
   const keys = Object.keys(value)
   if (!Object.hasOwn(value, 'status') || !Object.hasOwn(value, 'recency') || !Object.hasOwn(value, 'color')) return false
-  if (keys.some(key => key !== 'status' && key !== 'recency' && key !== 'color' && key !== 'workspaceId')) return false
+  if (keys.some(key => key !== 'status' && key !== 'recency' && key !== 'color' && key !== 'workspaceId' && key !== 'groupKey')) return false
   return ['all', 'warning', 'ongoing', 'done'].includes(value.status as string)
     && ['all', '24h', '7d', '30d'].includes(value.recency as string)
     && (value.color === null || FILTER_COLOR_PRESETS.includes(value.color as ColorPreset))
     && (!Object.hasOwn(value, 'workspaceId') || (typeof value.workspaceId === 'string' && value.workspaceId.length <= 512))
+    && (!Object.hasOwn(value, 'groupKey') || (typeof value.groupKey === 'string' && value.groupKey.length <= 512))
 }
 
 /** Fail closed to defaults when a settings response violates the filter contract. */
@@ -145,6 +149,7 @@ export function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPrefer
     recency: raw.recency,
     color: raw.color,
     workspaceId: raw.workspaceId ?? '',
+    groupKey: raw.groupKey ?? '',
   }
 }
 

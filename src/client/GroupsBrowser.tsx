@@ -56,6 +56,7 @@ import { parseSidebarFilterPreferences, TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL
 import type { GroupsBrowserProps } from './contract.ts'
 import type { FolderIconId, FolderIconScope } from '../core/icons.ts'
 import { FolderIconPicker } from './FolderIconPicker.tsx'
+import { ScopeFilter } from './ScopeFilter.tsx'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
@@ -310,6 +311,7 @@ export function GroupsBrowser({
   const [manual, setManual] = useState<NormalizedManual>(EMPTY_MANUAL)
   const [revision, setRevision] = useState<string>('')
   const [configError, setConfigError] = useState<string | null>(null)
+  const [configLoaded, setConfigLoaded] = useState(false)
   const [conflictError, setConflictError] = useState<boolean>(false)
 
   // Transient save errors for drag/menu group operations (dialog errors are local).
@@ -330,6 +332,7 @@ export function GroupsBrowser({
         setManual(nextManual)
         setRevision(nextRevision)
       }
+      setConfigLoaded(true)
       return { config: nextConfig, manual: nextManual, revision: nextRevision }
     }).catch((reason: unknown) => {
       setConfigError(reason instanceof Error ? reason.message : String(reason))
@@ -486,10 +489,6 @@ export function GroupsBrowser({
     setFilterWorkspaceExpansion({})
     setFilterRetainedSessions(previous => previous.size === 0 ? previous : new Set())
   }, [updateFilter])
-  useEffect(() => {
-    if (workspacePhase !== 'ready' || filter.workspaceId === '' || workspaces.some(workspace => workspace.workspaceId === filter.workspaceId)) return
-    updateFilter({ ...filter, workspaceId: '' })
-  }, [filter, workspacePhase, workspaces, updateFilter])
   const searchInput = useRef<HTMLInputElement | null>(null)
   const searchRoot = useRef<HTMLDivElement | null>(null)
 
@@ -541,6 +540,42 @@ export function GroupsBrowser({
   )
 
   const allCategoryKeys = useMemo(() => displayCategoryKeys(config, manual), [config, manual])
+  const groupOptions = useMemo(() => [
+    { id: '', label: t('filter.group.all') },
+    ...allCategoryKeys.map(key => ({
+      id: key, label: key,
+      icon: manual.groupIcons?.[key], color: manual.colors?.[key],
+    })),
+    { id: TOP_LEVEL_ORDER_KEY, label: t('section.topLevel') },
+  ], [allCategoryKeys, manual, t])
+
+  const scopedWorkspaces = useMemo(() => workspaces.filter(workspace => filter.groupKey === ''
+    || (resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) ?? TOP_LEVEL_ORDER_KEY) === filter.groupKey),
+  [workspaces, config, manual, filter.groupKey])
+  const workspaceOptions = useMemo(() => [
+    { id: '', label: t('filter.project.all') },
+    ...scopedWorkspaces.map(workspace => ({
+      id: workspace.workspaceId as string, label: workspace.title || workspaceLabel(workspace.path),
+      icon: manual.workspaceIcons?.[workspace.workspaceId], color: manual.colors?.[workspace.workspaceId],
+    })),
+  ], [scopedWorkspaces, manual, t])
+
+  // Wait for both sources before pruning restored scopes, including changed group membership.
+  useEffect(() => {
+    if (!configLoaded || configError !== null || workspacePhase !== 'ready') return
+    if (!groupOptions.some(option => option.id === filter.groupKey)) {
+      updateFilter({ ...filter, groupKey: '' })
+    } else if (filter.workspaceId !== '' && !scopedWorkspaces.some(workspace => workspace.workspaceId === filter.workspaceId)) {
+      updateFilter({ ...filter, workspaceId: '' })
+    }
+  }, [configLoaded, configError, workspacePhase, groupOptions, scopedWorkspaces, filter, updateFilter])
+
+  const selectGroup = (groupKey: string) => {
+    const workspace = workspaces.find(item => item.workspaceId === filter.workspaceId)
+    const actualGroup = workspace ? resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) ?? TOP_LEVEL_ORDER_KEY : undefined
+    updateFilter({ ...filter, groupKey, workspaceId: groupKey === '' || groupKey === actualGroup ? filter.workspaceId : '' })
+  }
+
   const allWorkspaceIds = useMemo(() => workspaces.map(w => w.workspaceId as string), [workspaces])
 
   const canonicalTree = useMemo(
@@ -1486,15 +1521,11 @@ export function GroupsBrowser({
                   <span className="wgCountBadge">{activeCounts.done}</span>
                 </button>
               </div>
-              <select className="wgProjectSelect" aria-label={t('filter.project')} value={filter.workspaceId}
-                onChange={event => { updateFilter({ ...filter, workspaceId: event.target.value }) }}>
-                <option value="">{t('filter.project.all')}</option>
-                {workspaces.map(workspace => (
-                  <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                    {workspace.title || workspaceLabel(workspace.path)} · {workspace.path}
-                  </option>
-                ))}
-              </select>
+              <div className="wgScopeFilters">
+                <ScopeFilter label={t('filter.group')} value={filter.groupKey} options={groupOptions} onChange={selectGroup} />
+                <ScopeFilter label={t('filter.project')} value={filter.workspaceId} options={workspaceOptions}
+                  onChange={workspaceId => { updateFilter({ ...filter, workspaceId }) }} />
+              </div>
               <SidebarFilterMenu filter={filter} onChange={updateFilter} onReset={resetFilter} t={t} />
             </div>
             {isFilterActive && (

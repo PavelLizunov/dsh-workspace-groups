@@ -100,6 +100,8 @@ export type WorkspaceGroupsKey =
   | 'color.purple'
   | 'color.pink'
   | 'filter.title'
+  | 'filter.group'
+  | 'filter.group.all'
   | 'filter.project'
   | 'filter.project.all'
   | 'filter.statusScope'

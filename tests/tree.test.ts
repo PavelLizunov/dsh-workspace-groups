@@ -75,6 +75,26 @@ it.each(['error', 'interrupted', 'max-tokens'] as const)('preserves restored sel
   expect(sessionAttention(search.categories[0]!.workspaces[0]!.sessions[0]!)).toBe('error')
 })
 
+it('intersects group/workspace scopes with search results and top-level branches', () => {
+  const workspaces = [
+    workspace('w1', '/tmp/Plugin', 'Plugin', ['s1']),
+    workspace('w2', '/tmp/docs', 'Docs', ['s2']),
+    workspace('w3', '/tmp/other', 'Other', ['s3']),
+  ]
+  const list = listState(workspaces)
+  const search = deriveSearchGroups(list, workspaces, CONFIG, new Set(list.ids), [], { categories: [], assignments: {} })
+  const selected = applySidebarFilter(search.categories, search.topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: 'DSH Plugins', workspaceId: 'w1' }, {}, Date.now())
+  expect(selected.categories.map(category => category.key)).toEqual(['DSH Plugins'])
+  expect(selected.categories[0]?.workspaces[0]?.sessions.map(session => session.id)).toEqual(['s1'])
+  expect(selected.topLevel).toEqual([])
+  expect(selected.counts.all).toBe(1)
+  const incompatible = applySidebarFilter(search.categories, search.topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: 'DSH Plugins', workspaceId: 'w2' }, {}, Date.now())
+  expect(incompatible.counts.all).toBe(0)
+  const ungrouped = applySidebarFilter(search.categories, search.topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: '__topLevel__' }, {}, Date.now())
+  expect(ungrouped.categories).toEqual([])
+  expect(ungrouped.topLevel.map(workspace => workspace.workspaceId)).toEqual(['w3'])
+})
+
 describe('viewed error attention', () => {
   it.each(['error', 'interrupted', 'max-tokens'] as const)('persists acknowledgment of %s and shows a newer error', (reason) => {
     const workspaces = [workspace('ws-a', '/tmp/Plugin', 'Plugin', ['s1', 's2'])]

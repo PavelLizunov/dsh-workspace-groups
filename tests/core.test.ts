@@ -320,10 +320,16 @@ describe('parseGroupsConfig', () => {
 describe('sidebar filter preferences', () => {
   it('accepts the exact contract and fails closed to defaults', () => {
     expect(parseSidebarFilterPreferences({ status: 'warning', recency: '7d', color: 'blue' })).toEqual({
-      status: 'warning', recency: '7d', color: 'blue', workspaceId: '',
+      status: 'warning', recency: '7d', color: 'blue', workspaceId: '', groupKey: '',
     })
     expect(parseSidebarFilterPreferences({ status: 'all', recency: 'all', color: null, workspaceId: 'w1' }).workspaceId).toBe('w1')
     expect(parseSidebarFilterPreferences({ status: 'bad', recency: '7d', color: 'blue' })).toEqual(DEFAULT_SIDEBAR_FILTER)
     expect(parseSidebarFilterPreferences(null)).toEqual(DEFAULT_SIDEBAR_FILTER)
+    expect(parseSidebarFilterPreferences({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: 'Dev' })).toEqual({
+      ...DEFAULT_SIDEBAR_FILTER, workspaceId: 'w1', groupKey: 'Dev',
+    })
+    for (const groupKey of [null, 42, 'x'.repeat(513)]) {
+      expect(parseSidebarFilterPreferences({ status: 'all', recency: 'all', color: null, groupKey })).toEqual(DEFAULT_SIDEBAR_FILTER)
+    }
   })
 })

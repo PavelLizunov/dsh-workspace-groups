@@ -79,7 +79,7 @@ describe('sidebarFilterActive', () => {
   })
 
   it('returns true when color is not null', () => {
-    expect(sidebarFilterActive({ ...DEFAULT_SIDEBAR_FILTER, color: 'red', workspaceId: '' })).toBe(true)
+    expect(sidebarFilterActive({ ...DEFAULT_SIDEBAR_FILTER, color: 'red', workspaceId: '', groupKey: '' })).toBe(true)
   })
 })
 
@@ -126,7 +126,7 @@ describe('applySidebarFilter - status filtering & counts', () => {
     const ws = createWorkspace('ws-err-warn', [sErr, sAwaiting, sIdle])
     const cat = createCategory('cat-err', [ws])
 
-    const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
     expect(result.counts.warning).toBe(2)
@@ -136,7 +136,7 @@ describe('applySidebarFilter - status filtering & counts', () => {
   })
 
   it('filters by status: ongoing', () => {
-    const filter: SidebarFilter = { status: 'ongoing', recency: 'all', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'ongoing', recency: 'all', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat1], [wsTop], filter, {}, NOW)
 
     expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-ongoing'])
@@ -145,7 +145,7 @@ describe('applySidebarFilter - status filtering & counts', () => {
   })
 
   it('filters by status: done', () => {
-    const filter: SidebarFilter = { status: 'done', recency: 'all', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'done', recency: 'all', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat1], [wsTop], filter, {}, NOW)
 
     expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-done'])
@@ -168,7 +168,7 @@ describe('applySidebarFilter - recency filtering', () => {
   const cat = createCategory('cat-recency', [ws])
 
   it('filters by 24h (inclusive cutoff)', () => {
-    const filter: SidebarFilter = { status: 'all', recency: '24h', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: '24h', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
     const sessionIds = result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)
@@ -177,7 +177,7 @@ describe('applySidebarFilter - recency filtering', () => {
   })
 
   it('filters by 7d', () => {
-    const filter: SidebarFilter = { status: 'all', recency: '7d', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: '7d', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
     const sessionIds = result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)
@@ -186,7 +186,7 @@ describe('applySidebarFilter - recency filtering', () => {
   })
 
   it('filters by 30d', () => {
-    const filter: SidebarFilter = { status: 'all', recency: '30d', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: '30d', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
     const sessionIds = result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)
@@ -216,7 +216,7 @@ describe('applySidebarFilter - color preset filtering', () => {
   }
 
   it('includes whole group when category color matches target color', () => {
-    const filter: SidebarFilter = { status: 'all', recency: 'all', color: 'red', workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: 'all', color: 'red', workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([catGroupRed, catGroupUncolored], [wsTopRed, wsTopBlue], filter, colors, NOW)
 
     const catRedWs = result.categories.find(c => c.key === 'cat-red')?.workspaces.map(w => w.workspaceId)
@@ -236,7 +236,7 @@ describe('applySidebarFilter - color preset filtering', () => {
     const uncoloredSession = createSession('s-plain')
     const workspace = createWorkspace('ws-plain', [coloredSession, uncoloredSession])
     const category = createCategory('cat-plain-session', [workspace])
-    const filter: SidebarFilter = { status: 'all', recency: 'all', color: 'pink', workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: 'all', color: 'pink', workspaceId: '', groupKey: '' }
 
     const result = applySidebarFilter([category], [], filter, {}, NOW)
     expect(result.categories).toHaveLength(1)
@@ -252,7 +252,7 @@ describe('applySidebarFilter - counts apply color+recency before status', () => 
   const cat = createCategory('cat-1', [ws])
 
   it('counts warning, done, and all even when status filter is set to warning', () => {
-    const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'warning', recency: 'all', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW)
 
     expect(result.categories[0]!.workspaces[0]!.sessions.map(s => s.id)).toEqual(['s-warn'])
@@ -273,7 +273,7 @@ describe('applySidebarFilter - combined filters', () => {
     const oldWarning = createSession('old-warning', { pendingInteraction: 'approval', updatedAt: NOW - 10 * day })
     const redWorkspace = createWorkspace('ws-red', [recentWarning, recentDone, oldWarning])
     const blueWorkspace = createWorkspace('ws-blue', [createSession('blue-warning', { pendingInteraction: 'approval' })])
-    const filter: SidebarFilter = { status: 'warning', recency: '7d', color: 'red', workspaceId: '' }
+    const filter: SidebarFilter = { status: 'warning', recency: '7d', color: 'red', workspaceId: '', groupKey: '' }
 
     const result = applySidebarFilter(
       [createCategory('cat-red', [redWorkspace]), createCategory('cat-blue', [blueWorkspace])],
@@ -289,13 +289,52 @@ describe('applySidebarFilter - combined filters', () => {
   })
 })
 
+describe('applySidebarFilter - group scope', () => {
+  const categories = [
+    createCategory('Dev', [createWorkspace('w1', [createSession('s1', { pendingInteraction: 'approval' })])]),
+    createCategory('Docs', [createWorkspace('w2', [createSession('s2', { running: true })])]),
+  ]
+  const topLevel = [createWorkspace('w3', [createSession('s3', { completed: true })])]
+
+  it('restricts branches and status counts to the selected group', () => {
+    const filter = { ...DEFAULT_SIDEBAR_FILTER, groupKey: 'Dev' }
+    expect(sidebarFilterActive(filter)).toBe(true)
+    const result = applySidebarFilter(categories, topLevel, filter, {}, NOW)
+    expect(result.categories.map(category => category.key)).toEqual(['Dev'])
+    expect(result.topLevel).toEqual([])
+    expect(result.counts).toEqual({ all: 1, warning: 1, ongoing: 0, done: 0 })
+  })
+
+  it('intersects group and workspace scopes', () => {
+    const result = applySidebarFilter(categories, topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: 'Dev', workspaceId: 'w2' }, {}, NOW)
+    expect(result.categories).toEqual([])
+    expect(result.topLevel).toEqual([])
+    expect(result.counts.all).toBe(0)
+  })
+
+  it('selects ungrouped workspaces using the reserved top-level key', () => {
+    const result = applySidebarFilter(categories, topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: '__topLevel__' }, {}, NOW)
+    expect(result.categories).toEqual([])
+    expect(result.topLevel.map(workspace => workspace.workspaceId)).toEqual(['w3'])
+    expect(result.counts).toEqual({ all: 1, warning: 0, ongoing: 0, done: 1 })
+  })
+
+  it('applies status, color and recency inside the group without mutating input', () => {
+    const before = structuredClone(categories)
+    const result = applySidebarFilter(categories, topLevel, { ...DEFAULT_SIDEBAR_FILTER, groupKey: 'Dev', status: 'ongoing', color: 'blue', recency: '24h' }, { Dev: 'blue' }, NOW)
+    expect(result.categories).toEqual([])
+    expect(result.counts).toEqual({ all: 1, warning: 1, ongoing: 0, done: 0 })
+    expect(categories).toEqual(before)
+  })
+})
+
 describe('applySidebarFilter - hiding empty nodes and immutability', () => {
   const sOld = createSession('s-old', { updatedAt: NOW - 100 * 24 * 3600 * 1000 })
   const wsEmpty = createWorkspace('ws-empty', [sOld])
   const catEmpty = createCategory('cat-empty', [wsEmpty])
 
   it('hides empty categories and workspaces when sessions do not match', () => {
-    const filter: SidebarFilter = { status: 'all', recency: '24h', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'all', recency: '24h', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([catEmpty], [wsEmpty], filter, {}, NOW)
 
     expect(result.categories.length).toBe(0)
@@ -311,7 +350,7 @@ describe('applySidebarFilter - hiding empty nodes and immutability', () => {
     const origCat = JSON.parse(JSON.stringify(cat))
     const origWs = JSON.parse(JSON.stringify(ws))
 
-    applySidebarFilter([cat], [ws], { status: 'warning', recency: '24h', color: 'red', workspaceId: '' }, {}, NOW)
+    applySidebarFilter([cat], [ws], { status: 'warning', recency: '24h', color: 'red', workspaceId: '', groupKey: '' }, {}, NOW)
 
     expect(cat).toEqual(origCat)
     expect(ws).toEqual(origWs)
@@ -324,7 +363,7 @@ describe('applySidebarFilter - hiding empty nodes and immutability', () => {
     const wsUnread = createWorkspace('ws-unread', [sUnread])
     const cat = createCategory('cat-work', [wsRead, wsUnread], { containsCurrent: true })
 
-    const filter: SidebarFilter = { status: 'done', recency: 'all', color: null, workspaceId: '' }
+    const filter: SidebarFilter = { status: 'done', recency: 'all', color: null, workspaceId: '', groupKey: '' }
     const result = applySidebarFilter([cat], [], filter, {}, NOW, new Set(['s-read']))
 
     expect(result.counts).toEqual({ all: 2, warning: 0, ongoing: 0, done: 1 })
