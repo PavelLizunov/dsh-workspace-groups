@@ -29,7 +29,7 @@ describe('DSH controller and static platform migration', () => {
       insertBefore: vi.fn(), insertSessionBefore: vi.fn(),
     }
     const uiWorkspace = {
-      startSession: vi.fn(), archiveSession: vi.fn(), listDirectory: vi.fn(), createDirectory: vi.fn(),
+      openWorkspace: vi.fn(async () => {}), startSession: vi.fn(), archiveSession: vi.fn(), listDirectory: vi.fn(), createDirectory: vi.fn(),
     }
     const register = vi.fn((options: { inject: () => GroupsBrowserInjected }) => {
       actions = options.inject()
@@ -48,6 +48,8 @@ describe('DSH controller and static platform migration', () => {
     const s = sid('s')
     const signal = new AbortController().signal
     actions.startSession(w); actions.open(s)
+    await actions.openWorkspace!(w)
+    expect(uiWorkspace.openWorkspace).toHaveBeenCalledWith(w)
     await actions.renameSession(s, 'new'); await actions.forkSession(s)
     await actions.renameWorkspace(w, 'new'); await actions.deleteWorkspace(w)
     await actions.insertWorkspaceBefore(w); await actions.insertSessionBefore(w, s)

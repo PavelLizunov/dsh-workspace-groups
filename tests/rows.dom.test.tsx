@@ -19,6 +19,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconBranchOutline16: () => <span />,
   IconCloseFill14: () => <span />,
   IconChevronDownOutline14: () => <span />,
+  IconChevronLeftOutline14: () => <span />,
+  IconChevronRightOutline14: () => <span />,
   IconClockOutline16: () => <span />,
   IconEditOutline16: () => <span />,
   IconEllipsisOutline16: () => <span />,
@@ -1052,9 +1054,11 @@ describe('row interaction contracts', () => {
     const setWorkspaceExpanded = vi.fn()
     const setCategoriesExpanded = vi.fn()
     const setWorkspacesExpanded = vi.fn()
+    const openWorkspace = vi.fn(async () => {})
 
     const renderBrowser = () => root.render(
         <GroupsBrowser
+          openWorkspace={openWorkspace}
           wide={true}
           expandSidebar={() => {}}
           useSessions={useSessions as never}
@@ -1134,34 +1138,35 @@ describe('row interaction contracts', () => {
       await Promise.resolve()
     })
     expect(filterWrites[1]).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '', groupKey: '' })
-    const projectSelect = host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!
-    await act(async () => { projectSelect.click() })
-    const workspaceOption = Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'W1')!
-    expect(workspaceOption.textContent).not.toContain('/w1')
+    const navigator = host.querySelector<HTMLButtonElement>('[data-wg-workspace-navigator]')!
+    const drill = async (key: string) => {
+      await act(async () => { navigator.click() })
+      const option = document.querySelector<HTMLButtonElement>(`[data-wg-picker-group="${key}"]`)!
+      if (key === 'Dev') expect(option.querySelector('[data-wg-folder-icon="book"]')).not.toBeNull()
+      const writesBefore = filterWrites.length
+      await act(async () => { option.click() })
+      expect(filterWrites).toHaveLength(writesBefore)
+    }
+    await drill('Dev')
+    const workspaceOption = document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!
+    expect(workspaceOption.textContent).toBe('W1')
     expect(workspaceOption.querySelector('[data-wg-folder-icon="deepseek"]')).not.toBeNull()
     await act(async () => { workspaceOption.click() })
-    expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: '' })
-    expect(host.querySelector('[aria-label^="filter.project:"]')?.textContent).toBe('W1')
-    const chooseGroup = async (label: string) => {
-      await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.group:"]')!.click() })
-      const option = Array.from(host.querySelectorAll('button')).find(button => button.textContent === label)!
-      if (label === 'Dev') expect(option.querySelector('[data-wg-folder-icon="book"]')).not.toBeNull()
-      await act(async () => { option.click() })
-    }
-    await chooseGroup('Dev')
+    expect(openWorkspace).toHaveBeenCalledWith('w1')
     expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: 'Dev' })
-    expect(host.querySelector('[aria-label^="filter.group:"] [data-wg-folder-icon="book"]')).not.toBeNull()
-    await chooseGroup('Empty')
+    expect(navigator.textContent).toContain('W1')
+    await drill('Empty')
+    expect(document.querySelector('[data-wg-picker-workspace="w1"]')).toBeNull()
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-scope]')!.click() })
     expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: '', groupKey: 'Empty' })
-    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!.click() })
-    expect(Array.from(host.querySelectorAll('button')).some(button => button.textContent === 'W1')).toBe(false)
-    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label^="filter.project:"]')!.click() })
-    await chooseGroup('section.topLevel')
+    await drill('__topLevel__')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-scope]')!.click() })
     expect(filterWrites.at(-1)).toMatchObject({ groupKey: '__topLevel__' })
-    await chooseGroup('filter.group.all')
+    await act(async () => { navigator.click() })
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-scope]')!.click() })
     expect(filterWrites.at(-1)).toMatchObject({ groupKey: '' })
-    await act(async () => { projectSelect.click() })
-    await act(async () => { Array.from(host.querySelectorAll('button')).find(button => button.textContent === 'W1')!.click() })
+    await drill('Dev')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!.click() })
     await act(async () => { workspacesSnapshot.phase = 'loading'; workspacesSnapshot.items = []; renderBrowser() })
     expect(filterWrites.at(-1)).toHaveProperty('workspaceId', 'w1')
     await act(async () => { workspacesSnapshot.phase = 'ready'; renderBrowser() })

@@ -1,0 +1,31 @@
+# Unified group → workspace navigation
+
+## Authorized result
+User selected Group → workspace in one menu with search/back after clarification that this is fast navigation, not only tree filtering. Replace two scope controls with one cross-version anchored drilldown. Root shows All workspaces, groups and top-level; choosing a group drills without altering filters or conversation. Search at root finds matching groups and workspace names across groups; inner search filters only that group's workspaces. Back stays within menu. Keep folder icons/colors, counts and stable IDs; no path-only labels.
+
+## Navigation and filter semantics
+Actual workspace choice uses published uiWorkspace.openWorkspace (0.1.5 and rc2 both expose it). This may reuse/create the native blank session by platform policy, not arbitrarily open an old conversation or run a model. Apply workspace/group scope after successful navigation, clearing status/color/period so destination is visible; keep tree-search text unchanged. Explicit All in group action scopes tree without session navigation; All workspaces action clears scope only. Error stays in menu, scope unchanged; busy prevents duplicate selections. Existing independent color/period/reset remain. Native host gates untouched; no core/provider/auth changes/restart.
+
+## Research verdict
+Initial verdict was Extend — published Menu and uiWorkspace.openWorkspace. Compatibility inspection ruled out Menu content on canonical runtime; final is Extend native uiWorkspace navigation + small React portal search/drill popup. No additional dependencies. Existing ScopeFilter remains for isolated primitive regression but is no longer mounted as two selectors. Basic arrow/search-to-list keyboard bridge and natural Tab; no focus trap. Compatibility-specific popup decision is recorded below.
+
+## Compatibility adjustment
+Published canonical 0.1.5 Menu has no custom children and requires items/onSelect; rc2 supports children. Do not cast around API or change canonical target. Use a bounded dependency-free React portal for search/drill content and basic fixed-anchor placement, Escape/outside dismissal and roving row keys. Keep uiWorkspace.openWorkspace native. No external library or core extension.
+
+## Design
+Existing Native DSH reference, ENERGY 1 / RHYTHM 1 / MOTION 1. One full-width trigger with breadcrumb, current selection icon and chevron. 300px viewport-capped popup; search, back/header, rows, counts. Group selected only by explicit scope action, never silently on drill. Empty/loading states; touch rows >=44px. Popup scrolls, no sideways submenu or hover drill requirement. Opening starts at groups, not automatically a selected group.
+
+## Verification
+Canonical build/verify, component portal DOM tests for drill/search/back/empty/scopes/navigation success/error/busy and keyboard. Platform adapter test asserts actual uiWorkspace.openWorkspace ownership. Exact rc2 compatible build/real loader. Browser candidate layout and choices (native navigation substituted only for isolated UI tests); live HMR exact bytes, safe native open into pre-existing blank workspace only, no interrupt/stop/delete of running sessions. Restore preferences and prior selection where runtime supports it. Dark/light and 240/280px sidebar checks, Escape/outside, touch. Commit/push dedicated branch. Backups existing HMR artifacts, no restart.
+
+## Candidate evidence
+Canonical build/verify passed: 346 tests, 9 existing skips, actual 0.1.5 module loader and isolated consumer pass. Controller test proves native uiWorkspace.openWorkspace call; component/integration tests cover search/drill/back/no side-effect on group drill/success/error/duplicate prevention/keyboard, scopes and persistence reconciliation. Published rc2 dependencies/typecheck/build and installed actual ClientModuleSystem pass. Candidate in native shell verified dark/light at 240/280px, 8 groups, 44px rows, viewport bounds, root cross-group search, back, empty, ArrowDown/Escape/outside; no real workspace-open yet. Focus bug during group switch caught by browser: immediate blur dismissal incorrectly closed popup during row removal; removed that handler, outside/Escape remain and Tab stays natural. Candidate now stable; all relevant screenshots inspected.
+
+## Live evidence and navigation observation
+Client HMR served exact compatible candidate (SHA256 5eb5c5aca14e0f8833dd104790b73ba73e471863548e3217d6b20b7ed8cdb622; observed rev 7bd378953b5d). Dark/light 240/280 UI checks repeated without substitution: search/back/drill/Escape/outside and touch rows passed. Native open of existing dsh-workspace-groups in isolated browser succeeded, trigger/scopes updated to DSH/workspace and status/color/period cleared; observed /api/session/create plus read-only catalogs. Initial verification regex incorrectly expected plural sessions and then excluded read-only llm/listProviders; corrected to distinguish inference/start/stop/delete from catalog reads. No stream/send/stop/archive/delete call occurred. Native policy may emit two create calls (reuse/start-new flow) even for an existing workspace, no arbitrary old-conversation open. Preferences restored; no sessions deleted. Popup rows are ordinary buttons in role=dialog, not menuitems without a menu container.
+
+## Final publication
+Final accessible button rows rebuilt/tested and HMR-published. Actual served final bytes match SHA256 cdaf025ad97f86c881ce3501913fedc77db5ec81aa2d338172f92c903d5df9dc. Native open test completed after corrected endpoint matcher; no activity stop or model-inference call. Final complete dark/light interaction and exact-artifact check repeated; original filter preferences restored. Service PID 2359515/start 12:11:37 UTC remains unchanged. Canonical 346 tests passed, 9 existing skips. Platform adapter/consumer and native rc2 loader passed. Native blank-session creation during verification is recorded, not deleted.
+
+## Unknowns
+Creating a blank session is native workspace-open behavior, not zero-storage navigation. Expose behavior in README. Existing sessionId pageerror baseline persists. No live screenshot/DOM assumed from user text. Filter-only existing tests must be rebased onto unified control semantics, not weakened to pass.

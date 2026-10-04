@@ -19,9 +19,10 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', async () => {
   const Menu = new Function('React', 'createPortal', 'clsx', 'css$7', 'IconCheckOutline16', 'jsx', 'jsxs',
     `const {useRef,useState,useEffect,useLayoutEffect,useCallback}=React; ${menuSource}; return Menu;`
   )(react, dom.createPortal, (...classes: unknown[]) => classes.filter(Boolean).join(' '), {}, icon, runtime.jsx, runtime.jsxs)
-  return { Menu, IconFolderClose16: icon, IconChevronDownOutline14: icon, IconClockOutline16: icon }
+  return { Menu, IconFolderClose16: icon, IconChevronDownOutline14: icon, IconClockOutline16: icon, IconChevronLeftOutline14: icon, IconChevronRightOutline14: icon }
 })
 import { ScopeFilter } from '../src/client/ScopeFilter.tsx'
+import { WorkspaceNavigator } from '../src/client/WorkspaceNavigator.tsx'
 import { SidebarFilterControls } from '../src/client/SidebarFilterControls.tsx'
 import type { SidebarFilter } from '../src/client/tree-filter.ts'
 
@@ -69,6 +70,80 @@ describe('visual color and period controls', () => {
     act(() => { trigger.click() })
     act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+})
+
+describe('workspace navigator', () => {
+  let host: HTMLDivElement
+  let root: Root
+  const groups = [{ id: 'Dev', label: 'Development', icon: 'code' }, { id: 'Empty', label: 'Empty' }]
+  const workspaces = [{ id: 'w1', label: 'Alpha', groupKey: 'Dev', icon: 'deepseek' }, { id: 'w2', label: 'Beta', groupKey: 'Dev' }]
+  const t = ((key: string) => key) as never
+  beforeEach(() => { host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
+  afterEach(() => { act(() => root.unmount()); host.remove() })
+  function render(onScope = vi.fn(), onNavigate = vi.fn(async () => {})) {
+    act(() => { root.render(<WorkspaceNavigator groups={groups} workspaces={workspaces} groupKey="" workspaceId="" onScope={onScope} onNavigate={onNavigate} t={t} />) })
+    act(() => { host.querySelector<HTMLButtonElement>('[data-wg-workspace-navigator]')!.click() })
+    return { onScope, onNavigate }
+  }
+  function type(value: string) { act(() => {
+    const input = document.querySelector<HTMLInputElement>('.wgNavigatorSearch')!
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }) }
+  it('drills and goes back without changing scopes or navigating', () => {
+    const { onScope, onNavigate } = render()
+    act(() => { document.querySelector<HTMLButtonElement>('[data-wg-picker-group="Dev"]')!.click() })
+    expect(document.querySelectorAll('[data-wg-picker-workspace]')).toHaveLength(2)
+    expect(onScope).not.toHaveBeenCalled(); expect(onNavigate).not.toHaveBeenCalled()
+    act(() => { document.querySelector<HTMLButtonElement>('[data-wg-picker-back]')!.click() })
+    expect(document.querySelector('[data-wg-picker-group="Dev"]')).not.toBeNull()
+  })
+  it('searches workspaces across groups and navigates once', async () => {
+    const { onNavigate } = render()
+    type('alpha')
+    expect(document.querySelectorAll('[data-wg-picker-workspace]')).toHaveLength(1)
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!.click() })
+    expect(onNavigate).toHaveBeenCalledWith(workspaces[0])
+    expect(document.querySelector('.wgNavigatorPopup')).toBeNull()
+  })
+  it('scopes an empty group explicitly, with no native open', () => {
+    const { onScope, onNavigate } = render()
+    act(() => { document.querySelector<HTMLButtonElement>('[data-wg-picker-group="Empty"]')!.click() })
+    expect(document.querySelector('.wgNavigatorEmpty')?.textContent).toBe('navigator.empty')
+    act(() => { document.querySelector<HTMLButtonElement>('[data-wg-picker-scope]')!.click() })
+    expect(onScope).toHaveBeenCalledWith('Empty', '');expect(onNavigate).not.toHaveBeenCalled()
+  })
+  it('keeps failed navigation visible and allows retry', async () => {
+    const onNavigate = vi.fn(async () => { throw Error('Host refused') })
+    render(vi.fn(), onNavigate);type('Alpha')
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!.click() })
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe('Host refused')
+    expect(document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')?.disabled).toBe(false)
+  })
+  it('prevents duplicate opens while pending', async () => {
+    let finish!: () => void
+    const onNavigate = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    render(vi.fn(), onNavigate);type('Alpha')
+    const row = document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!
+    act(() => { row.click(); row.click() })
+    expect(onNavigate).toHaveBeenCalledTimes(1)
+    expect(row.disabled).toBe(true)
+    await act(async () => { finish() })
+    expect(document.querySelector('.wgNavigatorPopup')).toBeNull()
+  })
+  it('supports search-to-list keyboard navigation, back and Escape focus', () => {
+    render()
+    const input = document.querySelector<HTMLInputElement>('.wgNavigatorSearch')!
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })) })
+    expect(document.activeElement).toBe(document.querySelector('[data-wg-picker-scope]'))
+    act(() => { document.querySelector<HTMLButtonElement>('[data-wg-picker-group="Dev"]')!.click() })
+    const row = document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!
+    act(() => { row.focus();row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })) })
+    expect(document.querySelector('[data-wg-picker-group="Dev"]')).not.toBeNull()
+    act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(document.activeElement).toBe(host.querySelector('[data-wg-workspace-navigator]'))
+    expect(document.querySelector('.wgNavigatorPopup')).toBeNull()
   })
 })
 

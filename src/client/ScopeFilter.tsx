@@ -10,7 +10,7 @@ export interface ScopeOption {
   color?: string | null | undefined
 }
 
-function ScopeIcon({ option }: { option: ScopeOption }) {
+export function ScopeIcon({ option }: { option: ScopeOption }) {
   return <span className="wgCategoryIcon" data-wg-scope-icon aria-hidden="true" style={{ color: folderIconColor(option.color) }}>
     {option.icon ? <FolderIcon icon={option.icon} /> : <IconFolderClose16 />}
   </span>

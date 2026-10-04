@@ -55,7 +55,7 @@ import { parseSidebarFilterPreferences, TOP_LEVEL_ORDER_KEY, UNCATEGORIZED_LABEL
 import type { GroupsBrowserProps } from './contract.ts'
 import type { FolderIconId, FolderIconScope } from '../core/icons.ts'
 import { FolderIconPicker } from './FolderIconPicker.tsx'
-import { ScopeFilter } from './ScopeFilter.tsx'
+import { WorkspaceNavigator } from './WorkspaceNavigator.tsx'
 import { SidebarFilterControls } from './SidebarFilterControls.tsx'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
@@ -63,6 +63,7 @@ import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, workspaceLabel, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
+import navigatorCss from './workspace-navigator.css?inline'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
@@ -223,6 +224,7 @@ export function GroupsBrowser({
   useStore,
   actions,
   startSession,
+  openWorkspace,
   open,
   renameSession,
   forkSession,
@@ -243,7 +245,7 @@ export function GroupsBrowser({
   useEffect(() => {
     const style = document.createElement('style')
     style.setAttribute('data-plugin', 'dsh-workspace-groups')
-    style.textContent = css
+    style.textContent = css + navigatorCss
     document.head.append(style)
     return () => { style.remove() }
   }, [])
@@ -514,10 +516,18 @@ export function GroupsBrowser({
     }
   }, [configLoaded, configError, workspacePhase, groupOptions, scopedWorkspaces, filter, updateFilter])
 
-  const selectGroup = (groupKey: string) => {
-    const workspace = workspaces.find(item => item.workspaceId === filter.workspaceId)
-    const actualGroup = workspace ? resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) ?? TOP_LEVEL_ORDER_KEY : undefined
-    updateFilter({ ...filter, groupKey, workspaceId: groupKey === '' || groupKey === actualGroup ? filter.workspaceId : '' })
+  const navigatorWorkspaces = useMemo(() => workspaces.map(workspace => ({
+    id: workspace.workspaceId as string, label: workspace.title || workspaceLabel(workspace.path),
+    groupKey: resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) ?? TOP_LEVEL_ORDER_KEY,
+    icon: manual.workspaceIcons?.[workspace.workspaceId], color: manual.colors?.[workspace.workspaceId],
+  })), [workspaces, config, manual])
+
+  const navigateWorkspace = async (workspace: { id: string; groupKey: string }) => {
+    if (!openWorkspace) throw new Error(t('navigator.error'))
+    await openWorkspace(workspace.id as WorkspaceId)
+    updateFilter({ ...DEFAULT_SIDEBAR_FILTER, groupKey: workspace.groupKey, workspaceId: workspace.id })
+    actions.setWorkspaceExpanded(workspace.id, true)
+    if (workspace.groupKey !== TOP_LEVEL_ORDER_KEY) actions.setCategoryExpanded(workspace.groupKey, true)
   }
 
   const allWorkspaceIds = useMemo(() => workspaces.map(w => w.workspaceId as string), [workspaces])
@@ -1467,9 +1477,9 @@ export function GroupsBrowser({
                 </button>
               </div>
               <div className="wgScopeFilters">
-                <ScopeFilter label={t('filter.group')} value={filter.groupKey} options={groupOptions} onChange={selectGroup} />
-                <ScopeFilter label={t('filter.project')} value={filter.workspaceId} options={workspaceOptions}
-                  onChange={workspaceId => { updateFilter({ ...filter, workspaceId }) }} />
+                <WorkspaceNavigator groups={groupOptions.filter(group => group.id !== '')} workspaces={navigatorWorkspaces}
+                  groupKey={filter.groupKey} workspaceId={filter.workspaceId} t={t}
+                  onScope={(groupKey, workspaceId) => { updateFilter({ ...filter, groupKey, workspaceId }) }} onNavigate={navigateWorkspace} />
               </div>
               <SidebarFilterControls filter={filter} onChange={updateFilter} t={t} />
             </div>

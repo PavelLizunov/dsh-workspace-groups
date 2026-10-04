@@ -1,0 +1,20 @@
+/* Cross-version anchored two-level workspace chooser; host navigation stays native. */
+.wgNavigatorTriggerLabel { display: flex; flex-direction: column; text-align: left; flex: 1; min-width: 0; gap: 2px; }
+.wgNavigatorBreadcrumb { display: block; font-size: 10px; font-weight: 400; color: var(--dsw-alias-label-secondary, GrayText); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wgNavigatorPopup { position: fixed; z-index: 1200; box-sizing: border-box; width: min(300px, calc(100vw - 24px)); min-width: 0; overflow-y: auto; background-color: var(--dsw-alias-bg-layer-1, Canvas); border: 1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.3)); border-radius: 8px; padding: 0; }
+.wgNavigator { padding: 8px; font-size: 12px; text-align: left; }
+.wgNavigatorHeader { display: flex; align-items: center; gap: 6px; font-weight: 600; min-height: 32px; padding: 0 2px 6px; }
+.wgNavigatorSearch { box-sizing: border-box; width: 100%; min-height: 32px; padding: 6px 8px; margin-bottom: 6px; font: inherit; color: var(--dsw-alias-label-primary, CanvasText); background: var(--dsw-alias-bg-layer-1, Canvas); border: 1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.3)); border-radius: 4px; }
+.wgNavigatorSearch:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9); outline-offset: -1px; }
+.wgNavigatorList { max-height: min(360px, 50vh); overflow-y: auto; overscroll-behavior: contain; }
+.wgNavigatorRow { display: flex; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-primary, CanvasText); font: inherit; text-align: left; cursor: pointer; }
+.wgNavigatorRow svg { flex: none; }
+.wgNavigatorRow:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.12)); }
+.wgNavigatorRow:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9); outline-offset: -2px; }
+.wgNavigatorRow[aria-current="true"] { background: var(--dsw-alias-interactive-bg-active, rgba(127,127,127,.18)); }
+.wgNavigatorRow:disabled { cursor: wait; opacity: .6; }
+.wgNavigatorRowLabel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wgNavigatorCount { color: var(--dsw-alias-label-secondary, GrayText); font-size: 11px; }
+.wgNavigatorEmpty { padding: 12px 8px; color: var(--dsw-alias-label-secondary, GrayText); }
+.wgNavigatorError { padding: 8px; color: var(--dsw-alias-state-error-primary, #dc2626); overflow-wrap: anywhere; }
+@media (pointer: coarse) { .wgNavigatorRow, .wgNavigatorSearch, .wgNavigatorHeader .wgIconButton { min-height: 44px; } }

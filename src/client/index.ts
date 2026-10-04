@@ -58,6 +58,7 @@ export function apply(ctx: ClientContext): void {
 
   const browserInjected = (): GroupsBrowserInjected => ({
     startSession: (workspaceId) => { ctx.uiWorkspace.startSession(workspaceId) },
+    openWorkspace: (workspaceId) => ctx.uiWorkspace.openWorkspace(workspaceId),
     open: (sessionId) => { ctx.sessions.open(sessionId) },
     searchSessions,
     searchResultLimit: ctx.sessions.searchResultLimit,

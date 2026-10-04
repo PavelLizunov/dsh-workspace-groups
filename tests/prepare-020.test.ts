@@ -44,6 +44,10 @@ describe('0.2 generated sidebar selection', () => {
       const controls = readFileSync(path.join(target, 'src/client/SidebarFilterControls.tsx'), 'utf8')
       expect(controls).toContain('IconClockOutlineMedium')
       expect(controls).not.toMatch(/IconClockOutline16|IconChevronDownOutline14/)
+      const navigator = readFileSync(path.join(target, 'src/client/WorkspaceNavigator.tsx'), 'utf8')
+      expect(navigator).toContain('IconChevronLeftOutlineMedium')
+      expect(navigator).not.toMatch(/IconChevronLeftOutline14|IconChevronRightOutline14/)
+      expect(readFileSync(path.join(target, 'src/client/index.ts'), 'utf8')).toContain('ctx.uiWorkspace.openWorkspace(workspaceId)')
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }

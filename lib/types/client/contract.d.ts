@@ -15,6 +15,8 @@ import type { createGroupsViewStore } from './stores.js';
 export type GroupsBrowserInjected = {
     /** Start a New Session in a Workspace (reuse-or-create its blank session and open it). */
     startSession: (workspaceId?: WorkspaceId) => void;
+    /** Native workspace navigation; optional for older custom slot consumers. */
+    openWorkspace?: (workspaceId: WorkspaceId) => Promise<void>;
     /** Open a real Session. */
     open: (sessionId: SessionId) => void;
     /** Search current visible conversation messages. */
