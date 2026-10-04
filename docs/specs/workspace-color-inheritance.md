@@ -1,4 +1,6 @@
-# Workspace folder color inheritance
+# Workspace folder color inheritance (superseded)
+
+User clarification: group and workspace colors are independent; see independent-folder-colors.md. This prior interpretation and its screenshots are historical, not current behavior.
 
 ## Outcome and scope
 User reports category child color not inherited. Child means workspace folder under group. Fix visual effective color in grouped tree, search tree and unified workspace navigator/selected trigger; own non-null color wins, otherwise fallback to current parent group color. Ungrouped workspaces keep own color only. No session color inheritance, icon inheritance, filter-matching changes, schema/data migration, auth/core/provider changes or restart. Explicit color editor continues to edit stored override, not copy inherited color into metadata. Clearing workspace override resumes inheritance. Reclassification/rename follows current resolved display group.
