@@ -64,6 +64,7 @@ import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, 
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 import navigatorCss from './workspace-navigator.css?inline'
+import { effectiveFolderColor } from './folder-colors.ts'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
@@ -516,11 +517,14 @@ export function GroupsBrowser({
     }
   }, [configLoaded, configError, workspacePhase, groupOptions, scopedWorkspaces, filter, updateFilter])
 
-  const navigatorWorkspaces = useMemo(() => workspaces.map(workspace => ({
-    id: workspace.workspaceId as string, label: workspace.title || workspaceLabel(workspace.path),
-    groupKey: resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title) ?? TOP_LEVEL_ORDER_KEY,
-    icon: manual.workspaceIcons?.[workspace.workspaceId], color: manual.colors?.[workspace.workspaceId],
-  })), [workspaces, config, manual])
+  const navigatorWorkspaces = useMemo(() => workspaces.map(workspace => {
+    const groupKey = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title)
+    return {
+      id: workspace.workspaceId as string, label: workspace.title || workspaceLabel(workspace.path),
+      groupKey: groupKey ?? TOP_LEVEL_ORDER_KEY,
+      icon: manual.workspaceIcons?.[workspace.workspaceId], color: effectiveFolderColor(manual.colors, workspace.workspaceId, groupKey),
+    }
+  }), [workspaces, config, manual])
 
   const navigateWorkspace = async (workspace: { id: string; groupKey: string }) => {
     if (!openWorkspace) throw new Error(t('navigator.error'))
@@ -2280,7 +2284,7 @@ function CategorySection({ category, categoryIndex, totalRootItems, current, now
                 onCleanup={() => { onCleanupRequest(workspace.workspaceId, workspace.label) }}
                 icon={manual.workspaceIcons?.[workspace.workspaceId]}
                 onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
-                color={manual.colors?.[workspace.workspaceId]}
+                color={effectiveFolderColor(manual.colors, workspace.workspaceId, category.key)}
                 onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 canMoveOut={canMoveOut(workspace.workspaceId)}
                 onMoveOut={() => { onMoveOut(workspace.workspaceId) }}
@@ -2537,7 +2541,7 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
                   onCleanup={onWorkspaceCleanup ? () => { onWorkspaceCleanup(workspace.workspaceId, workspace.label) } : undefined}
                   icon={manual.workspaceIcons?.[workspace.workspaceId]}
                   onChooseIcon={() => { onChooseIcon('workspace', workspace.workspaceId, workspace.label) }}
-                  color={manual.colors?.[workspace.workspaceId]}
+                  color={effectiveFolderColor(manual.colors, workspace.workspaceId, category.key)}
                   onSetColor={(color) => { void onSetItemColor(workspace.workspaceId, color) }}
                 />
                 <WorkspaceSessions

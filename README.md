@@ -63,7 +63,7 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
   Sessions can be pinned or unpinned within a workspace via their `⋯` menu (**Pin session / Unpin session**);
   pinned sessions display a pin icon and always remain visible at the top of the workspace.
 - **Color ping on groups, projects, and sessions**: hover a row and use its color button to tag it with one of
-  the eight presets. The same compact portal menu works in search results. Color-tagged sessions stay in the
+  the eight presets. Workspace folders inherit their current group's color unless they have an explicit override; clearing it resumes inheritance. This applies in the tree, search and navigator, not to independent session tags or top-level workspaces. The same compact portal menu works in search results. Color-tagged sessions stay in the
   five-row preview, and the Finder color filter matches a group, project, or any session tagged with that color.
 
 ### Folder icons and semantic titles

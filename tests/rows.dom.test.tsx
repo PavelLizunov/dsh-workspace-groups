@@ -70,6 +70,27 @@ afterEach(() => {
 })
 
 describe('folder icon persistence in GroupsBrowser', () => {
+  it('inherits group color in grouped tree and search but keeps workspace overrides', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => ({
+      ok: true, headers: new Headers(),
+      json: async () => String(url).includes('preferences')
+        ? { filter: { status: 'all', recency: 'all', color: null, groupKey: '', workspaceId: '' } }
+        : { categories: [], manual: { categories: ['Dev'], assignments: { w1: 'Dev', w2: 'Dev' }, colors: { Dev: 'green', w2: 'pink' } } },
+    })))
+    const list = { ids: ['s1', 's2'], byId: { s1: { id: 's1', displayTitle: 'Match one', blank: false, running: false, updatedAt: 1 }, s2: { id: 's2', displayTitle: 'Match two', blank: false, running: false, updatedAt: 1 } }, phase: 'ready', current: undefined }
+    const workspaces = { phase: 'ready', archivedSessionIds: [], items: ['w1', 'w2'].map((id, i) => ({ workspaceId: id, title: id, path: '/' + id, createdAt: '2026-01-01', sessionIds: ['s' + (i + 1)] })) }
+    const view = { categoryExpansion: { Dev: true }, workspaceExpansion: { w1: true, w2: true }, acknowledgedErrors: {}, completedSessions: {}, runningSessions: {} }
+    await act(async () => { root.render(<GroupsBrowser wide expandSidebar={() => {}} useSessionPendingInteraction={((s: (x: unknown) => unknown) => s(new Map())) as never} useSessions={((s: (x: unknown) => unknown) => s(list)) as never} useWorkspaces={((s: (x: unknown) => unknown) => s(workspaces)) as never} useStore={((s: (x: unknown) => unknown) => s(view)) as never} actions={{ retainKeys: () => {} } as never} startSession={() => {}} open={() => {}} renameSession={async () => {}} forkSession={async () => {}} renameWorkspace={async () => {}} deleteWorkspace={async () => {}} insertWorkspaceBefore={async () => {}} archiveSession={async () => {}} insertSessionBefore={async () => {}} cleanupSessions={async () => {}} createWorkspace={async () => 'new' as never} listDirectory={async () => ({ path: '/', home: '/home', crumbs: [], entries: [], truncated: false })} createDirectory={async p => p} searchSessions={async () => ({ items: [], hasMore: false })} searchResultLimit={100} t={((key: string) => key) as never} />) })
+    const assertColors = () => {
+      expect(host.querySelector('[data-wsid="w1"] [data-wg-row-icon="project"]')?.getAttribute('data-color')).toBe('green')
+      expect(host.querySelector('[data-wsid="w2"] [data-wg-row-icon="project"]')?.getAttribute('data-color')).toBe('pink')
+    }
+    assertColors()
+    act(() => { host.querySelector<HTMLButtonElement>('[aria-label="search"]')!.click() })
+    act(() => { const input = host.querySelector<HTMLInputElement>('.wgSearchInput')!;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Match');input.dispatchEvent(new Event('input', { bubbles: true })) })
+    await act(async () => { await new Promise<void>(resolve => setTimeout(() => { resolve() }, 280)) })
+    assertColors()
+  })
   it('chooses, persists, reloads and resets a workspace icon through the real handler', async () => {
     let manual: Record<string, unknown> = { categories: [], assignments: {} }
     const saves: unknown[] = []
@@ -1148,6 +1169,7 @@ describe('row interaction contracts', () => {
       expect(filterWrites).toHaveLength(writesBefore)
     }
     await drill('Dev')
+    expect(document.querySelector<HTMLElement>('[data-wg-picker-workspace="w1"] [data-wg-scope-icon]')?.style.color).toBe('rgb(59, 130, 246)')
     const workspaceOption = document.querySelector<HTMLButtonElement>('[data-wg-picker-workspace="w1"]')!
     expect(workspaceOption.textContent).toBe('W1')
     expect(workspaceOption.querySelector('[data-wg-folder-icon="deepseek"]')).not.toBeNull()
@@ -1155,6 +1177,7 @@ describe('row interaction contracts', () => {
     expect(openWorkspace).toHaveBeenCalledWith('w1')
     expect(filterWrites.at(-1)).toEqual({ status: 'all', recency: 'all', color: null, workspaceId: 'w1', groupKey: 'Dev' })
     expect(navigator.textContent).toContain('W1')
+    expect(navigator.querySelector<HTMLElement>('[data-wg-scope-icon]')?.style.color).toBe('rgb(59, 130, 246)')
     await drill('Empty')
     expect(document.querySelector('[data-wg-picker-workspace="w1"]')).toBeNull()
     await act(async () => { document.querySelector<HTMLButtonElement>('[data-wg-picker-scope]')!.click() })
