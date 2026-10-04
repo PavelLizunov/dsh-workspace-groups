@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import {
   Button,
   IconCloseFill14,
+  IconChevronDownOutline14,
   IconEllipsisOutline16,
   IconFolderOpenOutline16,
   IconProjectAddOutline16,
@@ -252,15 +253,18 @@ function SidebarFilterMenu({ filter, onChange, onReset, t }: {
       compact
       closeOnPointerLeave
       align="end"
+      className="wgFilterTools"
       anchor={(
         <button
           type="button"
           className={`wgFilterSelectBtn${filter.color !== null || filter.recency !== 'all' || filter.workspaceId !== '' ? ' wgFilterSelectBtnActive' : ''}`}
           aria-label={t('filter.title')}
+          aria-haspopup="menu"
           aria-expanded={open}
           onClick={(event) => { event.stopPropagation(); setOpen(value => !value) }}
         >
           {t('filter.title')}
+          <IconChevronDownOutline14 />
         </button>
       )}
     />
@@ -1531,6 +1535,8 @@ export function GroupsBrowser({
             {isFilterActive && (
               <div className="wgFilterSummary">
                 <span className="wgFilterSummaryLabel">{t('filter.summary')}:</span>
+                {filter.groupKey !== '' && <span className="wgFilterChip">{groupOptions.find(option => option.id === filter.groupKey)?.label}</span>}
+                {filter.workspaceId !== '' && <span className="wgFilterChip">{workspaceOptions.find(option => option.id === filter.workspaceId)?.label}</span>}
                 {filter.color !== null && (
                   <span className="wgFilterChip">
                     <span className="wgFilterColorDot" data-color={filter.color} />
@@ -1592,7 +1598,6 @@ export function GroupsBrowser({
               startSession={startSession}
               filter={filter}
               onCountsChange={reportSearchCounts}
-              {...(isFilterActive ? { onResetFilter: resetFilter } : {})}
               onWorkspaceRename={(workspaceId, title) => {
                 setRenameTarget({ workspaceId, currentTitle: title })
                 setRenameDraft(title)
@@ -1617,16 +1622,7 @@ export function GroupsBrowser({
             <div className="wgList" role="tree" aria-label={t('section.workspaces')} onKeyDown={handleTreeKeyDown} onFocusCapture={handleTreeFocus}>
               {displayGroups.length === 0 && displayTopLevel.length === 0 && (
                 <div className="wgEmpty">
-                  <div>{workspacePhase === 'ready' ? t('empty.noWorkspaces') : t('empty.none')}</div>
-                  {isFilterActive && (
-                    <button
-                      type="button"
-                      className="wgSessionToggleBtn wgFilterResetBtn wgEmptyReset"
-                      onClick={resetFilter}
-                    >
-                      {t('filter.reset')}
-                    </button>
-                  )}
+                  <div>{workspacePhase !== 'ready' ? t('empty.none') : isFilterActive ? t('filter.noMatches') : t('empty.noWorkspaces')}</div>
                 </div>
               )}
               {displayGroups.map((category, idx) => (
@@ -2505,7 +2501,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * category folder → workspace folder → matched session row. Reuses the same row components as
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
-function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor, onChooseIcon }: {
+function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor, onChooseIcon }: {
   pendingInteractions: SessionPendingInteractionSnapshot
   completedSessions?: Readonly<Record<string, boolean>> | undefined
   acknowledgedErrors?: Readonly<Record<string, string>> | undefined
@@ -2525,7 +2521,6 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
   startSession: (workspaceId?: WorkspaceId) => void
   filter: SidebarFilter
   onCountsChange?: (counts: FilterCounts) => void
-  onResetFilter?: () => void
   onWorkspaceRename: (workspaceId: WorkspaceId, title: string) => void
   onWorkspaceDelete: (workspaceId: WorkspaceId, title: string) => void
   onWorkspaceCleanup?: (workspaceId: WorkspaceId, title: string) => void
@@ -2653,15 +2648,6 @@ function SearchBody({ pendingInteractions, completedSessions, acknowledgedErrors
       {!pending && groups.length === 0 && searchTopLevel.length === 0 && (
         <div className="wgEmpty">
           <div>{t('search.noMatches')}</div>
-          {onResetFilter && (
-            <button
-              type="button"
-              className="wgSessionToggleBtn wgFilterResetBtn wgEmptyReset"
-              onClick={onResetFilter}
-            >
-              {t('filter.reset')}
-            </button>
-          )}
         </div>
       )}
       {matches.hasMore && (

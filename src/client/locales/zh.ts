@@ -148,6 +148,7 @@ export const zh: WorkspaceGroupsDict = {
   'filter.recency.30d': '最近 30 天',
   'filter.reset': '重置筛选',
   'filter.summary': '已用筛选',
+  'filter.noMatches': '没有符合这些筛选条件的工作区',
   'section.topLevel': '顶层项目',
   'manual.saveError': '分组变更保存失败',
   'manual.conflictError': '分组配置已被外部修改',

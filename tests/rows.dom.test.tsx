@@ -675,6 +675,9 @@ describe('row interaction contracts', () => {
 
     const resetBtn = host.querySelector('.wgFilterResetBtn')
     expect(resetBtn).not.toBeNull()
+    expect(host.querySelectorAll('.wgFilterResetBtn')).toHaveLength(1)
+    expect(host.querySelector('.wgEmptyReset')).toBeNull()
+    expect(filterTrigger?.getAttribute('aria-haspopup')).toBe('menu')
 
     // Reset filter
     await act(async () => {

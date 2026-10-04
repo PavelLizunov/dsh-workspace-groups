@@ -1,0 +1,10 @@
+:root {
+  --wg-control-height: 32px;
+  --wg-control-radius: 6px;
+  --wg-control-gap: 6px;
+  --wg-text: var(--dsw-alias-label-primary, var(--dsw-fg-1));
+  --wg-muted: var(--dsw-alias-label-secondary, var(--dsw-fg-2));
+  --wg-border: var(--dsw-alias-border-l2, var(--dsw-border));
+  --wg-surface: var(--dsw-alias-bg-layer-1, Canvas);
+}
+@media (pointer: coarse) { :root { --wg-control-height: 44px; } }

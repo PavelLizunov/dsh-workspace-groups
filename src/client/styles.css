@@ -104,7 +104,7 @@
 
 .wgIconChoice:disabled { opacity: 0.5; cursor: wait; }
 
-.wgScopeFilters { display: grid; gap: 6px; min-width: 0; }
+.wgScopeFilters { display: grid; gap: 6px; min-width: 0; width: 100%; }
 
 .wgScopeFilter {
   display: flex;
@@ -135,7 +135,8 @@
   outline: 2px solid var(--dsw-alias-state-business-primary, #4a90d9);
   outline-offset: 1px;
 }
-.wgScopeMenu { display: block; min-width: 0; }
+.wgScopeMenu { display: block; min-width: 0; width: 100%; }
+.wgFilterTools { display: block; width: 100%; text-align: right; }
 [role="menu"]:has([data-wg-scope-icon]) { max-width: calc(100vw - 24px); }
 [role="menuitem"]:has([data-wg-scope-icon]) { min-width: 0; }
 [role="menuitem"]:has([data-wg-scope-icon]) > span:last-child { min-width: 0; }
@@ -929,8 +930,8 @@
 .wgFilterBar {
   box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   padding: 6px 8px;
   border-bottom: 1px solid var(--dsw-alias-interactive-border, var(--dsw-border-1, rgba(127, 127, 127, 0.2)));
@@ -938,7 +939,9 @@
 }
 
 .wgStatusScopeBar {
-  display: contents;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .wgStatusScopeBtn {
@@ -995,8 +998,10 @@
   align-items: center;
   flex: none;
   margin-left: auto;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font: inherit;
   border: 1px solid var(--dsw-alias-interactive-border, var(--dsw-border-1, rgba(127, 127, 127, 0.2)));
   border-radius: 4px;
   background: transparent;
@@ -1046,13 +1051,13 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 4px 8px;
-  background: var(--dsw-alias-interactive-bg-secondary, rgba(127, 127, 127, 0.08));
+  padding: 6px 8px;
+  border-top: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.2));
   font-size: 11px;
 }
 
 .wgFilterSummaryLabel {
-  color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, inherit));
+  color: var(--dsw-alias-label-secondary, var(--dsw-fg-2, inherit));
   font-weight: 500;
 }
 
@@ -1080,6 +1085,7 @@
     padding: 6px 10px;
     font-size: 13px;
   }
+  .wgScopeFilter, .wgFilterSelectBtn, .wgStatusScopeBtn, .wgFilterResetBtn { min-height: 44px; }
   .wgFilterSelectBtn {
     padding: 5px 10px;
     font-size: 12px;

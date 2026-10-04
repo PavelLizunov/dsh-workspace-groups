@@ -148,6 +148,7 @@ export const en: WorkspaceGroupsDict = {
   'filter.recency.30d': 'Past 30 days',
   'filter.reset': 'Reset filters',
   'filter.summary': 'Active filters',
+  'filter.noMatches': 'No workspaces match these filters',
   'section.topLevel': 'Top-level projects',
   'manual.saveError': 'Could not save group changes',
   'manual.conflictError': 'Group state updated elsewhere',

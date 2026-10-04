@@ -116,6 +116,7 @@ export type WorkspaceGroupsKey =
   | 'filter.recency.30d'
   | 'filter.reset'
   | 'filter.summary'
+  | 'filter.noMatches'
   | 'section.topLevel'
   | 'manual.saveError'
   | 'manual.conflictError'

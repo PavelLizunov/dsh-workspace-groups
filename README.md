@@ -126,7 +126,7 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
   branches hide, while the filtered tree keeps the current expansion and remains collapsible.
   Expansion changes made while filtering are temporary and isolated from the persisted idle state.
   Filtered search results keep the five-session preview and **Show all / Collapse** controls.
-- **Fixed filter controls & active chips**: status scope bar, filter controls, and active summary chips remain fixed at the top of the workspace browser while the tree list scrolls underneath.
+- **Fixed filter controls & active chips**: equal-width scope controls stack above additional filters. One reset action and an explicit no-matches message avoid duplicate controls and misleading empty states. The filter block remains fixed while the tree scrolls underneath.
 - **Session cleanup & archive**: bulk archive inactive sessions older than a configurable threshold (7, 14, 30, 60, 90 days, or custom days). Available globally from Tree Actions (⋯ menu) or scoped to a specific project from the workspace context menu. Safely skips running agents, pending interactions, and the active session.
 - **No regression on workspace/session actions**: Add Workspace, project rename/delete,
   session new/open/rename/fork/archive, and session pin/unpin.
