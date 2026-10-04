@@ -122,7 +122,7 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
   color, and recency narrow the result together.
 - **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
   restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.
-- **Visible criteria, transient expansion**: active filters stay visible with one Reset action; empty
+- **Visible criteria, transient expansion**: active filters stay visible below an icon-labelled Reset button in the summary header; resetting returns keyboard focus to All without clearing search text; empty
   branches hide, while the filtered tree keeps the current expansion and remains collapsible.
   Expansion changes made while filtering are temporary and isolated from the persisted idle state.
   Filtered search results keep the five-session preview and **Show all / Collapse** controls.

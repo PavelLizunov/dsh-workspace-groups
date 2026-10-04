@@ -22,6 +22,7 @@ import {
   IconFolderOpenOutline16,
   IconProjectAddOutline16,
   IconSearchOutline16,
+  IconRefreshOutline16,
   Menu,
   Modal,
   Tooltip,
@@ -424,8 +425,10 @@ export function GroupsBrowser({
       ? previous
       : next)
   }, [])
+  const allFilterButton = useRef<HTMLButtonElement | null>(null)
   const resetFilter = useCallback(() => {
     updateFilter(DEFAULT_SIDEBAR_FILTER)
+    allFilterButton.current?.focus()
     setFilterCategoryExpansion({})
     setFilterWorkspaceExpansion({})
     setFilterRetainedSessions(previous => previous.size === 0 ? previous : new Set())
@@ -1427,6 +1430,7 @@ export function GroupsBrowser({
               <div className="wgStatusScopeBar" role="group" aria-label={t('filter.statusScope')}>
                 <button
                   type="button"
+                  ref={allFilterButton}
                   aria-pressed={filter.status === 'all'}
                   className={`wgStatusScopeBtn${filter.status === 'all' ? ' wgStatusScopeBtnActive' : ''}`}
                   onClick={() => { updateFilter({ ...filter, status: 'all' }) }}
@@ -1471,7 +1475,14 @@ export function GroupsBrowser({
             </div>
             {isFilterActive && (
               <div className="wgFilterSummary">
-                <span className="wgFilterSummaryLabel">{t('filter.summary')}:</span>
+                <div className="wgFilterSummaryHeader">
+                  <span className="wgFilterSummaryLabel">{t('filter.summary')}</span>
+                  <button type="button" className="wgFilterResetBtn" aria-label={t('filter.reset')} onClick={resetFilter}>
+                    <IconRefreshOutline16 />
+                    <span>{t('filter.reset')}</span>
+                  </button>
+                </div>
+                <div className="wgFilterChips">
                 {filter.groupKey !== '' && <span className="wgFilterChip">{groupOptions.find(option => option.id === filter.groupKey)?.label}</span>}
                 {filter.workspaceId !== '' && <span className="wgFilterChip">{workspaceOptions.find(option => option.id === filter.workspaceId)?.label}</span>}
                 {filter.color !== null && (
@@ -1488,13 +1499,7 @@ export function GroupsBrowser({
                     {filter.status === 'warning' ? t('filter.attention') : filter.status === 'ongoing' ? t('filter.running') : t('filter.new')}
                   </span>
                 )}
-                <button
-                  type="button"
-                  className="wgSessionToggleBtn wgFilterResetBtn"
-                  onClick={resetFilter}
-                >
-                  {t('filter.reset')}
-                </button>
+                </div>
               </div>
             )}
           </div>

@@ -29,6 +29,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconProjectAddOutline16: () => <span />,
   IconRefreshOutline14: () => <span />,
   IconSearchOutline16: () => <span />,
+  IconRefreshOutline16: () => <svg data-reset-icon />,
   IconTriangleRightFill14: () => <span />,
   IconTrashOutline16: () => <span />,
   StateDot: ({ state }: { state?: string }) => <span data-state-dot={state ?? ''} />,
@@ -676,6 +677,8 @@ describe('row interaction contracts', () => {
 
     const resetBtn = host.querySelector('.wgFilterResetBtn')
     expect(resetBtn).not.toBeNull()
+    expect(resetBtn?.querySelector('[data-reset-icon]')).not.toBeNull()
+    expect(resetBtn?.closest('.wgFilterSummaryHeader')).not.toBeNull()
     expect(host.querySelectorAll('.wgFilterResetBtn')).toHaveLength(1)
     expect(host.querySelector('.wgEmptyReset')).toBeNull()
     expect(filterTrigger?.getAttribute('aria-haspopup')).toBe('menu')
@@ -687,6 +690,7 @@ describe('row interaction contracts', () => {
 
     expect(scopes[0]?.getAttribute('aria-pressed')).toBe('true')
     expect(host.querySelector('.wgFilterSummary')).toBeNull()
+    expect(document.activeElement).toBe(host.querySelector('.wgStatusScopeBtn'))
 
     vi.unstubAllGlobals()
   })
