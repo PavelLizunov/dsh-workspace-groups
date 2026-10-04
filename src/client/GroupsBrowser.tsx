@@ -64,6 +64,7 @@ import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, 
 import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 import navigatorCss from './workspace-navigator.css?inline'
+import { dateRangeLabel } from './date-range.ts'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
@@ -1505,7 +1506,7 @@ export function GroupsBrowser({
                   </span>
                 )}
                 {filter.recency !== 'all' && (
-                  <span className="wgFilterChip">{t(`filter.recency.${filter.recency}`)}</span>
+                  <span className="wgFilterChip">{filter.recency === 'custom' && filter.dateRange ? dateRangeLabel(filter.dateRange) : t(`filter.recency.${filter.recency}`)}</span>
                 )}
                 {filter.status !== 'all' && (
                   <span className="wgFilterChip">

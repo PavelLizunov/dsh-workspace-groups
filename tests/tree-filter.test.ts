@@ -65,6 +65,20 @@ function createCategory(
   }
 }
 
+describe('extended time windows', () => {
+  it('includes custom start and final-day late event, excludes next midnight', () => {
+    const from = new Date(2026,9,1).getTime(), to = new Date(2026,9,5).getTime()
+    const sessions = [from-1,from,to-1,to].map((updatedAt,i)=>createSession('r'+i,{updatedAt}))
+    const result = applySidebarFilter([], [createWorkspace('custom',sessions)], {...DEFAULT_SIDEBAR_FILTER,recency:'custom',dateRange:{from,to}}, {}, to+1000)
+    expect(result.topLevel[0]?.sessions.map(x=>x.id)).toEqual(['r1','r2'])
+  })
+  it.each([['1h',3600000],['3h',10800000],['90d',90*86400000]] as const)('uses %s exact cutoff', (recency,ms)=>{
+    const sessions=[createSession('older',{updatedAt:NOW-ms-1}),createSession('edge',{updatedAt:NOW-ms}),createSession('new',{updatedAt:NOW})]
+    const result=applySidebarFilter([], [createWorkspace('quick',sessions)], {...DEFAULT_SIDEBAR_FILTER,recency}, {}, NOW)
+    expect(result.topLevel[0]?.sessions.map(x=>x.id)).toEqual(['edge','new'])
+  })
+})
+
 describe('sidebarFilterActive', () => {
   it('returns false for DEFAULT_SIDEBAR_FILTER', () => {
     expect(sidebarFilterActive(DEFAULT_SIDEBAR_FILTER)).toBe(false)

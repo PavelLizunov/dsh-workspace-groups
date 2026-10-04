@@ -106,12 +106,24 @@ export const FILTER_COLOR_PRESETS = ['red', 'orange', 'yellow', 'green', 'cyan',
 
 export type ColorPreset = typeof FILTER_COLOR_PRESETS[number]
 export type StatusScope = 'all' | 'warning' | 'ongoing' | 'done'
-export type RecencyScope = 'all' | '24h' | '7d' | '30d'
+export const QUICK_RECENCY_SCOPES = ['all', '1h', '3h', '24h', '7d', '30d', '90d'] as const
+export type RecencyScope = typeof QUICK_RECENCY_SCOPES[number] | 'custom'
+export interface DateRange { from: number; to: number }
+export function isDateRange(value: unknown): value is DateRange {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const range = value as Record<string, unknown>
+  return Object.keys(range).every(key => key === 'from' || key === 'to')
+    && Number.isSafeInteger(range.from) && Number.isSafeInteger(range.to)
+    && (range.from as number) >= 0 && (range.to as number) <= 8.64e15
+    && (range.from as number) < (range.to as number)
+}
 
 /** Profile-level sidebar filter shared across browser clients. */
 export interface SidebarFilterPreferences {
   status: StatusScope
   recency: RecencyScope
+  /** Custom interval: inclusive start, exclusive end, persisted as absolute instants. */
+  dateRange?: DateRange
   color: ColorPreset | null
   /** Empty string means every project. A missing field in older settings means the same. */
   workspaceId: string
@@ -133,9 +145,10 @@ export function isSidebarFilterPreferences(raw: unknown): raw is Omit<SidebarFil
   const value = raw as Record<string, unknown>
   const keys = Object.keys(value)
   if (!Object.hasOwn(value, 'status') || !Object.hasOwn(value, 'recency') || !Object.hasOwn(value, 'color')) return false
-  if (keys.some(key => key !== 'status' && key !== 'recency' && key !== 'color' && key !== 'workspaceId' && key !== 'groupKey')) return false
+  if (keys.some(key => key !== 'status' && key !== 'recency' && key !== 'color' && key !== 'workspaceId' && key !== 'groupKey' && key !== 'dateRange')) return false
   return ['all', 'warning', 'ongoing', 'done'].includes(value.status as string)
-    && ['all', '24h', '7d', '30d'].includes(value.recency as string)
+    && [...QUICK_RECENCY_SCOPES, 'custom'].includes(value.recency as RecencyScope)
+    && (value.recency === 'custom' ? isDateRange(value.dateRange) : !Object.hasOwn(value, 'dateRange') || value.dateRange === null || isDateRange(value.dateRange))
     && (value.color === null || FILTER_COLOR_PRESETS.includes(value.color as ColorPreset))
     && (!Object.hasOwn(value, 'workspaceId') || (typeof value.workspaceId === 'string' && value.workspaceId.length <= 512))
     && (!Object.hasOwn(value, 'groupKey') || (typeof value.groupKey === 'string' && value.groupKey.length <= 512))
@@ -150,6 +163,7 @@ export function parseSidebarFilterPreferences(raw: unknown): SidebarFilterPrefer
     color: raw.color,
     workspaceId: raw.workspaceId ?? '',
     groupKey: raw.groupKey ?? '',
+    ...(raw.recency === 'custom' ? { dateRange: raw.dateRange! } : {}),
   }
 }
 

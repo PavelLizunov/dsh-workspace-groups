@@ -20,6 +20,7 @@ import type { GroupsContext, GroupsSessionProjectionsContext, GroupsSettingsCont
 import {
   DEFAULT_SIDEBAR_FILTER,
   FILTER_COLOR_PRESETS,
+  QUICK_RECENCY_SCOPES,
   isSidebarFilterPreferences,
   parseSidebarFilterPreferences,
   type ManualGroups,
@@ -47,9 +48,11 @@ const MAX_PREFERENCES_BODY_BYTES = 1024
 const FILTER_SETTINGS_NAMESPACE = 'dsh-workspace-groups'
 const FILTER_PREFERENCES_SCHEMA = Schema.object({
   status: Schema.union(['all', 'warning', 'ongoing', 'done'].map(value => Schema.const(value))).default('all'),
-  recency: Schema.union(['all', '24h', '7d', '30d'].map(value => Schema.const(value))).default('all'),
+  recency: Schema.union([...QUICK_RECENCY_SCOPES, 'custom'].map(value => Schema.const(value))).default('all'),
+  dateRange: Schema.union([Schema.const(null), Schema.object({ from: Schema.number(), to: Schema.number() })]).default(null),
   color: Schema.union([Schema.const(null), ...FILTER_COLOR_PRESETS.map(value => Schema.const(value))]).default(null),
   workspaceId: Schema.string().default(''),
+  groupKey: Schema.string().default(''),
 })
 
 /** Error with an HTTP status, mapped to a plain-text 4xx/5xx response. */

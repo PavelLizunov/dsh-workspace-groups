@@ -965,6 +965,16 @@
   }
 }
 
+[role="presentation"]:has(> .wgDateRangeModal) { z-index: 1500 !important; }
+.wgDateRangeModal { background-color: var(--dsw-alias-bg-layer-1, Canvas); color: var(--dsw-alias-label-primary, CanvasText); }
+.wgDateRangeFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.wgDateRangeFields label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--dsw-alias-label-primary, CanvasText); }
+.wgDateRangeFields input { min-width: 0; box-sizing: border-box; min-height: 40px; padding: 8px; font: inherit; border-radius: 4px; border: 1px solid var(--dsw-alias-border-l2, rgba(127,127,127,.3)); background: var(--dsw-alias-bg-layer-1, Canvas); color: inherit; color-scheme: light dark; }
+.wgDateRangeHint { font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary, GrayText); }
+.wgDateRangeError { font-size: 12px; color: var(--dsw-alias-state-error-primary, #dc2626); }
+@media (max-width: 400px) { .wgDateRangeFields { grid-template-columns: minmax(0, 1fr); } }
+@media (pointer: coarse) { .wgDateRangeFields input { min-height: 44px; } }
+
 /* Sidebar Filtering Styles */
 .wgFilterBar {
   box-sizing: border-box;

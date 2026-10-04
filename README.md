@@ -118,7 +118,7 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
   session), matched rows highlighted with a content snippet, 250ms debounce
 - **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
   New**; **Needs attention** includes both Awaiting and Error sessions. Separate visual controls offer
-  a labelled color palette (All colors + eight presets) and clock/calendar-marked periods (any time, 24 hours, 7 or 30 days). Current choices appear on the buttons. Text, status,
+  a labelled color palette (All colors + eight presets) and clock/calendar-marked periods (any time, 1/3/24 hours, 7/30/90 days) plus **Custom range…** with native From/To calendars. Both selected days are included; browser-local day boundaries are saved as absolute instants across browsers. Apply commits the range; Cancel leaves filters untouched. Requires compatible Host + Client; reset/preset choices clear the custom interval. Current choices appear on the buttons. Text, status,
   color, and recency narrow the result together.
 - **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
   restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.

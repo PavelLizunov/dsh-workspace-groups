@@ -19,7 +19,9 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', async () => {
   const Menu = new Function('React', 'createPortal', 'clsx', 'css$7', 'IconCheckOutline16', 'jsx', 'jsxs',
     `const {useRef,useState,useEffect,useLayoutEffect,useCallback}=React; ${menuSource}; return Menu;`
   )(react, dom.createPortal, (...classes: unknown[]) => classes.filter(Boolean).join(' '), {}, icon, runtime.jsx, runtime.jsxs)
-  return { Menu, IconFolderClose16: icon, IconChevronDownOutline14: icon, IconClockOutline16: icon, IconChevronLeftOutline14: icon, IconChevronRightOutline14: icon }
+  const Modal = ({ open, children, footer }: { open: boolean; children: React.ReactNode; footer: React.ReactNode }) => open ? react.createElement('div', { role: 'dialog' }, children, footer) : null
+  const Button = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => react.createElement('button', props, children)
+  return { Menu, Modal, Button, IconFolderClose16: icon, IconChevronDownOutline14: icon, IconClockOutline16: icon, IconChevronLeftOutline14: icon, IconChevronRightOutline14: icon }
 })
 import { ScopeFilter } from '../src/client/ScopeFilter.tsx'
 import { WorkspaceNavigator } from '../src/client/WorkspaceNavigator.tsx'
@@ -57,15 +59,35 @@ describe('visual color and period controls', () => {
     act(() => { document.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click() })
     expect(change).toHaveBeenCalledWith({ ...filter, color: null })
   })
+  it('applies validated calendar range only on Apply; Cancel preserves it', () => {
+    const change = vi.fn()
+    act(() => { root.render(<SidebarFilterControls filter={filter} onChange={change} t={t} />) })
+    const trigger = host.querySelector<HTMLButtonElement>('[data-wg-filter-period-trigger]')!
+    act(() => { trigger.click() })
+    act(() => { document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[7]!.click() })
+    const dialog = host.querySelector('[role="dialog"]')!
+    const inputs = dialog.querySelectorAll<HTMLInputElement>('input[type="date"]')
+    const input = (i: number, value: string) => { act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(inputs[i],value);inputs[i]!.dispatchEvent(new Event('input',{bubbles:true})) }) }
+    input(0,'2026-10-05');input(1,'2026-10-04')
+    const apply = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find(x=>x.textContent==='filter.range.apply')!
+    expect(apply.disabled).toBe(true)
+    input(0,'2026-10-01')
+    expect(apply.disabled).toBe(false)
+    act(() => { apply.click() })
+    expect(change).toHaveBeenCalledWith({...filter,recency:'custom',dateRange:{from:new Date(2026,9,1).getTime(),to:new Date(2026,9,5).getTime()}})
+    act(() => { trigger.click() });act(() => { document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[7]!.click() })
+    const cancel = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(x=>x.textContent==='filter.range.cancel')!
+    act(() => { cancel.click() });expect(change).toHaveBeenCalledTimes(1)
+  })
   it('changes only period and dismisses with Escape', () => {
     const change = vi.fn()
     act(() => { root.render(<SidebarFilterControls filter={filter} onChange={change} t={t} />) })
     const trigger = host.querySelector<HTMLButtonElement>('[data-wg-filter-period-trigger]')!
     act(() => { trigger.click() })
     const choices = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
-    expect(choices).toHaveLength(4)
-    expect(choices[2]?.querySelector('svg text')?.textContent).toBe('7')
-    act(() => { choices[3]!.click() })
+    expect(choices).toHaveLength(8)
+    expect(choices[4]?.querySelector('svg text')?.textContent).toBe('7')
+    act(() => { choices[5]!.click() })
     expect(change).toHaveBeenCalledWith({ ...filter, recency: '30d' })
     act(() => { trigger.click() })
     act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })

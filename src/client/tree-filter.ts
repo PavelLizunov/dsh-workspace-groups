@@ -36,6 +36,9 @@ export function sidebarFilterActive(filter: SidebarFilter): boolean {
 
 function getRecencyCutoff(recency: RecencyScope, now: number): number {
   switch (recency) {
+    case '1h': return now - 60 * 60 * 1000
+    case '3h': return now - 3 * 60 * 60 * 1000
+    case '90d': return now - 90 * 24 * 60 * 60 * 1000
     case '24h':
       return now - 24 * 60 * 60 * 1000
     case '7d':
@@ -90,7 +93,8 @@ export function applySidebarFilter(
   topLevel: WorkspaceGroupNode[]
   counts: FilterCounts
 } {
-  const cutoff = getRecencyCutoff(filter.recency, now)
+  const cutoff = filter.recency === 'custom' ? filter.dateRange?.from ?? Infinity : getRecencyCutoff(filter.recency, now)
+  const upperBound = filter.recency === 'custom' ? filter.dateRange?.to ?? -Infinity : Infinity
   const counts: FilterCounts = { all: 0, warning: 0, ongoing: 0, done: 0 }
 
   if (filter.status === 'all' && filter.recency === 'all' && filter.color === null && filter.workspaceId === '' && filter.groupKey === '') {
@@ -163,7 +167,7 @@ export function applySidebarFilter(
     const matchedSessions: SessionNode[] = []
     let matchedAttention: AttentionState | undefined
     for (const session of workspace.sessions) {
-      if (session.updatedAt < cutoff) continue
+      if (session.updatedAt < cutoff || session.updatedAt >= upperBound) continue
       counts.all++
       const state = sessionAttention(session)
       if (state === 'error' || state === 'warning') counts.warning++

@@ -248,6 +248,16 @@ describe('Host HTTP routes revision concurrency & unwrap compatibility', () => {
     expect(current.revision).toBe(seeded.revision)
   })
 
+  it('roundtrips custom time range and rejects invalid bounds before persistence', async () => {
+    const custom: SidebarFilterPreferences = {...DEFAULT_SIDEBAR_FILTER,recency:'custom',dateRange:{from:100,to:200}}
+    const put = (filter: unknown) => fetch(`${baseUrl}/workspace-groups/preferences`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({filter})})
+    expect((await put(custom)).status).toBe(200)
+    expect(await fetch(`${baseUrl}/workspace-groups/preferences`).then(x=>x.json())).toEqual({filter:custom})
+    for(const dateRange of [{from:200,to:100},{from:100,to:100},{from:-1,to:200},undefined])expect((await put({...custom,dateRange})).status).toBe(400)
+    expect(await fetch(`${baseUrl}/workspace-groups/preferences`).then(x=>x.json())).toEqual({filter:custom})
+    expect((await put({...DEFAULT_SIDEBAR_FILTER,recency:'1h'})).status).toBe(200)
+    expect(await fetch(`${baseUrl}/workspace-groups/preferences`).then(x=>x.json())).toEqual({filter:{...DEFAULT_SIDEBAR_FILTER,recency:'1h'}})
+  })
   it('persists profile filter preferences through GET and PUT', async () => {
     const initial = await fetch(`${baseUrl}/workspace-groups/preferences`).then(res => res.json())
     expect(initial).toEqual({ filter: DEFAULT_SIDEBAR_FILTER })

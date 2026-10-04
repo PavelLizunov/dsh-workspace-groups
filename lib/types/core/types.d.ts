@@ -99,11 +99,19 @@ export interface ManualGroups {
 export declare const FILTER_COLOR_PRESETS: readonly ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"];
 export type ColorPreset = typeof FILTER_COLOR_PRESETS[number];
 export type StatusScope = 'all' | 'warning' | 'ongoing' | 'done';
-export type RecencyScope = 'all' | '24h' | '7d' | '30d';
+export declare const QUICK_RECENCY_SCOPES: readonly ["all", "1h", "3h", "24h", "7d", "30d", "90d"];
+export type RecencyScope = typeof QUICK_RECENCY_SCOPES[number] | 'custom';
+export interface DateRange {
+    from: number;
+    to: number;
+}
+export declare function isDateRange(value: unknown): value is DateRange;
 /** Profile-level sidebar filter shared across browser clients. */
 export interface SidebarFilterPreferences {
     status: StatusScope;
     recency: RecencyScope;
+    /** Custom interval: inclusive start, exclusive end, persisted as absolute instants. */
+    dateRange?: DateRange;
     color: ColorPreset | null;
     /** Empty string means every project. A missing field in older settings means the same. */
     workspaceId: string;

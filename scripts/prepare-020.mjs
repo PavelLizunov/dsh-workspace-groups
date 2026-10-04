@@ -71,7 +71,7 @@ change('src/client/session-cleanup.ts', s => replace(s, 'options.pendingInteract
 change('src/context-types.ts', s => replace(s, `  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): {\n    get(): unknown\n    update(patch: object): Promise<void>\n  }`, '  update(namespace: string, patch: object): Promise<void>'))
 change('src/index.ts', s => {
   s = replace(s, "const FILTER_SETTINGS_NAMESPACE = 'dsh-workspace-groups'", `const FILTER_SETTINGS_NAMESPACE = '${settingsNamespace}'`)
-  s = replace(s, '/** Error with an HTTP status', "export const Config = Schema.object({ filter: FILTER_PREFERENCES_SCHEMA.default(DEFAULT_SIDEBAR_FILTER).volatile() })\n\n/** Error with an HTTP status")
+  s = replace(s, '/** Error with an HTTP status', "export const Config: Schema = Schema.object({ filter: FILTER_PREFERENCES_SCHEMA.default(DEFAULT_SIDEBAR_FILTER).volatile() })\n\n/** Error with an HTTP status")
   s = replace(s, 'export function apply(ctx: GroupsContext): void', 'export function apply(ctx: GroupsContext, config: { filter: { get(): SidebarFilterPreferences } }): void')
   s = replace(s, "    const scope = settings.register(FILTER_SETTINGS_NAMESPACE, FILTER_PREFERENCES_SCHEMA, { applies: 'live' })\n", '')
   return s.replaceAll('scope.get()', 'config.filter.get()').replaceAll('scope.update(filter)', "settings.update(FILTER_SETTINGS_NAMESPACE, { filter })")
