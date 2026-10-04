@@ -32,6 +32,19 @@ const mainSessionId = generatedSelection()
 const row = (id: string, count = 0) => ({ id, retainedBy: { mainView: count } })
 
 describe('0.2 generated sidebar selection', () => {
+  it('adapts scope-filter icons to published 0.2 primitive names', () => {
+    const parent = mkdtempSync(path.join(tmpdir(), 'wg-020-icons-'))
+    try {
+      const target = path.join(parent, 'candidate')
+      execFileSync(process.execPath, ['scripts/prepare-020.mjs', target], { cwd: process.cwd() })
+      const source = readFileSync(path.join(target, 'src/client/ScopeFilter.tsx'), 'utf8')
+      expect(source).toContain('IconFolderCloseMedium')
+      expect(source).toContain('IconChevronDownOutlineMedium')
+      expect(source).not.toMatch(/IconFolderClose16|IconChevronDownOutline14/)
+    } finally {
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
   it('returns the retained main-view session independently for each snapshot', () => {
     expect(mainSessionId({ byId: { a: row('a'), b: row('b', 1) } })).toBe('b')
     expect(mainSessionId({ byId: { c: row('c', 2) } })).toBe('c')

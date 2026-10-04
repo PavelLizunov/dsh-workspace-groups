@@ -28,7 +28,7 @@ function replace(text, from, to) {
   return text.replace(from, to)
 }
 const icons = /\b(Icon\w+?)(?:14|16|20)\b/g
-for (const name of ['ColorMenu.tsx', 'DirectoryBrowser.tsx', 'GroupsBrowser.tsx', 'rows.tsx']) {
+for (const name of ['ColorMenu.tsx', 'DirectoryBrowser.tsx', 'GroupsBrowser.tsx', 'ScopeFilter.tsx', 'rows.tsx']) {
   change('src/client/' + name, s => s.replace(icons, '$1Medium'))
 }
 for (const name of ['contract.ts', 'index.ts', 'GroupsBrowser.tsx', 'tree.ts', 'tree-search.ts', 'session-cleanup.ts']) {
