@@ -132,6 +132,7 @@ export const zh: WorkspaceGroupsDict = {
   'icon.group.animals': '动物',
   'icon.group.additional': '其他',
   'filter.title': '筛选',
+  'filter.color.all': '所有颜色',
   'filter.group': '分组',
   'filter.group.all': '所有分组',
   'filter.project': '工作区',

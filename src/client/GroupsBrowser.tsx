@@ -18,7 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import {
   Button,
   IconCloseFill14,
-  IconChevronDownOutline14,
   IconEllipsisOutline16,
   IconFolderOpenOutline16,
   IconProjectAddOutline16,
@@ -31,9 +30,7 @@ import {
   DEFAULT_SIDEBAR_FILTER,
   applySidebarFilter,
   sidebarFilterActive,
-  type ColorPreset,
   type FilterCounts,
-  type RecencyScope,
   type SidebarFilter,
   type StatusScope,
 } from './tree-filter.ts'
@@ -58,11 +55,12 @@ import type { GroupsBrowserProps } from './contract.ts'
 import type { FolderIconId, FolderIconScope } from '../core/icons.ts'
 import { FolderIconPicker } from './FolderIconPicker.tsx'
 import { ScopeFilter } from './ScopeFilter.tsx'
+import { SidebarFilterControls } from './SidebarFilterControls.tsx'
 import { DirectoryBrowser } from './DirectoryBrowser.tsx'
 import { moveWorkspace as moveWorkspaceOverlay, removeGroup, removeWorkspace, renameGroup, setFolderIcon, setItemColor, togglePinSession } from './overlay-core.ts'
 import { SESSION_ROW_LIMIT, visibleWorkspaceSessions } from './session-limit.ts'
 import { deriveCompletionObservations, deriveSearchGroups, deriveSearchMatches, deriveWorkspaceTree, projectTreeExpansion, UNCATEGORIZED_KEY, workspaceLabel, type CategoryNode, type SessionNode, type WorkspaceGroupNode, type WorkspaceTree } from './tree.ts'
-import { CategoryRow, COLOR_PRESETS, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
+import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, IconCollapseAll16, SessionRow, WorkspaceRow, type WorkspaceMoveTarget } from './rows.tsx'
 import css from './styles.css?inline'
 
 const SEARCH_DEBOUNCE_MS = 250
@@ -209,67 +207,6 @@ export type DragIndicator =
   | { mode: 'line'; row: DropRowRef; before: boolean }
   | { mode: 'into'; categoryKey: string }
   | null
-
-function SidebarFilterMenu({ filter, onChange, onReset, t }: {
-  filter: SidebarFilter
-  onChange: (filter: SidebarFilter) => void
-  onReset: () => void
-  t: GroupsBrowserProps['t']
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Menu
-      open={open}
-      onClose={() => { setOpen(false) }}
-      items={[
-        { type: 'label' as const, id: 'color-label', text: t('color.title') },
-        { id: 'color:none', label: t('color.reset') },
-        ...COLOR_PRESETS.map(color => ({
-          id: `color:${color}`,
-          label: t(`color.${color}`),
-          icon: <span className="wgFilterColorDot" data-color={color} />,
-        })),
-        { type: 'separator' as const, id: 'filter-separator' },
-        { type: 'label' as const, id: 'recency-label', text: t('filter.recency') },
-        { id: 'recency:all', label: t('filter.recency.all') },
-        { id: 'recency:24h', label: t('filter.recency.24h') },
-        { id: 'recency:7d', label: t('filter.recency.7d') },
-        { id: 'recency:30d', label: t('filter.recency.30d') },
-      ]}
-      footer={[{ id: 'filter:reset', label: t('filter.reset') }]}
-      selectedIds={[`color:${filter.color ?? 'none'}`, `recency:${filter.recency}`]}
-      onSelect={(id) => {
-        if (id === 'filter:reset') {
-          onReset()
-
-        } else if (id.startsWith('color:')) {
-          const color = id.slice('color:'.length)
-          onChange({ ...filter, color: color === 'none' ? null : color as ColorPreset })
-        } else if (id.startsWith('recency:')) {
-          onChange({ ...filter, recency: id.slice('recency:'.length) as RecencyScope })
-        }
-      }}
-      portal
-      compact
-      closeOnPointerLeave
-      align="end"
-      className="wgFilterTools"
-      anchor={(
-        <button
-          type="button"
-          className={`wgFilterSelectBtn${filter.color !== null || filter.recency !== 'all' || filter.workspaceId !== '' ? ' wgFilterSelectBtnActive' : ''}`}
-          aria-label={t('filter.title')}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={(event) => { event.stopPropagation(); setOpen(value => !value) }}
-        >
-          {t('filter.title')}
-          <IconChevronDownOutline14 />
-        </button>
-      )}
-    />
-  )
-}
 
 /**
  * Render the browsing region.
@@ -1530,7 +1467,7 @@ export function GroupsBrowser({
                 <ScopeFilter label={t('filter.project')} value={filter.workspaceId} options={workspaceOptions}
                   onChange={workspaceId => { updateFilter({ ...filter, workspaceId }) }} />
               </div>
-              <SidebarFilterMenu filter={filter} onChange={updateFilter} onReset={resetFilter} t={t} />
+              <SidebarFilterControls filter={filter} onChange={updateFilter} t={t} />
             </div>
             {isFilterActive && (
               <div className="wgFilterSummary">

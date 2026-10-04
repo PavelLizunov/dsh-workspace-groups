@@ -136,7 +136,42 @@
   outline-offset: 1px;
 }
 .wgScopeMenu { display: block; min-width: 0; width: 100%; }
-.wgFilterTools { display: block; width: 100%; text-align: right; }
+.wgFilterTools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 6px; width: 100%; }
+.wgFilterTools > span { min-width: 0; }
+.wgFilterTools .wgFilterSelectBtn { width: 100%; min-height: 32px; margin: 0; justify-content: flex-start; }
+.wgFilterTools svg { width: 16px; height: 16px; flex: none; }
+.wgFilterToolLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+
+/* Scope native Menu by content so both supported runtimes retain its placement/focus behavior. */
+[role="menu"]:has([data-wg-filter-palette], [data-wg-filter-period]) {
+  background-color: var(--dsw-alias-bg-layer-1, Canvas);
+}
+[role="menu"]:has([data-wg-filter-palette]) {
+  width: min(260px, calc(100vw - 24px)); min-width: 0; padding: 8px;
+}
+[role="menu"]:has([data-wg-filter-palette]) > div:has(> div > [role="menuitem"]) {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+}
+[role="menu"]:has([data-wg-filter-palette]) [role="menuitem"] {
+  position: relative; min-width: 0; min-height: 62px; padding: 8px 4px;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px; border-radius: 4px;
+}
+[role="menu"]:has([data-wg-filter-palette]) [role="menuitem"] > span { flex: none; }
+[role="menu"]:has([data-wg-filter-palette]) [role="menuitem"] > span:first-child { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+[role="menu"]:has([data-wg-filter-palette]) .wgFilterColorDot, .wgFilterNoColor { flex: none; }
+[role="menu"]:has([data-wg-filter-palette]) [role="menuitem"] > svg { position: absolute; top: 4px; right: 4px; width: 12px; }
+[role="menu"]:has([data-wg-filter-palette]) .wgFilterColorDot,
+.wgFilterNoColor { width: 22px; height: 22px; border-radius: 50%; }
+.wgFilterNoColor { display: inline-block; box-sizing: border-box; border: 1px solid currentColor; }
+[role="menu"]:has([data-wg-filter-period]) [role="menuitem"] { min-height: 40px; gap: 10px; }
+[role="menu"]:has([data-wg-filter-period]) svg { width: 20px; height: 20px; }
+[role="menu"]:has([data-wg-filter-palette], [data-wg-filter-period]) [role="menuitem"]:has([data-wg-filter-selected="true"]) {
+  outline: 1px solid var(--dsw-alias-state-business-primary, #4a90d9); outline-offset: -1px;
+  background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.14));
+}
+@media (pointer: coarse) {
+  .wgFilterTools .wgFilterSelectBtn, [role="menu"]:has([data-wg-filter-period]) [role="menuitem"] { min-height: 44px; }
+}
 [role="menu"]:has([data-wg-scope-icon]) { max-width: calc(100vw - 24px); }
 [role="menuitem"]:has([data-wg-scope-icon]) { min-width: 0; }
 [role="menuitem"]:has([data-wg-scope-icon]) > span:last-child { min-width: 0; }

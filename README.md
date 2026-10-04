@@ -117,8 +117,8 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched
   session), matched rows highlighted with a content snippet, 250ms debounce
 - **Finder-style filtering**: the status scope switches between **All / Needs attention / Running /
-  New**; **Needs attention** includes both Awaiting and Error sessions. The Filter menu adds one
-  group/project/session color and an optional 24-hour, 7-day, or 30-day recency window. Text, status,
+  New**; **Needs attention** includes both Awaiting and Error sessions. Separate visual controls offer
+  a labelled color palette (All colors + eight presets) and clock/calendar-marked periods (any time, 24 hours, 7 or 30 days). Current choices appear on the buttons. Text, status,
   color, and recency narrow the result together.
 - **Profile-persisted filters**: status, color, and recency are stored in the active DSH profile and
   restored after refresh or in another browser. Already-open browsers pick up changes on the next page load.

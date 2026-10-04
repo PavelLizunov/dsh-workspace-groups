@@ -41,6 +41,9 @@ describe('0.2 generated sidebar selection', () => {
       expect(source).toContain('IconFolderCloseMedium')
       expect(source).toContain('IconChevronDownOutlineMedium')
       expect(source).not.toMatch(/IconFolderClose16|IconChevronDownOutline14/)
+      const controls = readFileSync(path.join(target, 'src/client/SidebarFilterControls.tsx'), 'utf8')
+      expect(controls).toContain('IconClockOutlineMedium')
+      expect(controls).not.toMatch(/IconClockOutline16|IconChevronDownOutline14/)
     } finally {
       rmSync(parent, { recursive: true, force: true })
     }

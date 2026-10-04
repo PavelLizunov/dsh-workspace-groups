@@ -19,6 +19,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconBranchOutline16: () => <span />,
   IconCloseFill14: () => <span />,
   IconChevronDownOutline14: () => <span />,
+  IconClockOutline16: () => <span />,
   IconEditOutline16: () => <span />,
   IconEllipsisOutline16: () => <span />,
   IconFolderClose16: () => <span />,
@@ -649,7 +650,7 @@ describe('row interaction contracts', () => {
     expect(scopes[1]?.textContent).toContain('filter.attention')
     expect(scopes[2]?.textContent).toContain('filter.running')
     expect(scopes[3]?.textContent).toContain('filter.new')
-    const filterTrigger = host.querySelector('[aria-label="filter.title"]')
+    const filterTrigger = host.querySelector('[data-wg-filter-color]')
     expect(filterTrigger).not.toBeNull()
     const filterMenu = filterTrigger?.closest('[data-menu-portal]')
     expect(filterMenu?.getAttribute('data-menu-portal')).toBe('true')

@@ -132,6 +132,7 @@ export const en: WorkspaceGroupsDict = {
   'icon.group.animals': 'Animals',
   'icon.group.additional': 'Additional',
   'filter.title': 'Filter',
+  'filter.color.all': 'All colors',
   'filter.group': 'Group',
   'filter.group.all': 'All groups',
   'filter.project': 'Workspace',
