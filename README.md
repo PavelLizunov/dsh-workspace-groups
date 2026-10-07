@@ -41,6 +41,12 @@ Historical interface examples with privacy-safe demo names. These screenshots pr
 | :---: | :---: | :---: |
 | <img src=".github/screenshots/sidebar-overview.png" alt="Grouped DSH sidebar with categories, workspaces, sessions, and attention states" /> | <img src=".github/screenshots/bulk-tree-controls.png" alt="Bulk Collapse all, Expand groups only, and Expand all menu" /> | <img src=".github/screenshots/finder-filters.png" alt="Fixed Finder-style status, color, and recency filters" /> |
 
+## Phone layout
+
+At viewport widths below 768px, the grouped sidebar uses larger touch targets, two-line project/session names and a collapsible filter panel. Filter selections and desktop behavior are preserved. Category/workspace action menus remain available without hover; drag handles are hidden on phones.
+
+The optional local `packages/mobile-shortcuts` extension adds resident Photo and right-panel shortcuts to the existing `dsh-web-mobile` client. Photo uses the host composer intake and requests the rear camera; pictures stay in the draft. Native camera chooser behavior depends on Safari/iOS and needs a real-device check. Build instructions are in `packages/mobile-shortcuts/README.md`.
+
 ## Features
 
 ### Grouped tree browsing

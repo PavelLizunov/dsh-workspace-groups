@@ -1248,3 +1248,46 @@
 .wgCleanupEmpty {
   color: var(--dsw-alias-label-tertiary, var(--dsw-fg-3, inherit));
 }
+
+/* Phone drawer: prioritize names and explicit touch targets over desktop density. */
+.wgMobileFilterToggle { display: none; }
+@media (max-width: 767px) {
+  .wgRoot { min-width: 0; max-width: 100%; }
+  .wgSectionHeader { height: auto; min-height: 52px; flex-wrap: wrap; padding: 6px 8px; gap: 4px; }
+  .wgSectionLabel { flex-basis: 100%; max-width: 100%; padding: 2px 0; }
+  .wgSectionLabelHidden { display: none; }
+  .wgIconButton, .wgRowActions .wgIconButton { width: 44px; height: 44px; }
+  .wgSearch { height: 44px; min-height: 44px; max-width: none; }
+  .wgSearchExpanded { height: 44px; }
+  .wgSearchInput { font-size: 16px; }
+  .wgHeaderActions { max-width: none; gap: 0; }
+  .wgHeaderActionsHidden { max-width: 0; }
+  .wgMobileFilterToggle { display: flex; align-items: center; gap: 8px; width: calc(100% - 16px); margin: 0 8px 6px; min-height: 44px; padding: 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; text-align: left; touch-action: manipulation; }
+  .wgMobileFilterToggle > span { flex: 1; }
+  .wgTreeControls:not([data-mobile-filters-expanded="true"]) { display: none; }
+  .wgStatusFilter { flex-wrap: wrap; gap: 6px; }
+  .wgStatusScope, .wgStatusTabs { flex: 1; min-width: 0; }
+  .wgStatusScopeBtn, .wgStatusTab, .wgFilterSelectBtn, .wgScopeFilter { min-height: 44px; }
+  .wgStatusTab { flex: 1; justify-content: center; }
+  .wgFilters { width: auto; min-width: 0; }
+  .wgFilterTools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .wgFilterSelectBtn.wgFilterReset { margin-left: 0; }
+  .wgTree { padding: 0 4px; overflow-x: hidden; }
+  .wgWorkspaceGroup { margin-left: 8px; }
+  .wgWorkspaceChildren { margin-left: 8px; }
+  .wgWorkspaceRow { padding-left: 4px; }
+  .wgCategoryRow, .wgWorkspaceRow { min-height: 48px; gap: 4px; }
+  .wgDragHandle { width: 24px; }
+  .wgRowLabel, .wgCategoryLabel, .wgProjectLabel { white-space: normal; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .wgRowActions { opacity: 1; gap: 0; }
+  .wgDragHandle, [data-wg-drag-handle="category"] { display: none; }
+  .wgSessionRow { min-height: 78px; position: relative; flex-wrap: wrap; gap: 2px 4px; padding: 6px 8px 6px 8px; }
+  .wgSessionTitle { flex: 1 1 calc(100% - 28px); white-space: normal; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .wgSessionRow .wgSessionTime { margin-left: 18px; width: calc(100% - 116px); }
+  .wgSessionRow .wgRowActions { position: absolute; bottom: 0; right: 0; }
+  .wgCategoryRow .wgRowActions > span:has([data-wg-color-menu-trigger]),
+  .wgWorkspaceRow .wgRowActions > span:has([data-wg-color-menu-trigger]) { display: none; }
+  .wgShowMore { min-height: 44px; margin-left: 8px; }
+  .wgFilterSummary { min-width: 0; padding: 6px 8px; }
+  .wgFilterChip { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+}

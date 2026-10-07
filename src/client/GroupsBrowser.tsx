@@ -366,6 +366,7 @@ export function GroupsBrowser({
 
   const [query, setQuery] = useState('')
   const [searchExpanded, setSearchExpanded] = useState(false)
+  const [mobileFiltersExpanded, setMobileFiltersExpanded] = useState(false)
   const normalizedQuery = sanitizeSearchQuery(query).trim()
   const [remoteSearch, setRemoteSearch] = useState<RemoteSearchState>({
     query: '', status: 'idle', items: [], hasMore: false,
@@ -1439,7 +1440,13 @@ export function GroupsBrowser({
 
       {wide && (
         <div className="wgTreeBody">
-          <div className="wgTreeControls">
+          <button type="button" className="wgMobileFilterToggle" aria-expanded={mobileFiltersExpanded}
+            onClick={() => setMobileFiltersExpanded(value => !value)}>
+            <span>{t('filter.title')}</span>
+            {isFilterActive && <span aria-label={t('filter.summary')}>•</span>}
+            <span aria-hidden="true">{mobileFiltersExpanded ? '−' : '+'}</span>
+          </button>
+          <div className="wgTreeControls" data-mobile-filters-expanded={mobileFiltersExpanded}>
             <div className="wgFilterBar" role="toolbar" aria-label={t('filter.statusScope')}>
               <div className="wgStatusScopeBar" role="group" aria-label={t('filter.statusScope')}>
                 <button
