@@ -4,7 +4,7 @@ const output = process.argv[2] ?? '/tmp/dsh-mobile-gui-probe'
 fs.mkdirSync(output, { recursive: true })
 const browser = await chromium.launch({headless: true, executablePath:'/var/lib/dsh/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell', args:['--no-sandbox']})
 try {
- const context = await browser.newContext({viewport:{width:Number(process.env.MOBILE_WIDTH??390),height:844},isMobile:Number(process.env.MOBILE_WIDTH??390)<768,hasTouch:Number(process.env.MOBILE_WIDTH??390)<768,colorScheme:process.env.MOBILE_DARK==='1'?'dark':'light',locale:'ru-RU'})
+ const context = await browser.newContext({viewport:{width:Number(process.env.MOBILE_WIDTH??390),height:844},isMobile:process.env.MOBILE_DESKTOP!=='1'&&Number(process.env.MOBILE_WIDTH??390)<768,hasTouch:process.env.MOBILE_DESKTOP!=='1'&&Number(process.env.MOBILE_WIDTH??390)<768,colorScheme:process.env.MOBILE_DARK==='1'?'dark':'light',locale:'ru-RU'})
  const page = await context.newPage()
  const candidates = JSON.parse(fs.readFileSync('/tmp/dsh-mobile-login-urls.json','utf8'))
  const errors = []
@@ -17,7 +17,7 @@ try {
    if(!route.request().url().includes('dsh-web-mobile') && !route.request().url().includes('dsh-workspace-groups')) return route.continue()
    const response = await route.fetch()
    let body = await response.text()
-   for(const [id,name,file] of [['dsh-web-mobile','mobile','mobile-camera/package'],['dsh-workspace-groups','groups','mobile-groups-020-v2']]) {
+   for(const [id,name,file] of [['dsh-web-mobile','mobile',process.env.MOBILE_PACKAGE??'mobile-camera/package'],['dsh-workspace-groups','groups','mobile-groups-020-v2']]) {
      const regex = new RegExp('window\\.__ModuleLoader__\\.load\\(\\{\\s*id:\\s*["\\\']'+id+'["\\\']')
      const match = regex.exec(body)
      if(!match) continue
@@ -34,6 +34,9 @@ try {
  await page.waitForSelector('.wgRoot, [data-composer-card]', {timeout:45000}).catch(async()=>{ console.log('Render diagnostics',JSON.stringify({errors,intercepted,text:await page.locator('body').innerText()})); throw new Error('Resident GUI did not render') })
  await page.waitForTimeout(1500)
  await page.screenshot({path:output+'/before-chat.png'})
+ const mode = await page.evaluate(()=>({width:innerWidth,coarse:matchMedia('(pointer: coarse)').matches,hoverNone:matchMedia('(hover: none)').matches,display:document.querySelector('[data-mobile-shortcuts]')?getComputedStyle(document.querySelector('[data-mobile-shortcuts]')).display:'none',css:!!document.querySelector('[data-dsh-mobile-shortcuts]')}))
+ console.log('Shortcut mode',mode)
+ if(process.env.MOBILE_ASSERT_MODE==='1' && ((mode.display!=='none') !== (mode.width<=767&&mode.coarse&&mode.hoverNone))) throw new Error('Shortcut device mode mismatch')
  const result = await page.evaluate(()=>({
   title:document.title, controls:[...document.querySelectorAll('button')].filter(x=>x.getBoundingClientRect().width>0).map(x=>({label:x.getAttribute('aria-label'),title:x.title,attr:[...x.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value])})),
   frames:[...document.querySelectorAll('[data-dsh-frame]')].map(x=>[...x.attributes].map(a=>[a.name,a.value])),
@@ -65,7 +68,7 @@ try {
  const opener = page.locator('[data-mobile-nav="fab"]').first()
  if(await opener.count()) { await opener.click(); await page.waitForTimeout(350); await page.screenshot({path:output+'/before-groups.png'}); console.log('Drawer width:', await page.locator('.wgRoot').evaluate(x=>x.getBoundingClientRect().width)); if(patched && Number(process.env.MOBILE_WIDTH??390)<768) { await page.locator('.wgMobileFilterToggle').click(); await page.screenshot({path:output+'/filters.png'}); } }
  console.log('Layout bounds',await page.evaluate(()=>({body:document.documentElement.scrollWidth,width:innerWidth,shortcuts:document.querySelector('[data-mobile-shortcuts]')?getComputedStyle(document.querySelector('[data-mobile-shortcuts]')).display:null,filters:document.querySelector('.wgMobileFilterToggle')?getComputedStyle(document.querySelector('.wgMobileFilterToggle')).display:null})))
- if(patched && Number(process.env.MOBILE_WIDTH??390)<768) {
+ if(patched && process.env.MOBILE_DESKTOP!=='1' && Number(process.env.MOBILE_WIDTH??390)<768) {
    await page.keyboard.press('Escape')
    const camera = page.locator('[data-mobile-shortcuts] button').first()
    await page.evaluate(()=>{const input=document.querySelector('[data-composer-card] input[type=file]');const old=input.click.bind(input);input.click=()=>{window.__cameraTap={accept:input.accept,capture:input.getAttribute('capture'),multiple:input.multiple};old()}})

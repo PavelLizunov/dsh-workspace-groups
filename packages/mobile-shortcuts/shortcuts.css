@@ -1,5 +1,5 @@
 [data-mobile-shortcuts] { display: none; }
-@media (max-width: 767px) {
+@media (max-width: 767px) and (pointer: coarse) and (hover: none) {
   [data-mobile-shortcuts] {
     position: fixed;
     right: max(12px, env(safe-area-inset-right));

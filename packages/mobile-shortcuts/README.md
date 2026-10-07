@@ -2,6 +2,7 @@
 
 Companion source for the deployed `dsh-web-mobile` 2.3.1 local adaptation; not a new upload backend or replacement mobile shell.
 
+- Shortcuts are visible only on narrow touch-first screens (<=767px, coarse primary pointer, no hover), never in a narrow mouse-driven desktop window.
 - A resident Photo button calls the host composer's native file input, requesting `image/*` and `capture=environment` synchronously in the tap. Photos remain in the draft.
 - A thumb-zone Panel button opens the existing right-panel control.
 - The existing mobile bundle and local patches are retained, with rc.2 icon aliases corrected.

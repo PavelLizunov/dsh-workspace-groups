@@ -7,6 +7,16 @@ type Props = PropsRuntime<'conversation.input.overlay'>
 export function MobileShortcuts({ useInput, useSession }: Props) {
   const busy = useInput(state => state.phase !== 'plain')
   const subagent = useSession(state => state.subagent != null)
+  // Render nothing until device capabilities are known: no desktop flash,
+  // including during stylesheet replacement by client HMR.
+  const [touchPhone, setTouchPhone] = useState(false)
+  useEffect(() => {
+    const mode = window.matchMedia('(max-width: 767px) and (pointer: coarse) and (hover: none)')
+    const update = () => setTouchPhone(mode.matches)
+    update()
+    mode.addEventListener('change', update)
+    return () => mode.removeEventListener('change', update)
+  }, [])
   const [available, setAvailable] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -22,7 +32,8 @@ export function MobileShortcuts({ useInput, useSession }: Props) {
     changes.observe(card, {childList:true,subtree:true,attributes:true,attributeFilter:['disabled']})
     update()
     return () => {size.disconnect();changes.disconnect()}
-  }, [])
+  }, [touchPhone])
+  if (!touchPhone) return null
   const language = typeof navigator === 'undefined' ? 'en' : navigator.language
   const labels = language.startsWith('ru') ? {photo:'Фото',camera:'Сделать фото',panel:'Панель',open:'Открыть правую панель',actions:'Быстрые действия'} : language.startsWith('zh') ? {photo:'拍照',camera:'拍照',panel:'面板',open:'打开右侧面板',actions:'快捷操作'} : {photo:'Photo',camera:'Take photo',panel:'Panel',open:'Open right panel',actions:'Quick actions'}
   return <div ref={root} data-mobile-shortcuts="" aria-label={labels.actions}>
