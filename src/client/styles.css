@@ -1281,10 +1281,13 @@
   .wgRowLabel, .wgCategoryLabel, .wgProjectLabel { white-space: normal; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .wgRowActions { opacity: 1; gap: 0; }
   .wgDragHandle, [data-wg-drag-handle="category"] { display: none; }
-  .wgSessionRow { min-height: 78px; position: relative; flex-wrap: wrap; gap: 2px 4px; padding: 6px 8px 6px 8px; }
-  .wgSessionTitle { flex: 1 1 calc(100% - 28px); white-space: normal; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .wgSessionRow .wgSessionTime { margin-left: 18px; width: calc(100% - 116px); }
-  .wgSessionRow .wgRowActions { position: absolute; bottom: 0; right: 0; }
+  .wgSessionRow { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; grid-template-rows: auto auto; height: auto; min-height: 60px; gap: 2px 4px; padding: 5px 4px; align-content: center; }
+  .wgSessionRow .wgStatusSlot { grid-column: 1; grid-row: 1; }
+  .wgSessionTitle { grid-column: 2; grid-row: 1; white-space: normal; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .wgSessionRow .wgSessionTime { grid-column: 2; grid-row: 2; margin: 0; width: auto; }
+  .wgSessionRow .wgRowActions { grid-column: 3; grid-row: 1 / 3; position: static; }
+  .wgSessionRow .wgSessionPinned, .wgSessionRow .wgSessionPill { grid-column: 1; grid-row: 2; }
+  .wgSessionRow .wgSessionSnippet { grid-column: 2; grid-row: 3; }
   .wgCategoryRow .wgRowActions > span:has([data-wg-color-menu-trigger]),
   .wgWorkspaceRow .wgRowActions > span:has([data-wg-color-menu-trigger]) { display: none; }
   .wgShowMore { min-height: 44px; margin-left: 8px; }

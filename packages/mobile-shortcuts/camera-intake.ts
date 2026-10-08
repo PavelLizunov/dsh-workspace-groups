@@ -6,11 +6,15 @@ export function openCamera(input: HTMLInputElement | null): boolean {
   input.setAttribute('accept', 'image/*')
   input.setAttribute('capture', 'environment')
   input.removeAttribute('multiple')
+  const stopClick = (event: Event) => event.stopPropagation()
+  // The host composer focuses its editor for bubbled card clicks.
+  input.addEventListener('click', stopClick)
   try {
     // Must run synchronously inside the user's tap. Never submit the draft.
     input.click()
     return true
   } finally {
+    input.removeEventListener('click', stopClick)
     names.forEach((name, index) => {
       const value = previous[index]
       if (value === null || value === undefined) input.removeAttribute(name)

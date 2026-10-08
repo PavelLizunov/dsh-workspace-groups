@@ -4,7 +4,8 @@ Companion source for the deployed `dsh-web-mobile` 2.3.1 local adaptation; not a
 
 - Shortcuts are visible only on narrow touch-first screens (<=767px, coarse primary pointer, no hover), never in a narrow mouse-driven desktop window.
 - A resident Photo button calls the host composer's native file input, requesting `image/*` and `capture=environment` synchronously in the tap. Photos remain in the draft.
-- A thumb-zone Panel button opens the existing right-panel control.
+- A thumb-zone Panel button opens the existing right-panel control. A shell-owned, portaled Back to chat button stays reachable at the bottom of the fullscreen panel and invokes its existing collapse control.
+- Shortcut presses prevent editor focus; camera input clicks do not bubble into the composer focus handler. An already focused composer is blurred before capture. No delayed/asynchronous picker invocation is introduced.
 - The existing mobile bundle and local patches are retained, with rc.2 icon aliases corrected.
 - Phone drawer width grows to 92vw (maximum 360px), including its inner sidebar surface. Desktop is unchanged.
 
