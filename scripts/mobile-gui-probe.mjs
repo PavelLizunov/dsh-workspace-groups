@@ -12,12 +12,13 @@ try {
  page.on('console',message=>{ if(message.type()==='error') console.log('Browser error:', message.text().replace(/token=[^\s&]+/g,'token=[redacted]')) })
  const patched = process.env.MOBILE_CANDIDATE === '1'
  const intercepted = []
+ if(process.env.MOBILE_NAV_TEST==='1') await page.route('**/workspace-groups/preferences',route=>route.request().method()==='GET'?route.fulfill({status:200,contentType:'application/json',body:'{"filter":{}}'}):route.continue())
  if(patched) await page.route('**/*', async route => {
    if(route.request().resourceType() !== 'script') return route.continue()
    if(!route.request().url().includes('dsh-web-mobile') && !route.request().url().includes('dsh-workspace-groups')) return route.continue()
    const response = await route.fetch()
    let body = await response.text()
-   for(const [id,name,file] of [['dsh-web-mobile','mobile',process.env.MOBILE_PACKAGE??'mobile-camera/package'],['dsh-workspace-groups','groups','mobile-groups-020-v2']]) {
+   for(const [id,name,file] of [['dsh-web-mobile','mobile',process.env.MOBILE_PACKAGE??'mobile-camera/package'],['dsh-workspace-groups','groups',process.env.MOBILE_GROUPS_PACKAGE??'mobile-groups-020-v2']]) {
      const regex = new RegExp('window\\.__ModuleLoader__\\.load\\(\\{\\s*id:\\s*["\\\']'+id+'["\\\']')
      const match = regex.exec(body)
      if(!match) continue
@@ -49,7 +50,7 @@ try {
    await page.locator('[data-mobile-nav="fab"]').click()
    const group = page.locator('.wgCategoryRow').first()
    if(await group.count()) { await group.click(); await page.waitForTimeout(150) }
-   const workspace = page.locator('.wgWorkspaceRow').first()
+   const workspace = page.locator('.wgProjectRow').first()
    if(await workspace.count()) { await workspace.click(); await page.waitForTimeout(150) }
    const session = page.locator('.wgSessionRow').first()
    if(await session.count()) await session.click()
@@ -79,6 +80,25 @@ try {
    console.log('Returned to chat',await page.locator('[data-mobile-shortcuts]').isVisible())
    console.log(JSON.stringify({errors,output}));
  } else {
+ if(process.env.MOBILE_NAV_TEST==='1') {
+  await page.locator('[data-mobile-nav="fab"]').click()
+  for(const sel of ['.wgCategoryRow','.wgProjectRow']) {
+   const count=await page.locator(sel+'[aria-expanded="false"]').count()
+   for(let i=0;i<count;i++){const collapsed=page.locator(sel+'[aria-expanded="false"]');if(await collapsed.count())await collapsed.first().click()}
+  }
+  const rows=page.locator('.wgSessionRow:not([aria-selected="true"])')
+  if(!(await rows.count())){await page.screenshot({path:output+'/nav-empty.png'});console.log('Tree diagnostic',await page.locator('.wgRoot').innerText());console.log('Tree counts',await page.evaluate(()=>({categories:document.querySelectorAll('.wgCategoryRow').length,workspaces:document.querySelectorAll('.wgProjectRow').length,rows:document.querySelectorAll('.wgSessionRow').length})));throw new Error('No alternative session visible for navigation test')}
+  const target=rows.first();const name=await target.getAttribute('aria-label')
+  await page.evaluate(()=>{window.__navTimes={};const start=()=>{window.__navTimes.click=performance.now()};document.addEventListener('click',start,{once:true,capture:true});const observer=new MutationObserver(()=>{const row=document.querySelector('.wgSessionRow[aria-selected="true"]');if(row&&!window.__navTimes.selected)window.__navTimes.selected=performance.now();if(document.querySelector('[data-mobile-nav="frame"][data-sidebar-collapsed]'))window.__navTimes.closed??=performance.now()});observer.observe(document.body,{subtree:true,attributes:true,childList:true});window.__navObserver=observer})
+  await target.tap();await page.waitForTimeout(700)
+  console.log('Session navigation',await page.evaluate(()=>({times:window.__navTimes,drawerClosed:!!document.querySelector('[data-mobile-nav="frame"][data-sidebar-collapsed]'),selected:document.querySelector('.wgSessionRow[aria-selected="true"]')?.getAttribute('aria-label')})))
+  await page.screenshot({path:output+'/session-click.png'})
+  if(process.env.MOBILE_NAV_ASSERT==='1'&&!(await page.evaluate(()=>!!document.querySelector('[data-mobile-nav="frame"][data-sidebar-collapsed]'))))throw new Error('Session tap left drawer open')
+  console.log('Selection confirmed before drawer close',await page.evaluate(()=>!!window.__navTimes.selected))
+  await page.locator('[data-mobile-nav="toggle"]').click()
+  const action=page.locator('.wgSessionRow .wgRowActions button').last()
+  if(await action.count()){await action.tap();await page.waitForTimeout(150);if(await page.evaluate(()=>!!document.querySelector('[data-mobile-nav="frame"][data-sidebar-collapsed]')))throw new Error('Action tap closed drawer');console.log('Action tap keeps drawer open',true)}
+ } else {
  const opener = page.locator('[data-mobile-nav="fab"]').first()
  if(await opener.count()) { await opener.click(); await page.waitForTimeout(350); await page.screenshot({path:output+'/before-groups.png'}); console.log('Drawer width:', await page.locator('.wgRoot').evaluate(x=>x.getBoundingClientRect().width)); if(patched && Number(process.env.MOBILE_WIDTH??390)<768) { await page.locator('.wgMobileFilterToggle').click(); await page.screenshot({path:output+'/filters.png'}); } }
  console.log('Layout bounds',await page.evaluate(()=>({body:document.documentElement.scrollWidth,width:innerWidth,shortcuts:document.querySelector('[data-mobile-shortcuts]')?getComputedStyle(document.querySelector('[data-mobile-shortcuts]')).display:null,filters:document.querySelector('.wgMobileFilterToggle')?getComputedStyle(document.querySelector('.wgMobileFilterToggle')).display:null})))
@@ -94,5 +114,6 @@ try {
    console.log('Camera attributes restored', await page.locator('[data-composer-card] input[type=file]').evaluate(x=>({accept:x.accept,capture:x.getAttribute('capture'),multiple:x.multiple})))
  }
  console.log(JSON.stringify({groups:result.groups,composer:result.composer,fileInputs:result.fileInputs,errors,intercepted,output}))
+ }
  }
 } finally {await browser.close()}

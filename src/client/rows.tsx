@@ -563,6 +563,7 @@ export function SessionRow({
   return (
     <div
       className={`wgSessionRow${selected ? ' wgSelected' : ''}${menuOpen ? ' wgMenuOpen' : ''}${node.matched === true ? ' wgMatched' : ''}`}
+      data-session-id={node.id}
       role="treeitem"
       tabIndex={0}
       aria-selected={selected}

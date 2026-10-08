@@ -1,6 +1,7 @@
 // Extend the installed mobile client without replacing its existing patches.
 import fs from 'node:fs'
 import path from 'node:path'
+import { patchGroupedNavigation } from '../packages/mobile-shortcuts/navigation-compat.mjs'
 import { build } from '/var/lib/dsh/DSH-creator/deepseek-harness/node_modules/.pnpm/esbuild@0.28.1/node_modules/esbuild/lib/main.js'
 const root = path.resolve(import.meta.dirname, '..')
 const live = '/var/lib/dsh/.dsh-releases/v020-rc2/profile/node_modules/dsh-web-mobile'
@@ -16,7 +17,7 @@ const effectAnchor = '    (0, phone_chrome_ts_1.installPhoneChrome)(ctx);'
 if(!current.includes(effectAnchor)) throw new Error('Mobile apply contract changed')
 const css = fs.readFileSync(path.join(root,'packages/mobile-shortcuts/shortcuts.css'),'utf8')
 const effect = `    ctx.effect(() => { const style = document.createElement('style'); style.dataset.dshMobileShortcuts = ''; style.textContent = ${JSON.stringify(css)}; document.head.append(style); return () => style.remove(); });\n    ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({name: 'conversation.input.overlay', id: 'dsh-web-mobile:quick-photo-panel', order: -10, registrant: 'dsh-web-mobile'}, require('./mobile-shortcuts.js').MobileShortcuts));\n    ctx.slots.inject('shell.overlay', () => ctx.slots.register({name: 'shell.overlay', id: 'dsh-web-mobile:panel-return', order: 10, registrant: 'dsh-web-mobile'}, require('./mobile-shortcuts.js').PanelReturn));\n`
-const patched = current.replace(anchor,module+anchor).replace(effectAnchor,effect+effectAnchor)
+const patched = patchGroupedNavigation(current).replace(anchor,module+anchor).replace(effectAnchor,effect+effectAnchor)
   .replaceAll('.IconPanelLeftOutline16', '.IconPanelLeftOutlineRegular')
   .replaceAll('.IconFolderOpenOutline16', '.IconFolderOpenOutlineRegular')
   .replaceAll('.IconDownloadOutline16', '.IconDownloadOutlineRegular')
