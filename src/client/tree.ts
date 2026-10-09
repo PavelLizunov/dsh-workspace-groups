@@ -1,3 +1,4 @@
+import { mainSessionId } from './session-status.ts'
 /**
  * Derives the three-level workspace-groups tree: category folder → workspace folder →
  * session row. Pure derivation — all inputs are snapshots; the renderer never
@@ -7,7 +8,7 @@
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { indexSubagentDescendants, type SubagentDescendantSummary } from './subagent-lineage.ts'
 import type { PendingInteractionStatus } from './tree-attention.ts'
 import type { SessionCompletionObservation } from './store-core.ts'
@@ -141,11 +142,11 @@ export function sessionNode(
   s: SessionSummary,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
   pinned?: boolean,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   color?: string | null,
   completedOverride?: boolean,
 ): SessionNode {
-  const kind = pendingInteractions.get(s.id)?.kind
+  const kind = pendingInteractions.get(s.id)?.pendingInteraction?.kind
   const pendingInteraction = kind === 'approval' || kind === 'plan-review' || kind === 'question' ? kind : undefined
   const projection = readAttentionProjection(s.projectionValues)
   const runningSubagentCount = descendants.get(s.id)?.runningCount ?? 0
@@ -155,7 +156,7 @@ export function sessionNode(
     blank: s.blank,
     running: s.running,
     runningSubagentCount,
-    completed: (!s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
+    completed: (!s.running && runningSubagentCount === 0) && (pendingInteractions.get(s.id)?.completionUnread === true || completedOverride === true),
     updatedAt: s.updatedAt,
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
     ...(projection.reason === null ? {} : { projectionReason: projection.reason }),
@@ -168,18 +169,20 @@ export function sessionNode(
 export function deriveCompletionObservations(
   list: SessionListState,
   archivedSessionIds: readonly SessionId[],
+  statuses: SessionStatusSnapshot = new Map(),
 ): SessionCompletionObservation[] {
+  const current = mainSessionId(list)
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
   const observations: SessionCompletionObservation[] = []
   for (const id of list.ids) {
     const summary = list.byId[id]
-    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
+    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived)) continue
     const runningSubagentCount = descendants.get(id)?.runningCount ?? 0
     observations.push({
       id,
       running: summary.running || runningSubagentCount > 0,
-      completed: summary.completed === true,
+      completed: statuses.get(id)?.completionUnread === true,
     })
   }
   return observations
@@ -193,17 +196,18 @@ function workspaceSessions(
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
   pinnedIds?: readonly string[],
   onSession?: (session: SessionNode) => void,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   colors?: Record<string, string | null>,
   completedSessions?: Readonly<Record<string, boolean>>,
 ): SessionNode[] {
+  const current = mainSessionId(list)
   const pinnedSet = new Set(pinnedIds ?? [])
   const visibleMap = new Map<SessionId, SessionNode>()
   for (const id of workspace.sessionIds) {
     const summary = list.byId[id]
     if (summary === undefined) continue // account may lead the list pull; appears when the summary lands
-    if (!sessionVisible(summary, list.current, archived)) continue
-    const completedOverride = id !== list.current && completedSessions?.[id] === true
+    if (!sessionVisible(summary, current, archived)) continue
+    const completedOverride = id !== current && completedSessions?.[id] === true
     const node = sessionNode(summary, descendants, pinnedSet.has(id), pendingInteractions, colors?.[id], completedOverride)
     visibleMap.set(id, node)
   }
@@ -236,9 +240,10 @@ export function deriveWorkspaceTree(
   archivedSessionIds: readonly SessionId[],
   config: GroupsConfig,
   manual: ManualGroups,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
 ): WorkspaceTree {
+  const current = mainSessionId(list)
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
   const categoryKeys = effectiveCategories(config, manual).map(({ key }) => key)
@@ -256,7 +261,7 @@ export function deriveWorkspaceTree(
   let currentWorkspaceId: WorkspaceId | undefined
 
   for (const workspace of workspaces) {
-    if (currentWorkspaceId === undefined && list.current !== undefined && workspace.sessionIds.includes(list.current)) {
+    if (currentWorkspaceId === undefined && current !== undefined && workspace.sessionIds.includes(current)) {
       currentWorkspaceId = workspace.workspaceId
     }
     const key = resolveCategory(config, manual, workspace.workspaceId, workspace.path, workspace.title, validCategoryKeys)
@@ -348,7 +353,7 @@ export function deriveGroups(
   config: GroupsConfig,
   view: GroupsTreeView,
   manual: ManualGroups,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
 ): CategoryNode[] {
   return [...projectTreeExpansion(
@@ -365,7 +370,7 @@ export function deriveTopLevel(
   config: GroupsConfig,
   view: GroupsTreeView,
   manual: ManualGroups,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
 ): WorkspaceGroupNode[] {
   return [...projectTreeExpansion(

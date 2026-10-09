@@ -1,10 +1,11 @@
+import { mainSessionId } from './session-status.ts'
 /**
  * Three-level tree search matching and pruned search tree derivation.
  */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { indexSubagentDescendants } from './subagent-lineage.ts'
 import { effectiveCategories, resolveCategory } from '../core/matcher.ts'
 import type { GroupsConfig, ManualGroups } from '../core/types.ts'
@@ -49,6 +50,7 @@ export function deriveSearchMatches(
 ): SearchMatchSet {
   const q = query.trim().toLowerCase()
   if (q === '') return { matchedIds: new Set(), snippetsBySession: new Map(), hasMore: false }
+  const current = mainSessionId(list)
   const archived = new Set(archivedSessionIds)
 
   const workspaceBySession = new Map<SessionId, WorkspaceView>()
@@ -63,7 +65,7 @@ export function deriveSearchMatches(
   const local: SessionSummary[] = []
   for (const id of list.ids) {
     const summary = list.byId[id]
-    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
+    if (summary === undefined || summary.blank || !sessionVisible(summary, current, archived)) continue
     if (
       sessionTitle(summary).toLowerCase().includes(q)
       || labelOf(summary).toLowerCase().includes(q)
@@ -83,7 +85,7 @@ export function deriveSearchMatches(
   for (const summary of local) include(summary)
   for (const item of content.items) {
     const summary = list.byId[item.sessionId]
-    if (summary !== undefined && !summary.blank && sessionVisible(summary, list.current, archived)) include(summary)
+    if (summary !== undefined && !summary.blank && sessionVisible(summary, current, archived)) include(summary)
   }
 
   const snippets = new Map<SessionId, string>()
@@ -132,9 +134,10 @@ export function deriveSearchGroups(
   archivedSessionIds: readonly SessionId[],
   manual: ManualGroups,
   snippetsBySession?: ReadonlyMap<SessionId, string>,
-  pendingInteractions: SessionPendingInteractionSnapshot = new Map(),
+  pendingInteractions: SessionStatusSnapshot = new Map(),
   completedSessions?: Readonly<Record<string, boolean>>,
 ): SearchTree {
+  const current = mainSessionId(list)
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
 
@@ -154,9 +157,9 @@ export function deriveSearchGroups(
     for (const id of workspace.sessionIds) {
       const summary = list.byId[id]
       if (summary === undefined || !matchedIds.has(id)) continue
-      if (!sessionVisible(summary, list.current, archived)) continue
+      if (!sessionVisible(summary, current, archived)) continue
       const isPinned = pinnedSet.has(id)
-      const completedOverride = id !== list.current && completedSessions?.[id] === true
+      const completedOverride = id !== current && completedSessions?.[id] === true
       const node = sessionNode(summary, descendants, isPinned, pendingInteractions, manual.colors?.[id], completedOverride)
       const snippet = snippetsBySession?.get(id)
       matchedMap.set(id, {

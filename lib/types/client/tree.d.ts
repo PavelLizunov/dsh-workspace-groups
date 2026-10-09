@@ -7,7 +7,7 @@
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client';
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client';
+import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client';
 import { type SubagentDescendantSummary } from './subagent-lineage.js';
 import type { PendingInteractionStatus } from './tree-attention.js';
 import type { SessionCompletionObservation } from './store-core.js';
@@ -101,14 +101,14 @@ export declare function workspaceLabel(cwd: string | undefined): string;
 export declare function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean;
 /** Blank rows display the localized New Session label (never enters search). */
 export declare function sessionTitle(session: SessionSummary): string;
-export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, pendingInteractions?: SessionPendingInteractionSnapshot, color?: string | null, completedOverride?: boolean): SessionNode;
+export declare function sessionNode(s: SessionSummary, descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>, pinned?: boolean, pendingInteractions?: SessionStatusSnapshot, color?: string | null, completedOverride?: boolean): SessionNode;
 /** Collect completion/running observations for visible non-blank sessions. */
-export declare function deriveCompletionObservations(list: SessionListState, archivedSessionIds: readonly SessionId[]): SessionCompletionObservation[];
+export declare function deriveCompletionObservations(list: SessionListState, archivedSessionIds: readonly SessionId[], statuses?: SessionStatusSnapshot): SessionCompletionObservation[];
 /** Build the fully populated grouped and top-level tree once per list snapshot. */
-export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceTree;
+export declare function deriveWorkspaceTree(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, manual: ManualGroups, pendingInteractions?: SessionStatusSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceTree;
 /** Apply expansion state without rescanning or rebuilding session summaries. */
 export declare function projectTreeExpansion(tree: WorkspaceTree, view: GroupsTreeView): WorkspaceTree;
 /** Derive grouped branches with the requested expansion state. */
-export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): CategoryNode[];
+export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionStatusSnapshot, completedSessions?: Readonly<Record<string, boolean>>): CategoryNode[];
 /** Derive top-level branches with the requested expansion state. */
-export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionPendingInteractionSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceGroupNode[];
+export declare function deriveTopLevel(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], config: GroupsConfig, view: GroupsTreeView, manual: ManualGroups, pendingInteractions?: SessionStatusSnapshot, completedSessions?: Readonly<Record<string, boolean>>): WorkspaceGroupNode[];

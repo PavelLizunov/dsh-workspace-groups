@@ -10,17 +10,17 @@
  */
 import { useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
 import {
-  IconArchiveOutline20,
-  IconBranchOutline16,
-  IconEditOutline16,
-  IconEllipsisOutline16,
-  IconFolderClose16,
-  IconFolderOpen16,
-  IconFolderOpenOutline16,
-  IconPlusOutline16,
-  IconProjectAddOutline16,
-  IconTriangleRightFill14,
-  IconTrashOutline16,
+  IconArchiveOutlineMedium,
+  IconBranchOutlineMedium,
+  IconEditOutlineMedium,
+  IconEllipsisOutlineMedium,
+  IconFolderCloseMedium,
+  IconFolderOpenMedium,
+  IconFolderOpenOutlineMedium,
+  IconPlusOutlineMedium,
+  IconProjectAddOutlineMedium,
+  IconTriangleRightFillMedium,
+  IconTrashOutlineMedium,
   Menu,
   StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -102,13 +102,13 @@ export function CategoryRow({
   const manageable = (onRename !== undefined && onDelete !== undefined) || onExpandEntire !== undefined || onCollapseEntire !== undefined || onAddWorkspace !== undefined
 
   const menuItems = useMemo(() => [
-    ...(onAddWorkspace !== undefined ? [{ id: 'addWorkspace', label: t('group.addWorkspace'), icon: <IconProjectAddOutline16 /> }] : []),
+    ...(onAddWorkspace !== undefined ? [{ id: 'addWorkspace', label: t('group.addWorkspace'), icon: <IconProjectAddOutlineMedium /> }] : []),
     ...(onExpandEntire !== undefined ? [{ id: 'expandEntire', label: t('group.expandEntire') }] : []),
     ...(onCollapseEntire !== undefined ? [{ id: 'collapseEntire', label: t('group.collapseEntire') }] : []),
     ...(onMoveUp !== undefined ? [{ id: 'moveUp', label: t('group.moveUp'), disabled: canMoveUp === false || isFirst === true }] : []),
     ...(onMoveDown !== undefined ? [{ id: 'moveDown', label: t('group.moveDown'), disabled: canMoveDown === false || isLast === true }] : []),
-    ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutline16 /> }] : []),
-    ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
+    ...(onRename !== undefined ? [{ id: 'rename', label: t('group.rename'), icon: <IconEditOutlineMedium /> }] : []),
+    ...(onDelete !== undefined ? [{ id: 'delete', label: t('group.delete'), icon: <IconTrashOutlineMedium />, danger: true }] : []),
   ], [onAddWorkspace, onExpandEntire, onCollapseEntire, onMoveUp, onMoveDown, onRename, onDelete, t, canMoveUp, isFirst, canMoveDown, isLast])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -145,10 +145,10 @@ export function CategoryRow({
           toggleEntire()
         }}
       >
-        <IconTriangleRightFill14 />
+        <IconTriangleRightFillMedium />
       </span>
       <span className="wgCategoryIcon" data-wg-row-icon="group">
-        {node.expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+        {node.expanded ? <IconFolderOpenMedium /> : <IconFolderCloseMedium />}
         {color && <span className="wgColorDot" data-color={color} />}
       </span>
       <span className="wgCategoryLabel">{node.label}</span>
@@ -204,7 +204,7 @@ export function CategoryRow({
                   onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
                   onKeyDown={(e) => { e.stopPropagation() }}
                 >
-                  <IconEllipsisOutline16 />
+                  <IconEllipsisOutlineMedium />
                 </button>
               )}
             />
@@ -219,7 +219,7 @@ export function CategoryRow({
               onClick={(e) => { e.stopPropagation(); onAddWorkspace() }}
               onKeyDown={(e) => { e.stopPropagation() }}
             >
-              <IconProjectAddOutline16 />
+              <IconProjectAddOutlineMedium />
             </button>
           )}
         </span>
@@ -308,7 +308,7 @@ export function WorkspaceRow({
       ? [{
           id: 'moveToGroup',
           label: t('workspace.moveToGroup'),
-          icon: <IconFolderOpenOutline16 size={16} />,
+          icon: <IconFolderOpenOutlineMedium size={16} />,
           submenu: moveTargets.map(target => ({
             id: `moveTo:${target.key}`,
             label: target.label,
@@ -316,13 +316,13 @@ export function WorkspaceRow({
           })),
         }]
       : canMoveOut && onMoveOut !== undefined
-        ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutline16 size={16} /> }]
+        ? [{ id: 'moveOut', label: t('workspace.moveOutOfGroup'), icon: <IconFolderOpenOutlineMedium size={16} /> }]
         : []),
-    ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpen16 size={16} /> }] : []),
-    ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutline16 size={16} /> }] : []),
-    ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutline20 size={16} /> }] : []),
-    ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutline16 /> }] : []),
-    ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutline16 />, danger: true }] : []),
+    ...(onOpenFolder !== undefined ? [{ id: 'openFolder', label: t('workspace.openFolder'), icon: <IconFolderOpenMedium size={16} /> }] : []),
+    ...(onCopyPath !== undefined ? [{ id: 'copyPath', label: t('workspace.copyPath'), icon: <IconEditOutlineMedium size={16} /> }] : []),
+    ...(onCleanup !== undefined ? [{ id: 'cleanup', label: t('cleanup.action'), icon: <IconArchiveOutlineMedium size={16} /> }] : []),
+    ...(onRename !== undefined ? [{ id: 'rename', label: t('workspace.rename'), icon: <IconEditOutlineMedium /> }] : []),
+    ...(onDelete !== undefined ? [{ id: 'delete', label: t('workspace.delete'), icon: <IconTrashOutlineMedium />, danger: true }] : []),
   ], [onMoveUp, onMoveDown, t, canMoveUp, isFirst, canMoveDown, isLast, moveTargets, onMoveTo, canMoveOut, onMoveOut, onOpenFolder, onCopyPath, onCleanup, onRename, onDelete])
 
   const onDragStart = (event: DragEvent): void => {
@@ -362,12 +362,12 @@ export function WorkspaceRow({
         onDragStart={draggable ? onDragStart : undefined}
       >
         <span className={`wgChevron${node.expanded ? ' wgChevronOpen' : ''}`}>
-          <IconTriangleRightFill14 />
+          <IconTriangleRightFillMedium />
         </span>
         <span className="wgCategoryIcon" data-wg-row-icon="project">
           {/* Project rows use the project glyph (same as the official workspace
               browser) so groups (folder glyph) and projects stay distinguishable. */}
-          <IconProjectAddOutline16 />
+          <IconProjectAddOutlineMedium />
           {color && <span className="wgColorDot" data-color={color} />}
         </span>
         <span className="wgProjectLabel" title={node.path}>{node.label}</span>
@@ -406,7 +406,7 @@ export function WorkspaceRow({
               onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
               onKeyDown={(e) => { e.stopPropagation() }}
             >
-              <IconEllipsisOutline16 />
+              <IconEllipsisOutlineMedium />
             </button>
           )}
         />}
@@ -418,7 +418,7 @@ export function WorkspaceRow({
           onClick={(e) => { e.stopPropagation(); onNewSession() }}
           onKeyDown={(e) => { e.stopPropagation() }}
         >
-          <IconPlusOutline16 />
+          <IconPlusOutlineMedium />
         </button>}
       </span>}
     </div>
@@ -443,7 +443,7 @@ export interface SessionRowProps {
   'aria-setsize'?: number
 }
 
-export function IconPin16({ size = 16, className }: { size?: number; className?: string }) {
+export function IconPinMedium({ size = 16, className }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -463,7 +463,7 @@ export function IconPin16({ size = 16, className }: { size?: number; className?:
   )
 }
 
-export function IconPinOff16({ size = 16, className }: { size?: number; className?: string }) {
+export function IconPinOffMedium({ size = 16, className }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -514,12 +514,12 @@ export function SessionRow({
     ...(onPinToggle !== undefined ? [{
       id: 'pinToggle',
       label: node.pinned ? t('session.unpin') : t('session.pin'),
-      icon: node.pinned ? <IconPinOff16 size={16} /> : <IconPin16 size={16} />,
+      icon: node.pinned ? <IconPinOffMedium size={16} /> : <IconPinMedium size={16} />,
       disabled: actionBusy,
     }] : []),
-    ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutline16 /> }] : []),
-    ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutline16 />, disabled: actionBusy }] : []),
-    ...(onArchive !== undefined ? [{ id: 'archive', label: t('session.archive'), icon: <IconArchiveOutline20 size={16} />, disabled: actionBusy }] : []),
+    ...(onRename !== undefined ? [{ id: 'rename', label: t('session.rename'), icon: <IconEditOutlineMedium /> }] : []),
+    ...(onFork !== undefined ? [{ id: 'fork', label: t('session.fork'), icon: <IconBranchOutlineMedium />, disabled: actionBusy }] : []),
+    ...(onArchive !== undefined ? [{ id: 'archive', label: t('session.archive'), icon: <IconArchiveOutlineMedium size={16} />, disabled: actionBusy }] : []),
   ], [node.pinned, onPinToggle, onRename, onFork, onArchive, t, actionBusy])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -550,7 +550,7 @@ export function SessionRow({
       <span className="wgSessionTitle">{node.title}</span>
       {node.pinned && (
         <span className="wgSessionPinned" title={t('session.pinned')} aria-label={t('session.pinned')}>
-          <IconPin16 size={12} />
+          <IconPinMedium size={12} />
         </span>
       )}
       {pillLabel !== undefined && (
@@ -584,7 +584,7 @@ export function SessionRow({
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
                 onKeyDown={(e) => { e.stopPropagation() }}
               >
-                <IconEllipsisOutline16 />
+                <IconEllipsisOutlineMedium />
               </button>
             )}
           />}

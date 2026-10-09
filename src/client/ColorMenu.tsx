@@ -2,7 +2,7 @@
  * Color palette menu for groups, workspaces, and sessions.
  */
 import { useState } from 'react'
-import { IconEditOutline16, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconEditOutlineMedium, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import { COLOR_PRESETS, type T } from './row-utils.ts'
 
 export interface ColorMenuProps {
@@ -44,7 +44,7 @@ export function ColorMenu({ t, color, onSelect }: ColorMenuProps) {
           onKeyDown={(event) => { event.stopPropagation() }}
         >
           <span className="wgCategoryIcon">
-            <IconEditOutline16 />
+            <IconEditOutlineMedium />
             {color && <span className="wgColorDot" data-color={color} />}
           </span>
         </button>

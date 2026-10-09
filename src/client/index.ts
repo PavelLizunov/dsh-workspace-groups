@@ -21,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import { findOldSessionsToArchive } from './session-cleanup.ts'
+import { mainSessionId } from './session-status.ts'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { GroupsBrowserInjected } from './contract.ts'
@@ -58,7 +59,7 @@ export function apply(ctx: ClientContext): void {
 
   const browserInjected = (): GroupsBrowserInjected => ({
     startSession: (workspaceId) => { ctx.uiWorkspace.startSession(workspaceId) },
-    open: (sessionId) => { ctx.sessions.open(sessionId) },
+    open: (sessionId) => { ctx.uiWorkspace.openSession(sessionId) },
     searchSessions,
     searchResultLimit: ctx.sessions.searchResultLimit,
     renameSession: async (sessionId, title) => {
@@ -69,7 +70,7 @@ export function apply(ctx: ClientContext): void {
     },
     forkSession: async (sessionId) => {
       const childId = await ctx.sessions.fork({ sessionId, increaseTitle: true })
-      ctx.sessions.open(childId)
+      ctx.uiWorkspace.openSession(childId)
     },
     renameWorkspace: async (workspaceId, title) => { await ctx.workspaces.rename(workspaceId, title) },
     deleteWorkspace: async (workspaceId) => { await ctx.workspaces.delete(workspaceId) },
@@ -86,10 +87,10 @@ export function apply(ctx: ClientContext): void {
         const session = sessions.byId[sessionId]
         if (session === undefined) continue
         const eligible = findOldSessionsToArchive([session], {
-          days, now: Date.now(), currentSessionId: sessions.current,
+          days, now: Date.now(), currentSessionId: mainSessionId(sessions),
           archivedSessionIds: workspaceSnapshot.archivedSessionIds,
           targetWorkspaceSessionIds: workspace?.sessionIds,
-          pendingInteractions: ctx.uiSession.pendingInteractions.getSnapshot(),
+          pendingInteractions: ctx.uiSession.sessionStatus.getSnapshot(),
         })
         if (eligible.length !== 0) await ctx.uiWorkspace.archiveSession(sessionId)
       }

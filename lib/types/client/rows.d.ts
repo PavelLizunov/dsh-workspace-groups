@@ -99,11 +99,11 @@ export interface SessionRowProps {
     'aria-posinset'?: number;
     'aria-setsize'?: number;
 }
-export declare function IconPin16({ size, className }: {
+export declare function IconPinMedium({ size, className }: {
     size?: number;
     className?: string;
 }): import("react").JSX.Element;
-export declare function IconPinOff16({ size, className }: {
+export declare function IconPinOffMedium({ size, className }: {
     size?: number;
     className?: string;
 }): import("react").JSX.Element;

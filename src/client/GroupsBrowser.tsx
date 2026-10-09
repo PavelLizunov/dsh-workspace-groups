@@ -1,3 +1,4 @@
+import { mainSessionId } from './session-status.ts'
 /**
  * The workspace-groups browsing region filling the sidebar shell's
  * `sidebar.workspaces` hole: section header (title + right-aligned search +
@@ -17,11 +18,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import {
   Button,
-  IconCloseFill14,
-  IconEllipsisOutline16,
-  IconFolderOpenOutline16,
-  IconProjectAddOutline16,
-  IconSearchOutline16,
+  IconCloseFillMedium,
+  IconEllipsisOutlineMedium,
+  IconFolderOpenOutlineMedium,
+  IconProjectAddOutlineMedium,
+  IconSearchOutlineMedium,
   Menu,
   Modal,
   Tooltip,
@@ -39,7 +40,7 @@ import {
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionListState, SessionSearchResultItem, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { CLEANUP_DAYS_PRESETS, DEFAULT_CLEANUP_DAYS, findOldSessionsToArchive } from './session-cleanup.ts'
 import {
   displayCategoryKeys,
@@ -268,7 +269,7 @@ export function GroupsBrowser({
   wide,
   expandSidebar,
   useSessions,
-  useSessionPendingInteraction,
+  useSessionStatus,
   useWorkspaces,
   useStore,
   actions,
@@ -367,8 +368,8 @@ export function GroupsBrowser({
   }, [completedSessions, runningSessions])
 
   const list = useSessions(s => s)
-  const pendingInteractions = useSessionPendingInteraction(s => s)
-  const current = list.current
+  const pendingInteractions = useSessionStatus(s => s)
+  const current = mainSessionId(list)
   const now = useMemo(() => Date.now(), [list])
   const currentWorkspaceKey = current === undefined
     ? undefined
@@ -403,10 +404,10 @@ export function GroupsBrowser({
   useEffect(() => {
     if (list.phase !== 'ready' || workspacePhase !== 'ready') return
     actions.reconcileSessionCompletion?.(
-      deriveCompletionObservations(list, archivedSessionIds),
+      deriveCompletionObservations(list, archivedSessionIds, pendingInteractions),
       current,
     )
-  }, [actions, archivedSessionIds, current, list, workspacePhase])
+  }, [actions, archivedSessionIds, current, list, pendingInteractions, workspacePhase])
 
   const [query, setQuery] = useState('')
   const [searchExpanded, setSearchExpanded] = useState(false)
@@ -803,7 +804,7 @@ export function GroupsBrowser({
       pendingInteractions,
       days: cleanupDays,
       now,
-      currentSessionId: list.current,
+      currentSessionId: mainSessionId(list),
       archivedSessionIds,
       targetWorkspaceSessionIds: targetWs?.sessionIds,
     })
@@ -1275,7 +1276,7 @@ export function GroupsBrowser({
               aria-label={t('search')}
               onClick={() => { setSearchExpanded(true) }}
             >
-              <IconSearchOutline16 size={searchExpanded ? 11 : 14} />
+              <IconSearchOutlineMedium size={searchExpanded ? 11 : 14} />
             </button>
             {searchExpanded && (
               <input
@@ -1306,7 +1307,7 @@ export function GroupsBrowser({
                   setSearchExpanded(false)
                 }}
               >
-                <IconCloseFill14 />
+                <IconCloseFillMedium />
               </button>
             )}
           </div>
@@ -1341,7 +1342,7 @@ export function GroupsBrowser({
                     aria-label={t('tree.actions')}
                     onClick={() => { setHeaderMenuOpen(v => !v) }}
                   >
-                    <IconEllipsisOutline16 size={16} />
+                    <IconEllipsisOutlineMedium size={16} />
                   </button>
                 </Tooltip>
               )}
@@ -1359,7 +1360,7 @@ export function GroupsBrowser({
                   setGroupDialog({ mode: 'create' })
                 }}
               >
-                <IconFolderOpenOutline16 size={16} />
+                <IconFolderOpenOutlineMedium size={16} />
               </button>
             </Tooltip>
           )}
@@ -1371,7 +1372,7 @@ export function GroupsBrowser({
               disabled={adding}
               onClick={addWorkspace}
             >
-              <IconProjectAddOutline16 size={wide ? 16 : 18} />
+              <IconProjectAddOutlineMedium size={wide ? 16 : 18} />
             </button>
           </Tooltip>
         </div>
@@ -1386,7 +1387,7 @@ export function GroupsBrowser({
               aria-label={t('search')}
               onClick={() => { setSearchExpanded(true); expandSidebar() }}
             >
-              <IconSearchOutline16 size={18} />
+              <IconSearchOutlineMedium size={18} />
             </button>
           </Tooltip>
         </div>
@@ -2397,7 +2398,7 @@ function TopLevelSection({ topLevel, totalGroups, totalRootItems, current, now, 
  * the idle tree, so search keeps the same folder hierarchy the user is used to.
  */
 function SearchBody({ pendingInteractions, completedSessions, retainedSessionIds, list, workspaces, config, archivedSessionIds, query, remote, resultLimit, current, now, open, manual, t, startSession, filter, onCountsChange, onResetFilter, onWorkspaceRename, onWorkspaceDelete, onWorkspaceCleanup, onSessionRename, onSessionFork, onSessionArchive, onSessionPinToggle, sessionActionBusy, onSetItemColor }: {
-  pendingInteractions: SessionPendingInteractionSnapshot
+  pendingInteractions: SessionStatusSnapshot
   completedSessions?: Readonly<Record<string, boolean>> | undefined
   retainedSessionIds?: ReadonlySet<string> | undefined
   list: SessionListState

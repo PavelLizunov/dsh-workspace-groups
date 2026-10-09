@@ -16,6 +16,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import Schema from '@deepseek-ai/schemastery'
+import type { Volatile } from '@deepseek-ai/cordis'
 import type { GroupsContext, GroupsSessionProjectionsContext, GroupsSettingsContext } from './context-types.ts'
 import {
   DEFAULT_SIDEBAR_FILTER,
@@ -44,12 +45,16 @@ export const inject = ['webServer', 'connection']
 /** Cap on the PUT body: the overlay is tiny; anything bigger is a client bug. */
 const MAX_MANUAL_BODY_BYTES = 64 * 1024
 const MAX_PREFERENCES_BODY_BYTES = 1024
-const FILTER_SETTINGS_NAMESPACE = 'dsh-workspace-groups'
+const FILTER_SETTINGS_NAMESPACE = 'workspace-groups'
 const FILTER_PREFERENCES_SCHEMA = Schema.object({
   status: Schema.union(['all', 'warning', 'ongoing', 'done'].map(value => Schema.const(value))).default('all'),
   recency: Schema.union(['all', '24h', '7d', '30d'].map(value => Schema.const(value))).default('all'),
   color: Schema.union([Schema.const(null), ...FILTER_COLOR_PRESETS.map(value => Schema.const(value))]).default(null),
 })
+
+/** Profile-backed live filter configuration, using the DSH 0.2 settings contract. */
+export const Config = Schema.object({ filter: FILTER_PREFERENCES_SCHEMA.default(DEFAULT_SIDEBAR_FILTER).volatile() })
+export interface Config { filter: Volatile<SidebarFilterPreferences> }
 
 /** Error with an HTTP status, mapped to a plain-text 4xx/5xx response. */
 class HttpError extends Error {
@@ -150,7 +155,7 @@ function decodePreferencesPutBody(raw: unknown): SidebarFilterPreferences {
 }
 
 /** Plugin body: mount the config snapshot route and persistence routes. */
-export function apply(ctx: GroupsContext): void {
+export function apply(ctx: GroupsContext, config: Config): void {
   const configPath = defaultConfigPath()
   const manualPath = defaultManualPath()
 
@@ -160,12 +165,11 @@ export function apply(ctx: GroupsContext): void {
   } | undefined
   ctx.inject(['settings'], (injected) => {
     const settings = (injected as GroupsSettingsContext).settings
-    const scope = settings.register(FILTER_SETTINGS_NAMESPACE, FILTER_PREFERENCES_SCHEMA, { applies: 'live' })
     filterSettings = {
-      get: () => parseSidebarFilterPreferences(scope.get()),
+      get: () => parseSidebarFilterPreferences(config.filter.get()),
       update: async (filter) => {
-        await scope.update(filter)
-        return parseSidebarFilterPreferences(scope.get())
+        await settings.update(FILTER_SETTINGS_NAMESPACE, { filter })
+        return parseSidebarFilterPreferences(config.filter.get())
       },
     }
     injected.effect(() => () => { filterSettings = undefined }, 'workspace-groups: release settings scope')

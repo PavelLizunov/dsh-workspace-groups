@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
-  IconChevronRightOutline14,
-  IconEditOutline16,
-  IconFolderClose16,
-  IconRefreshOutline14,
-  IconWarningOutline16,
+  IconChevronRightOutlineMedium,
+  IconEditOutlineMedium,
+  IconFolderCloseMedium,
+  IconRefreshOutlineMedium,
+  IconWarningOutlineMedium,
   Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
@@ -288,7 +288,7 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
             <div className="wgDirectoryCrumbs" aria-label={strings.title}>
               {formattedCrumbs.map((crumb, index) => (
                 <span key={crumb.path} className="wgDirectoryCrumbPart">
-                  {index > 0 && <IconChevronRightOutline14 size={12} />}
+                  {index > 0 && <IconChevronRightOutlineMedium size={12} />}
                   <button
                     type="button"
                     disabled={busy || creating || crumb.path === listing?.path}
@@ -315,7 +315,7 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
                   setEditingPath(true)
                 }}
               >
-                <IconEditOutline16 size={14} />
+                <IconEditOutlineMedium size={14} />
               </button>
 
               <button
@@ -326,7 +326,7 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
                 disabled={busy || creating || loading}
                 onClick={() => { navigate(currentPath.current ?? listing?.path) }}
               >
-                <IconRefreshOutline14 size={14} />
+                <IconRefreshOutlineMedium size={14} />
               </button>
             </div>
           )}
@@ -342,7 +342,7 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
 
         {listing !== null && listing.truncated && (
           <div className="wgDirectoryTruncated" role="status">
-            <IconWarningOutline16 size={14} />
+            <IconWarningOutlineMedium size={14} />
             <span>{strings.truncated ?? 'Listing truncated — too many directory entries'}</span>
           </div>
         )}
@@ -360,9 +360,9 @@ export function DirectoryBrowser({ open, busy, listDirectory, createDirectory, o
                 onClick={() => { setSelected(entry) }}
                 onDoubleClick={() => { navigate(entry.path) }}
               >
-                <IconFolderClose16 size={16} />
+                <IconFolderCloseMedium size={16} />
                 <span>{entry.name}</span>
-                <IconChevronRightOutline14 size={12} />
+                <IconChevronRightOutlineMedium size={12} />
               </button>
             ))}
           </div>

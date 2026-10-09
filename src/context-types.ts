@@ -25,10 +25,7 @@ export interface GroupsWebServer {
 
 /** Minimal profile-settings service face used by filter preferences. */
 export interface GroupsSettings {
-  register(namespace: string, schema: unknown, options?: { applies?: 'live' | 'restart' }): {
-    get(): unknown
-    update(patch: object): Promise<void>
-  }
+  update(namespace: string, patch: object): Promise<void>
 }
 
 /** Minimal incremental session-projection registry face used by attention folding. */
