@@ -1,0 +1,158 @@
+{
+  "timestamp_utc": "2026-09-25T05:44:41.389515+00:00",
+  "profile": "web-015",
+  "plugin_graph_rev": "2c8394028c5d",
+  "graph_count": 60,
+  "total_raw_js_bytes": 12173521,
+  "operator_client_js_bytes": 1015005,
+  "top_modules": [
+    {
+      "id": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "raw_bytes": 6888478,
+      "rev": "e9eab1d0b9ca9c43-15"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-conversation",
+      "raw_bytes": 647178,
+      "rev": "e9eab1d0b9ca9c43-21"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-trajectory",
+      "raw_bytes": 392938,
+      "rev": "e9eab1d0b9ca9c43-44"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-chat",
+      "raw_bytes": 370162,
+      "rev": "e9eab1d0b9ca9c43-23"
+    },
+    {
+      "id": "@deepseek-ai/dsh-api-remotes",
+      "raw_bytes": 329936,
+      "rev": "e9eab1d0b9ca9c43-51"
+    },
+    {
+      "id": "dsh-cpamc-limits",
+      "raw_bytes": 267940,
+      "rev": "e9eab1d0b9ca9c43-52"
+    },
+    {
+      "id": "@deepseek-ai/dsh-cordis-client-runner",
+      "raw_bytes": 262598,
+      "rev": "e9eab1d0b9ca9c43-6"
+    },
+    {
+      "id": "dsh-web-mobile",
+      "raw_bytes": 236390,
+      "rev": "e9eab1d0b9ca9c43-46"
+    },
+    {
+      "id": "dsh-workspace-groups",
+      "raw_bytes": 229139,
+      "rev": "e9eab1d0b9ca9c43-57"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-connection",
+      "raw_bytes": 221842,
+      "rev": "e9eab1d0b9ca9c43-55"
+    },
+    {
+      "id": "@deepseek-ai/dsh-api-session-controller",
+      "raw_bytes": 140799,
+      "rev": "e9eab1d0b9ca9c43-56"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-sidebar-right",
+      "raw_bytes": 140572,
+      "rev": "e9eab1d0b9ca9c43-14"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-settings-models",
+      "raw_bytes": 139017,
+      "rev": "e9eab1d0b9ca9c43-19"
+    },
+    {
+      "id": "@deepseek-ai/dsh-client-ui-workspace",
+      "raw_bytes": 130187,
+      "rev": "e9eab1d0b9ca9c43-29"
+    },
+    {
+      "id": "@dipertq/dsh-openviking-status",
+      "raw_bytes": 109986,
+      "rev": "e9eab1d0b9ca9c43-45"
+    }
+  ],
+  "all_operator_modules": [
+    {
+      "id": "dsh-cpamc-limits",
+      "raw_bytes": 267940,
+      "rev": "e9eab1d0b9ca9c43-52"
+    },
+    {
+      "id": "dsh-web-mobile",
+      "raw_bytes": 236390,
+      "rev": "e9eab1d0b9ca9c43-46"
+    },
+    {
+      "id": "dsh-workspace-groups",
+      "raw_bytes": 229139,
+      "rev": "e9eab1d0b9ca9c43-57"
+    },
+    {
+      "id": "@dipertq/dsh-openviking-status",
+      "raw_bytes": 109986,
+      "rev": "e9eab1d0b9ca9c43-45"
+    },
+    {
+      "id": "dsh-codex-auth",
+      "raw_bytes": 80744,
+      "rev": "e9eab1d0b9ca9c43-58"
+    },
+    {
+      "id": "dsh-client-ui-teratts",
+      "raw_bytes": 57491,
+      "rev": "e9eab1d0b9ca9c43-50"
+    },
+    {
+      "id": "dsh-fleet-cleaner",
+      "raw_bytes": 33315,
+      "rev": "e9eab1d0b9ca9c43-47"
+    }
+  ],
+  "process_pid": 264762,
+  "memory_scope": "Host PID RSS is not per-plugin attribution",
+  "measurement_limitations": [
+    "SSE graph lists delivered modules, not browser parse/render cost",
+    "raw bytes not equivalent to transfer bytes; gzip negotiation exists",
+    "CPU/RSS readings include sessions/core/other services",
+    "single live snapshot, no controlled A/B or browser trace"
+  ],
+  "measurement_context": {
+    "profile_hashes": {
+      "profile_package_json_sha256": "0677208cd76cd4cd372d40417a7e367ef8310b2fe64f5311dbe454a2d92c62d5",
+      "pnpm_lock_sha256": "864df19f8f46447f62b5078d6d6df6de195bd3c03996abc2db1ad5112eb87026",
+      "profile_patch_sha256": "52915977d1369788b62d8f665d6aea269a72b51d93216d67ad240ed0866fdae2"
+    },
+    "host": {
+      "node_pid_at_sampling": 264762,
+      "host_rss_kib_snapshot": 926404,
+      "host_cpu_lifetime_percent_snapshot": 0.9,
+      "measurement_source": "ps /proc systemctl; no per-plugin attribution"
+    },
+    "browser": {
+      "product": null,
+      "version": null,
+      "viewport": null,
+      "device_scale_factor": null,
+      "authenticated_trace_captured": false
+    },
+    "scenario_fixture": null,
+    "network_response_samples_captured": false,
+    "cache_mode": null,
+    "measurement_limitations": [
+      "No authenticated browser trace; cannot infer user latency",
+      "No controlled cold/warm A/B",
+      "Network gzip point samples noted in spec only; do not treat as acceptance baseline"
+    ]
+  }
+}

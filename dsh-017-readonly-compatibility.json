@@ -1,0 +1,321 @@
+{
+  "captured_at_utc": "2026-09-25T19:51:32+00:00",
+  "profile": "web-015",
+  "current_dsh": "0.1.5-rc.2",
+  "target_dsh": "0.1.7-rc.2",
+  "bundle_order": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "dsh-workspace-groups",
+    "dsh-cpamc-limits",
+    "dsh-client-ui-teratts",
+    "dsh-ai-egress",
+    "dsh-codex-auth",
+    "dsh-session-persistence-jsonl-cache",
+    "dsh-web-mobile",
+    "dsh-fleet-cleaner",
+    "dsh-review",
+    "dsh-review-policy",
+    "@dipertq/dsh-openviking-status",
+    "@openviking/dsh-memory-plugin"
+  ],
+  "profile_manifest_sha256": "0677208cd76cd4cd372d40417a7e367ef8310b2fe64f5311dbe454a2d92c62d5",
+  "rows": [
+    {
+      "name": "@deepseek-ai/dsh-base",
+      "installed_version": "0.1.5-rc.2",
+      "direct_spec": null,
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "@deepseek-ai/dsh-web-app",
+      "installed_version": "0.1.5-rc.2",
+      "direct_spec": null,
+      "exact_core_peers": [],
+      "branch_015_peers": 2,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "dsh-workspace-groups",
+      "installed_version": "0.1.1-local.20260924.1",
+      "direct_spec": "file:/var/lib/dsh/.dsh/bundles/dsh-workspace-groups-0.1.1-local.20260924.1.tgz",
+      "exact_core_peers": [
+        [
+          "@deepseek-ai/dsh-client-connection",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-locale",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-api-remotes",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-api-session-controller",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-api-workspace-controller",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-store",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-session",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-workspace",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-renderer",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-session",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-primitives",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-sidebar",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-client-ui-slots",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-host-webserver",
+          "0.1.5-rc.2"
+        ]
+      ],
+      "branch_015_peers": 14,
+      "source_api_occurrences": [],
+      "status": "requires-api-review"
+    },
+    {
+      "name": "dsh-cpamc-limits",
+      "installed_version": "0.1.1-local.20260924.3",
+      "direct_spec": "file:/var/lib/dsh/.dsh/bundles/dsh-cpamc-limits-0.1.1-local.20260924.3.tgz",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "dsh-client-ui-teratts",
+      "installed_version": "0.8.8-rc1.local.2",
+      "direct_spec": "file:/var/lib/dsh/.dsh/bundles/dsh-client-ui-teratts-0.8.8-rc1.local.2.tgz",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [
+        [
+          "getChunk(",
+          "lib/index.js"
+        ]
+      ],
+      "status": "requires-api-review"
+    },
+    {
+      "name": "dsh-ai-egress",
+      "installed_version": "0.1.0",
+      "direct_spec": "link:/var/lib/dsh/Project/dsh-ai-egress",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "dsh-codex-auth",
+      "installed_version": "0.3.3-rc.1",
+      "direct_spec": "file:/var/lib/dsh/DSH-creator/dsh-upgrade-0.1.5/artifacts/dsh-codex-auth-0.3.3-rc.1.tgz",
+      "exact_core_peers": [
+        [
+          "@deepseek-ai/dsh-compaction",
+          "0.1.5-rc.1"
+        ],
+        [
+          "@deepseek-ai/dsh-compaction-basic",
+          "0.1.5-rc.1"
+        ],
+        [
+          "@deepseek-ai/dsh-token-meter",
+          "0.1.5-rc.1"
+        ]
+      ],
+      "branch_015_peers": 28,
+      "source_api_occurrences": [
+        [
+          "snapshotEvents(",
+          "lib/image.js"
+        ],
+        [
+          "snapshotEvents(",
+          "lib/compaction.js"
+        ]
+      ],
+      "status": "requires-api-review"
+    },
+    {
+      "name": "dsh-session-persistence-jsonl-cache",
+      "installed_version": "0.1.5-rc.2-homelab.1",
+      "direct_spec": "file:/var/lib/dsh/DSH-creator/dsh-upgrade-0.1.5/artifacts/dsh-session-persistence-jsonl-cache-0.1.5-rc.2-homelab.1.tgz",
+      "exact_core_peers": [
+        [
+          "@deepseek-ai/dsh-session",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-session-persistence",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-session-persistence-jsonl",
+          "0.1.5-rc.2"
+        ]
+      ],
+      "branch_015_peers": 3,
+      "source_api_occurrences": [
+        [
+          "SUPPORTED_DSH_VERSION = '0.1.5-rc.2'",
+          "lib/index.js"
+        ]
+      ],
+      "status": "functional-blocked"
+    },
+    {
+      "name": "dsh-web-mobile",
+      "installed_version": "2.3.1-local.20260924.1",
+      "direct_spec": "file:/var/lib/dsh/.dsh/bundles/dsh-web-mobile-2.3.1-local.20260924.1.tgz",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "requires-api-review"
+    },
+    {
+      "name": "dsh-fleet-cleaner",
+      "installed_version": "0.2.0",
+      "direct_spec": "link:/var/lib/dsh/Project/dsh-fleet-cleaner",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "dsh-review",
+      "installed_version": "0.2.0",
+      "direct_spec": "link:/var/lib/dsh/.dsh/packages/dsh-review/0.2.0",
+      "exact_core_peers": [
+        [
+          "@deepseek-ai/dsh-agent",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-commands",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-fs",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-llm",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-session",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-subagent",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-sandbox-policy",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-session-query",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-skill",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-storage-domain",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-tools",
+          "0.1.5-rc.2"
+        ],
+        [
+          "@deepseek-ai/dsh-workflow",
+          "0.1.5-rc.2"
+        ]
+      ],
+      "branch_015_peers": 12,
+      "source_api_occurrences": [
+        [
+          "snapshotEvents(",
+          "lib/host.js"
+        ],
+        [
+          "snapshotEvents(",
+          "src/host.ts"
+        ]
+      ],
+      "status": "requires-api-review"
+    },
+    {
+      "name": "dsh-review-policy",
+      "installed_version": "0.1.0",
+      "direct_spec": "link:/var/lib/dsh/.dsh/packages-src/dsh-review-policy",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "@dipertq/dsh-openviking-status",
+      "installed_version": "0.3.2",
+      "direct_spec": "link:/var/lib/dsh/.dsh/packages-src/dsh-openviking-status",
+      "exact_core_peers": [],
+      "branch_015_peers": 0,
+      "source_api_occurrences": [],
+      "status": "not-verified"
+    },
+    {
+      "name": "@openviking/dsh-memory-plugin",
+      "installed_version": "0.5.1",
+      "direct_spec": "0.5.1",
+      "exact_core_peers": [],
+      "branch_015_peers": 3,
+      "source_api_occurrences": [
+        [
+          "ownEvents(",
+          "runtime.mjs"
+        ],
+        [
+          "agent/session-start",
+          "index.mjs"
+        ]
+      ],
+      "status": "functional-blocked"
+    }
+  ],
+  "warning": "static use of deprecated API and peer bounds does not prove runtime behavior; no canary or 0.1.7 installation performed"
+}
