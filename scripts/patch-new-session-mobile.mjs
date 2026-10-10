@@ -20,7 +20,7 @@ ${pointer}`)
             if (shouldCloseOnTapInsideDrawer(event.target)) {
                 if (event.target instanceof Element && event.target.closest('[class*="newSession"]') !== null) {
                     // Capture runs before React; close after the complete click dispatch.
-                    queueMicrotask(() => { if (drawerOpen()) toggleSidebar(); });
+                    window.setTimeout(() => { if (drawerOpen()) toggleSidebar(); }, 0);
                     return;
                 }
                 toggleSidebar();
