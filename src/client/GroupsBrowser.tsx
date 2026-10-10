@@ -65,6 +65,7 @@ import { CategoryRow, DND_CATEGORY_TYPE, DND_WORKSPACE_TYPE, hasPluginDragType, 
 import css from './styles.css?inline'
 import navigatorCss from './workspace-navigator.css?inline'
 import { dateRangeLabel } from './date-range.ts'
+import { createSessionStarter } from './new-session.ts'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
@@ -224,7 +225,7 @@ export function GroupsBrowser({
   useWorkspaces,
   useStore,
   actions,
-  startSession,
+  startSession: nativeStartSession,
   openWorkspace,
   open,
   renameSession,
@@ -258,6 +259,17 @@ export function GroupsBrowser({
   const [configError, setConfigError] = useState<string | null>(null)
   const [configLoaded, setConfigLoaded] = useState(false)
   const [conflictError, setConflictError] = useState<boolean>(false)
+
+  const [newSessionError, setNewSessionError] = useState<string | null>(null)
+  const startSession = useMemo(() => createSessionStarter(
+    (workspaceId, beforeOpen) => {
+      if (openWorkspace !== undefined) return openWorkspace(workspaceId, beforeOpen)
+      nativeStartSession(workspaceId)
+      return Promise.resolve()
+    },
+    nativeStartSession,
+    setNewSessionError,
+  ), [openWorkspace, nativeStartSession])
 
   // Transient save errors for drag/menu group operations (dialog errors are local).
   const [manualError, setManualError] = useState<string | null>(null)
@@ -1537,6 +1549,7 @@ export function GroupsBrowser({
               <Button variant="outline" onClick={() => { void reloadConfig(true); setConflictError(false) }}>{t('retry')}</Button>
             </div>
           )}
+          {newSessionError !== null && <div className="wgSearchStatus wgManualError" role="alert">{t('session.new')}: {newSessionError}</div>}
           {manualError !== null && !conflictError && (
             <div className="wgSearchStatus wgManualError" role="alert">{t('manual.saveError')}: {manualError}</div>
           )}

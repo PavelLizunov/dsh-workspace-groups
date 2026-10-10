@@ -1,0 +1,9 @@
+# New-session plus repair
+
+- Outcome: one click/tap on a workspace plus opens its native blank session and reveals the chat; no repeated taps needed.
+- Current owning runtime differs from the earlier deployment: active sidebar is @local/dsh-sidebar-filter-button (profile symlink resolves to DSH-creator/mobile-sidebar-fix/sidebar-filter-button). Preserve its drawer header, compact filters, host namespace and other local fixes.
+- Observed: actual plus receives pointerdown/pointerup/click, but mobile drawer stays open. Active status=ongoing hides blank session rows; existing mobile navigation matcher recognizes grouped session rows but not workspace plus buttons. Thus row-based selection observer cannot reveal this navigation. Do not call failure to create proven until native selection observed.
+- Additional native-header mechanism: mobile capture handler closes drawer on pointerup for [class*="newSession"], before React click; changes button geometry/mount before synthesized click. Header fix leaves pointerup untouched and defers capture-phase close to a microtask after full click dispatch. This is in the mobile plugin, not DSH core.
+- Scope: native uiWorkspace navigation remains owner; await native openWorkspace for explicit workspace, reveal drawer only after success, prevent duplicate pending calls, expose failure. Preserve user filters, groups, colors, provider settings, sessions and mobile gesture guards. No core edits, service restart or profile cycling.
+- Verification: necessary canonical build; direct real GUI touch plus while ongoing filter active, successful native blank selection and drawer closed, unchanged preference response, served candidate bytes. Physical Safari not available.
+- Deployment: client-only patch of currently active overlay, not replacement with an obsolete bundled sidebar. Save reusable bounded overlay transform in owning groups repository. Git task branch, no main merge.
