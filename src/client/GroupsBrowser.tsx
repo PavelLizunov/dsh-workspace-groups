@@ -66,6 +66,7 @@ import css from './styles.css?inline'
 import navigatorCss from './workspace-navigator.css?inline'
 import { dateRangeLabel } from './date-range.ts'
 import { createSessionStarter } from './new-session.ts'
+import { useActivityList } from './activity.ts'
 
 const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
@@ -334,7 +335,8 @@ export function GroupsBrowser({
     return { ...runningSessions, ...completedSessions }
   }, [completedSessions, runningSessions])
 
-  const list = useSessions(s => s)
+  const nativeList = useSessions(s => s)
+  const { list, loading: activityLoading, unavailable: activityUnavailable } = useActivityList(nativeList, archivedSessionIds)
   const pendingInteractions = useSessionPendingInteraction(s => s)
   const current = list.current
   const now = useMemo(() => Date.now(), [list])
@@ -1537,6 +1539,8 @@ export function GroupsBrowser({
             )}
           </div>
           <div className="wgTreeScroller">
+          {activityLoading && <div className="wgSearchStatus" role="status">{t('activity.loading')}</div>}
+          {activityUnavailable && <div className="wgSearchStatus" role="status">{t('activity.unavailable')}</div>}
           {configError !== null && (
             <div className="wgSearchStatus" role="status">{t('configUnavailable')}</div>
           )}

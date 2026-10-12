@@ -20,6 +20,8 @@ export type WorkspaceGroupsKey =
   | 'icon.save'
   | 'section.workspaces'
   | 'section.sessions'
+  | 'activity.loading'
+  | 'activity.unavailable'
   | 'search'
   | 'search.placeholder'
   | 'search.clear'

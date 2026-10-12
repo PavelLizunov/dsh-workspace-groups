@@ -36,6 +36,19 @@ export interface GroupsSessionProjections {
   register(definition: unknown): () => void
 }
 
+/** Official cold/live observation read face; never activates an Agent. */
+export interface GroupsSessionQuery {
+  listSessions(signal?: AbortSignal): Promise<Array<{ header: { id: string; cwd?: string; origin?: string } }>>
+  observeSession(id: string, options?: { signal?: AbortSignal }): Promise<{
+    projections?: { values: Record<string, unknown> }
+    [Symbol.dispose](): void
+  }>
+}
+
+export interface GroupsSessionQueryContext extends GroupsContext {
+  sessionQuery: GroupsSessionQuery
+}
+
 /** Cordis Context augmented with the services this plugin always needs. */
 export interface GroupsContext extends Context {
   connection: HostConnectionHandle

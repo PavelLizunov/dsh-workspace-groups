@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { type WorkspaceGroupsAttentionProjection } from './core/attention.js';
 export declare const attentionProjectionSchema: z.ZodObject<{
     reason: z.ZodNullable<z.ZodEnum<{
-        "awaiting-user": "awaiting-user";
         error: "error";
+        "awaiting-user": "awaiting-user";
         interrupted: "interrupted";
         "max-tokens": "max-tokens";
     }>>;
@@ -12,8 +12,8 @@ export declare const workspaceGroupsAttentionProjectionDefinition: {
     key: string;
     stateSchema: z.ZodObject<{
         reason: z.ZodNullable<z.ZodEnum<{
-            "awaiting-user": "awaiting-user";
             error: "error";
+            "awaiting-user": "awaiting-user";
             interrupted: "interrupted";
             "max-tokens": "max-tokens";
         }>>;
@@ -26,8 +26,8 @@ export declare const workspaceGroupsAttentionProjectionDefinition: {
     wire: {
         viewSchema: z.ZodObject<{
             reason: z.ZodNullable<z.ZodEnum<{
-                "awaiting-user": "awaiting-user";
                 error: "error";
+                "awaiting-user": "awaiting-user";
                 interrupted: "interrupted";
                 "max-tokens": "max-tokens";
             }>>;

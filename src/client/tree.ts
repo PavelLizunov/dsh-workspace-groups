@@ -9,6 +9,7 @@ import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-sess
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { indexSubagentDescendants, type SubagentDescendantSummary } from './subagent-lineage.ts'
+import { sessionActivityAt } from '../core/activity.ts'
 import type { PendingInteractionStatus } from './tree-attention.ts'
 import type { SessionCompletionObservation } from './store-core.ts'
 import { readAttentionProjection, type SessionAttentionReason } from '../core/attention.ts'
@@ -161,7 +162,7 @@ export function sessionNode(
     running: s.running,
     runningSubagentCount,
     completed: (!selected && !errorViewed && !s.running && runningSubagentCount === 0) && (s.completed === true || completedOverride === true),
-    updatedAt: s.updatedAt,
+    updatedAt: sessionActivityAt(s),
     ...(pendingInteraction === undefined ? {} : { pendingInteraction }),
     ...(projection.reason === null || errorViewed ? {} : { projectionReason: projection.reason }),
     ...(pinned ? { pinned: true } : {}),

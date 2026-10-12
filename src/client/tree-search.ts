@@ -6,6 +6,7 @@ import type { SessionListState, SessionSearchResultItem, SessionSummary } from '
 import type { WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import { indexSubagentDescendants } from './subagent-lineage.ts'
+import { sessionActivityAt } from '../core/activity.ts'
 import { effectiveCategories, resolveCategory } from '../core/matcher.ts'
 import type { GroupsConfig, ManualGroups } from '../core/types.ts'
 import {
@@ -20,7 +21,8 @@ import {
 
 /** Recency comparator: newest first, id as the deterministic tiebreak. */
 export function byRecency(a: SessionSummary, b: SessionSummary): number {
-  if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt
+  const difference = sessionActivityAt(b) - sessionActivityAt(a)
+  if (difference !== 0) return difference
   return a.id < b.id ? -1 : 1
 }
 

@@ -28,6 +28,7 @@ import {
 } from './core/types.ts'
 import { defaultConfigPath, readGroupsConfig } from './host-config.ts'
 import { workspaceGroupsAttentionProjectionDefinition } from './host-attention.ts'
+import { registerActivityRoute, workspaceGroupsActivityProjectionDefinition } from './host-activity.ts'
 import {
   defaultManualPath,
   parseManualGroups,
@@ -177,8 +178,11 @@ export function apply(ctx: GroupsContext): void {
     injected.effect(() => () => { filterSettings = undefined }, 'workspace-groups: release settings scope')
   })
   ctx.inject(['sessionProjections'], (injected) => {
-    (injected as GroupsSessionProjectionsContext).sessionProjections.register(workspaceGroupsAttentionProjectionDefinition)
+    const projections = (injected as GroupsSessionProjectionsContext).sessionProjections
+    projections.register(workspaceGroupsAttentionProjectionDefinition)
+    projections.register(workspaceGroupsActivityProjectionDefinition)
   })
+  registerActivityRoute(ctx)
 
   let writeQueue = Promise.resolve()
 

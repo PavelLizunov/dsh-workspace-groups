@@ -4,6 +4,8 @@ import type { WorkspaceGroupsDict } from '../locales.ts'
 export const zh: WorkspaceGroupsDict = {
   'section.workspaces': '工作区',
   'section.sessions': '会话',
+  'activity.loading': '正在加载会话活动时间…',
+  'activity.unavailable': '部分活动时间不可用，暂用原生时间戳。',
   search: '搜索',
   'search.placeholder': '搜索会话…',
   'search.clear': '清除',

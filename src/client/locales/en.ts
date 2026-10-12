@@ -4,6 +4,8 @@ import type { WorkspaceGroupsDict } from '../locales.ts'
 export const en: WorkspaceGroupsDict = {
   'section.workspaces': 'Workspaces',
   'section.sessions': 'Sessions',
+  'activity.loading': 'Loading conversation activity…',
+  'activity.unavailable': 'Some activity times are unavailable; using native timestamps.',
   search: 'Search',
   'search.placeholder': 'Search sessions…',
   'search.clear': 'Clear',
