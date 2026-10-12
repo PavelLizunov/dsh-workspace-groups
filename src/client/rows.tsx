@@ -426,6 +426,7 @@ export function WorkspaceRow({
           className="wgIconButton"
           draggable={false}
           aria-label={`${t('session.new')} ${node.label}`}
+          data-wg-new-session=""
           onClick={(e) => { e.stopPropagation(); onNewSession() }}
           onKeyDown={(e) => { e.stopPropagation() }}
         >
