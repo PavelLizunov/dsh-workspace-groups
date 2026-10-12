@@ -120,7 +120,7 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
   (same as the official workspace browser) — groups and projects are easy to tell apart
 
 ### New-session buttons
-New Session opens a separate local text draft immediately, independently of tree filters. While offline, text stays in this browser and does not enter the old chat. Connect (or reconnecting the browser) creates a fresh server session and transfers the draft into its composer without submitting it. Back keeps the local draft for the next opening. Server-side creation and sending require a connection; offline attachments are not supported.
+New Session uses DSH's native workspace navigation and conversation controls, without a fullscreen draft replacement. Existing filters are not reset. Creation requires a connection and waits for the Host; immediate offline creation is not supported. The repeated-click failure remains under investigation.
 
 ### Search, filtering & operations
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched

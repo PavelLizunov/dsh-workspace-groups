@@ -8,6 +8,18 @@
 - Verification: necessary canonical build; direct real GUI touch plus while ongoing filter active, successful native blank selection and drawer closed, unchanged preference response, served candidate bytes. Physical Safari not available.
 - Deployment: client-only patch of currently active overlay, not replacement with an obsolete bundled sidebar. Reusable bounded transforms saved in owning groups repository. Git task branch, no main merge.
 
+## Current status — reopened after latest user failure
+- User again reports that plus requires repeated taps and page refresh; no completion claim remains valid.
+- Rejected fullscreen draft takeover removed from live sidebar and canonical registration. Canonical build succeeded; retired deployment transform now fails explicitly rather than reinstalling the takeover. Saved unsent local text is untouched.
+- Current service is active with MainPID 1224095, start 2026-10-12 10:57:54 UTC. No restart is authorized or performed by this continuation.
+- Native observation: /api/session/create sent at 11:11:40.871Z (startup blank restoration, before the tap), returned 11:12:21.066Z. Selection and real editable composer appeared about 40 s after tap. Same identity's fallback agent-failed event at 11:12:21.039Z precedes response by 27 ms. Serial agent/created awaits both remote browser listeners; live map shows Hermes VM230 stopped. This establishes optional browser startup on the critical native creation path. The probe's delayAfterTapMs is invalid for the pre-tap startup request; do not use it as click latency.
+- Also found active mobile-panel bytes had lost the prior timer-based header fix: pointerup closed the drawer before React click. Reapply only the known client anchors; no Host/profile cycling.
+- Browser lifecycle source fix must avoid reloading providers underneath current chats without authorization. Keep this dependent activation branch open.
+- Acceptance: single real plus opens a fresh native session with usable native composer, independent of filtered rows, with actual preferences unchanged. No replacement chat, provider/model edits, shared-profile cycling or interrupted jobs. Native offline creation remains a platform limit to distinguish from responsiveness.
+
+## Superseded draft approach — rejected by user
+Historical evidence below does not establish completion.
+
 ## Reopened after repeated user failure
 Previous completion claim withdrawn for user's device. Requested behavior now includes offline immediate response for every New Session plus (native header, leading control, grouped workspace, search). Install one plugin-owned capture handler before mobile drawer/navigation handlers; never rely on filtered tree rows or an existing blank session. Open a local independent textarea synchronously, persist its unsent text locally, create a fresh native session with Host-allocated identity in the background, then hand text to native conversation input without submitting. Design: utilitarian native-token text intake, ENERGY 1 / RHYTHM 1 / MOTION 1; fullscreen only to keep the old composer inaccessible while a new draft is pending. No new dependency. No core edit or DSH restart. Preserve all filters and old session drafts. Online, offline, touch/mouse and active-filter variants explicitly requested; native server session cannot be created without server connectivity, local draft must remain usable.
 
