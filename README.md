@@ -120,7 +120,7 @@ An optional [periodic-title companion](packages/periodic-titles/README.md) targe
   (same as the official workspace browser) — groups and projects are easy to tell apart
 
 ### New-session buttons
-New Session uses DSH's native workspace navigation and conversation controls, without a fullscreen draft replacement. Existing filters are not reset. Creation requires a connection and waits for the Host; immediate offline creation is not supported. The repeated-click failure remains under investigation.
+New Session creates a fresh Host-allocated session and opens DSH's native conversation controls, without reusing an old blank chat or replacing the composer. Shell, workspace and search plus buttons share the action; pending repeated clicks do not create duplicates. Existing filters and the previous chat's unsent text are not reset. Creation requires a connection; immediate offline creation is not supported. Optional browser startup must not block native creation (see the deployment record in `docs/specs/new-session-plus.md`).
 
 ### Search, filtering & operations
 - **Tree-shaped search**: results keep the three-level structure (category → project → matched

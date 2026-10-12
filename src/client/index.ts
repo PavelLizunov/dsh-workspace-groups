@@ -26,6 +26,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { GroupsBrowserInjected } from './contract.ts'
 import { createGroupsViewStore } from './stores.ts'
 import { GroupsBrowser } from './GroupsBrowser.tsx'
+import { installNativeNewSession } from './native-new-session.ts'
 import { en, zh, type WorkspaceGroupsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -48,6 +49,7 @@ export const inject = ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'uiSess
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  ctx.effect(() => installNativeNewSession(ctx), 'workspace-groups: fresh native new session')
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'dsh-workspace-groups: dictionaries')
 
   const searchSessions: GroupsBrowserInjected['searchSessions'] = async (query, signal) => {
